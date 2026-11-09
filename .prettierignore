@@ -4,3 +4,5 @@ coverage
 *.sqlite
 package-lock.json
 packages/engine/src/data/rpe-table.json
+packages/engine/src/data/
+apps/api/src/db/migrations.generated.ts
