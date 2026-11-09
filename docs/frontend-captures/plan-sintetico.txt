@@ -1,0 +1,2 @@
+block,week,date,exercise,protocol,session,lift
+PRUEBA,1,2026-11-06,Squat comp,1x3x100@7+1x6x80@7,prueba-canonica,SQ

@@ -1,0 +1,15 @@
+[
+  "Revisión SI obtenida de /tables/si/rts: rts-si-r2",
+  "SI, NL y tonelaje a la par; patrones, músculos y fuerza visibles sin cambiar métrica",
+  "Atletas abre y enfoca el plantel desde un perfil",
+  "Atletas también funciona desde Inicio",
+  "Pegado Excel, Enter, borrador tras recarga, preview y publicación de dos cambios preservan ejecución",
+  "Fallo de red al publicar conserva el borrador y permite revisar y reintentar",
+  "Registro tabular, RPE vacío, error/reintento y persistencia al recargar",
+  "Respuesta oficial fatiga-v2: objetivo, rango y RPE real por serie consultables",
+  "Totales oficiales por patrón y convención del backend accesibles",
+  "Vista por sesión compartida y celular sin desbordamiento de página",
+  "En celular registro por fichas, con planilla opcional",
+  "Nueva sesión en planilla: rangos 5–8 y 8–10, top/backoff, preview y persistencia sin resultados",
+  "Accesorio ubicado automáticamente en tracción vertical con el patrón oficial del backend"
+]

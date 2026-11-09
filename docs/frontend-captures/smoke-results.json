@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "Inicio, filtro de revisión, perfil y evidencia real",
+    "Macro activo, meso y semanas/sesiones en paralelo",
+    "Siguiente semana: preview y borrador sin publicación",
+    "Creación segmentada, registro móvil, RPE faltante, error de red y reintento, cuestionario parcial",
+    "Duplicación publicada con preview y nuevos IDs (sin resultados)",
+    "Comparativa real actual/anterior y normalización",
+    "Intervención aceptada, aplicación separada, seguimiento e historial automático",
+    "Importación Hevy con archivo, dry-run y confirmación de aplicación",
+    "Plantilla guardada/aplicada, repetición en dos destinos, protocolo con ejecución intacta y mover sesión en borrador",
+    "Creación de macro planificado y meso asociado desde formularios",
+    "Datos faltantes con abstenciones del motor y adaptación a tablet",
+    "Persistencia de filtros al volver y adaptación a 390 px"
+  ]
+}

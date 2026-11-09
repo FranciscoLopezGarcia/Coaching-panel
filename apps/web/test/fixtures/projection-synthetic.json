@@ -1,0 +1,965 @@
+{
+  "contractVersion": "performance-projection-v1",
+  "engineVersion": "proyeccion-v0.1-experimental",
+  "status": "available",
+  "reasons": [],
+  "cutoff": "2026-11-06",
+  "periods": {
+    "observed": {
+      "from": "2026-08-06",
+      "to": "2026-11-06"
+    },
+    "view": {
+      "kind": "cutoff",
+      "from": null,
+      "to": null,
+      "label": null
+    },
+    "training": {
+      "from": "2026-08-06",
+      "to": "2026-11-06",
+      "scope": "history",
+      "exposures": 24,
+      "note": "Se ajusta con toda la historia disponible hasta el corte, incluso la anterior al período mostrado."
+    }
+  },
+  "target": {
+    "athleteId": "62f2c524-aa1f-4ed2-8cd8-209ea278e69b",
+    "lift": "SQ",
+    "exercise": "Squat comp",
+    "variantKey": "comp",
+    "variable": "e1rm_table_rpe",
+    "unit": "kg",
+    "method": {
+      "id": "table-rpe",
+      "version": "rpe-proyecto-v1"
+    },
+    "indicator": "e1RM por curva RPE (requiere RPE real)"
+  },
+  "selection": {
+    "filters": {
+      "exercise": "Squat comp",
+      "variantKey": "comp"
+    },
+    "availableVariants": [
+      {
+        "exercise": "Squat comp",
+        "variantKey": "comp",
+        "lift": "SQ",
+        "exposures": {
+          "e1rm_table_rpe": 24,
+          "e1rm_prg_formulas": 24
+        }
+      }
+    ]
+  },
+  "horizon": {
+    "requestedDays": 28,
+    "effectiveDays": 28,
+    "fromDate": "2026-11-06",
+    "forecastDate": "2026-12-04",
+    "maxAllowedDays": 46,
+    "limitedBy": null
+  },
+  "aggregation": {
+    "id": "exposure-agg-v1",
+    "mode": "best",
+    "rule": "Un punto por exposición (fuente+sesión+ejercicio+variante). Series elegibles: de trabajo, carga total conocida, con los datos que exige el método. Valor = mejor e1RM (\"best\") o mediana (\"median\") de esas series; la cantidad de series no pondera."
+  },
+  "observedPoints": [
+    {
+      "date": "2026-08-06",
+      "value": 123.3,
+      "exposureKey": "plan|ui-session-0|Squat comp|comp",
+      "setIds": ["ui-0"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 123.3,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 1.25
+      }
+    },
+    {
+      "date": "2026-08-10",
+      "value": 124.54,
+      "exposureKey": "plan|ui-session-1|Squat comp|comp",
+      "setIds": ["ui-1"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 124.54,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 0.63
+      }
+    },
+    {
+      "date": "2026-08-14",
+      "value": 125.77,
+      "exposureKey": "plan|ui-session-2|Squat comp|comp",
+      "setIds": ["ui-2"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 125.77,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 0.05
+      }
+    },
+    {
+      "date": "2026-08-18",
+      "value": 127,
+      "exposureKey": "plan|ui-session-3|Squat comp|comp",
+      "setIds": ["ui-3"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 127,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": -0.58
+      }
+    },
+    {
+      "date": "2026-08-22",
+      "value": 128.24,
+      "exposureKey": "plan|ui-session-4|Squat comp|comp",
+      "setIds": ["ui-4"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 128.24,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": -1.25
+      }
+    },
+    {
+      "date": "2026-08-26",
+      "value": 129.47,
+      "exposureKey": "plan|ui-session-5|Squat comp|comp",
+      "setIds": ["ui-5"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 129.47,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 1.25
+      }
+    },
+    {
+      "date": "2026-08-30",
+      "value": 130.7,
+      "exposureKey": "plan|ui-session-6|Squat comp|comp",
+      "setIds": ["ui-6"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 130.7,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 0.58
+      }
+    },
+    {
+      "date": "2026-09-03",
+      "value": 131.94,
+      "exposureKey": "plan|ui-session-7|Squat comp|comp",
+      "setIds": ["ui-7"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 131.94,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 0
+      }
+    },
+    {
+      "date": "2026-09-07",
+      "value": 133.17,
+      "exposureKey": "plan|ui-session-8|Squat comp|comp",
+      "setIds": ["ui-8"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 133.17,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": -0.67
+      }
+    },
+    {
+      "date": "2026-09-11",
+      "value": 134.4,
+      "exposureKey": "plan|ui-session-9|Squat comp|comp",
+      "setIds": ["ui-9"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 134.4,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": -1.25
+      }
+    },
+    {
+      "date": "2026-09-15",
+      "value": 135.64,
+      "exposureKey": "plan|ui-session-10|Squat comp|comp",
+      "setIds": ["ui-10"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 135.64,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 1.25
+      }
+    },
+    {
+      "date": "2026-09-19",
+      "value": 136.87,
+      "exposureKey": "plan|ui-session-11|Squat comp|comp",
+      "setIds": ["ui-11"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 136.87,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 0.58
+      }
+    },
+    {
+      "date": "2026-09-23",
+      "value": 138.1,
+      "exposureKey": "plan|ui-session-12|Squat comp|comp",
+      "setIds": ["ui-12"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 138.1,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 0
+      }
+    },
+    {
+      "date": "2026-09-27",
+      "value": 139.33,
+      "exposureKey": "plan|ui-session-13|Squat comp|comp",
+      "setIds": ["ui-13"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 139.33,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": -0.67
+      }
+    },
+    {
+      "date": "2026-10-01",
+      "value": 140.57,
+      "exposureKey": "plan|ui-session-14|Squat comp|comp",
+      "setIds": ["ui-14"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 140.57,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": -1.25
+      }
+    },
+    {
+      "date": "2026-10-05",
+      "value": 141.8,
+      "exposureKey": "plan|ui-session-15|Squat comp|comp",
+      "setIds": ["ui-15"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 141.8,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 1.16
+      }
+    },
+    {
+      "date": "2026-10-09",
+      "value": 143.03,
+      "exposureKey": "plan|ui-session-16|Squat comp|comp",
+      "setIds": ["ui-16"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 143.03,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 0.58
+      }
+    },
+    {
+      "date": "2026-10-13",
+      "value": 144.27,
+      "exposureKey": "plan|ui-session-17|Squat comp|comp",
+      "setIds": ["ui-17"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 144.27,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": -0.1
+      }
+    },
+    {
+      "date": "2026-10-17",
+      "value": 145.5,
+      "exposureKey": "plan|ui-session-18|Squat comp|comp",
+      "setIds": ["ui-18"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 145.5,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": -0.67
+      }
+    },
+    {
+      "date": "2026-10-21",
+      "value": 146.73,
+      "exposureKey": "plan|ui-session-19|Squat comp|comp",
+      "setIds": ["ui-19"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 146.73,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": -1.35
+      }
+    },
+    {
+      "date": "2026-10-25",
+      "value": 147.97,
+      "exposureKey": "plan|ui-session-20|Squat comp|comp",
+      "setIds": ["ui-20"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 147.97,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 1.16
+      }
+    },
+    {
+      "date": "2026-10-29",
+      "value": 149.2,
+      "exposureKey": "plan|ui-session-21|Squat comp|comp",
+      "setIds": ["ui-21"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 149.2,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": 0.48
+      }
+    },
+    {
+      "date": "2026-11-02",
+      "value": 150.43,
+      "exposureKey": "plan|ui-session-22|Squat comp|comp",
+      "setIds": ["ui-22"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 150.43,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": -0.1
+      }
+    },
+    {
+      "date": "2026-11-06",
+      "value": 151.66,
+      "exposureKey": "plan|ui-session-23|Squat comp|comp",
+      "setIds": ["ui-23"],
+      "nSets": 1,
+      "nEligibleSets": 1,
+      "alternateValue": 151.66,
+      "availableOn": "2026-11-06",
+      "inView": true,
+      "outlier": {
+        "flag": false,
+        "score": -0.77
+      }
+    }
+  ],
+  "fittedPoints": [
+    {
+      "date": "2026-08-06",
+      "value": 123.3,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-08-10",
+      "value": 124.54,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-08-14",
+      "value": 125.77,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-08-18",
+      "value": 127,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-08-22",
+      "value": 128.24,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-08-26",
+      "value": 129.47,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-08-30",
+      "value": 130.7,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-09-03",
+      "value": 131.94,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-09-07",
+      "value": 133.17,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-09-11",
+      "value": 134.4,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-09-15",
+      "value": 135.64,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-09-19",
+      "value": 136.87,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-09-23",
+      "value": 138.1,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-09-27",
+      "value": 139.33,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-10-01",
+      "value": 140.57,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-10-05",
+      "value": 141.8,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-10-09",
+      "value": 143.03,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-10-13",
+      "value": 144.27,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-10-17",
+      "value": 145.5,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-10-21",
+      "value": 146.73,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-10-25",
+      "value": 147.97,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-10-29",
+      "value": 149.2,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-11-02",
+      "value": 150.43,
+      "modelId": "linear"
+    },
+    {
+      "date": "2026-11-06",
+      "value": 151.66,
+      "modelId": "linear"
+    }
+  ],
+  "forecastPoints": [
+    {
+      "date": "2026-11-06",
+      "horizonDays": 0,
+      "value": 151.66,
+      "modelId": "linear",
+      "rangeApplies": false
+    },
+    {
+      "date": "2026-11-13",
+      "horizonDays": 7,
+      "value": 153.82,
+      "modelId": "linear",
+      "rangeApplies": false
+    },
+    {
+      "date": "2026-11-20",
+      "horizonDays": 14,
+      "value": 155.98,
+      "modelId": "linear",
+      "rangeApplies": false
+    },
+    {
+      "date": "2026-11-27",
+      "horizonDays": 21,
+      "value": 158.14,
+      "modelId": "linear",
+      "rangeApplies": false
+    },
+    {
+      "date": "2026-12-04",
+      "horizonDays": 28,
+      "value": 160.3,
+      "modelId": "linear",
+      "rangeApplies": true
+    }
+  ],
+  "baselineForecastPoints": [
+    {
+      "date": "2026-11-06",
+      "horizonDays": 0,
+      "value": 150.43,
+      "modelId": "baseline"
+    },
+    {
+      "date": "2026-11-13",
+      "horizonDays": 7,
+      "value": 150.43,
+      "modelId": "baseline"
+    },
+    {
+      "date": "2026-11-20",
+      "horizonDays": 14,
+      "value": 150.43,
+      "modelId": "baseline"
+    },
+    {
+      "date": "2026-11-27",
+      "horizonDays": 21,
+      "value": 150.43,
+      "modelId": "baseline"
+    },
+    {
+      "date": "2026-12-04",
+      "horizonDays": 28,
+      "value": 150.43,
+      "modelId": "baseline"
+    }
+  ],
+  "forecastRange": {
+    "status": "available",
+    "reason": null,
+    "method": "empirical-quantile-nearest-rank-v1",
+    "nominalCoverage": 0.8,
+    "observedCoverage": null,
+    "coverageSample": 0,
+    "sampleSize": 15,
+    "horizonToleranceDays": 7,
+    "points": [
+      {
+        "date": "2026-12-04",
+        "lower": 160.3,
+        "upper": 160.3
+      }
+    ],
+    "notice": "Rango empírico de errores históricos fuera de muestra; no es un intervalo de confianza y no garantiza cobertura futura."
+  },
+  "model": {
+    "selected": {
+      "id": "linear",
+      "version": "tendencia-lineal-v1",
+      "label": "Tendencia lineal"
+    },
+    "candidates": [
+      {
+        "id": "baseline",
+        "version": "baseline-nivel-reciente-v1",
+        "label": "Mantiene el nivel reciente",
+        "params": {
+          "levelK": 3,
+          "pointsUsed": 3
+        },
+        "slopeKgPerWeek": 0,
+        "levelKg": 150.43
+      },
+      {
+        "id": "linear",
+        "version": "tendencia-lineal-v1",
+        "label": "Tendencia lineal",
+        "params": {},
+        "slopeKgPerWeek": 2.1578298397040694,
+        "levelKg": 151.66
+      },
+      {
+        "id": "linear_weighted",
+        "version": "tendencia-lineal-ponderada-v1",
+        "label": "Tendencia lineal con más peso a lo reciente",
+        "params": {
+          "halfLifeDays": 28
+        },
+        "slopeKgPerWeek": 2.157829839704069,
+        "levelKg": 151.66
+      }
+    ],
+    "level": {
+      "kg": 150.43,
+      "definition": "mediana de las últimas 3 exposiciones",
+      "pointsUsed": 3
+    },
+    "selectionRule": "Un modelo distinto del baseline solo se muestra con ≥ 8 evaluaciones, y si el selector anidado (fuera de muestra) tiene MAE menor y más victorias que derrotas frente al baseline; si no, se mantiene el baseline como referencia.",
+    "selectionBasis": {
+      "evaluationsUsed": 15,
+      "minEvaluations": 8
+    }
+  },
+  "validation": {
+    "scheme": "origen móvil expansivo, horizonte en días reales desde la última exposición",
+    "horizonDays": 28,
+    "toleranceDays": 7,
+    "evaluations": 15,
+    "models": [
+      {
+        "id": "baseline",
+        "n": 15,
+        "maeKg": 9.782161939991779,
+        "biasKg": -9.782161939991779,
+        "diffMaeVsBaselineKg": 0,
+        "wins": 0,
+        "losses": 0,
+        "ties": 15
+      },
+      {
+        "id": "linear",
+        "n": 15,
+        "maeKg": 3.997987126543497e-13,
+        "biasKg": -2.842170943040401e-14,
+        "diffMaeVsBaselineKg": -9.78216193999138,
+        "wins": 15,
+        "losses": 0,
+        "ties": 0
+      },
+      {
+        "id": "linear_weighted",
+        "n": 15,
+        "maeKg": 7.787548383930698e-13,
+        "biasKg": 7.598070321061338e-13,
+        "diffMaeVsBaselineKg": -9.782161939991001,
+        "wins": 15,
+        "losses": 0,
+        "ties": 0
+      }
+    ],
+    "selector": {
+      "id": "selector",
+      "n": 15,
+      "maeKg": 9.206740649404036,
+      "biasKg": -9.206740649404036,
+      "diffMaeVsBaselineKg": -0.5754212905877427,
+      "wins": 1,
+      "losses": 0,
+      "ties": 14
+    },
+    "verdict": "mejora_sobre_baseline",
+    "coverage": {
+      "origins": 24,
+      "evaluable": 15,
+      "abstentions": [
+        {
+          "reason": "entrenamiento insuficiente en el origen",
+          "count": 3
+        },
+        {
+          "reason": "sin observación posterior dentro del horizonte ± tolerancia",
+          "count": 6
+        }
+      ]
+    },
+    "notes": [
+      "Cada origen entrena solo con exposiciones de fecha ≤ origen; la selección de modelo usa solo pliegues con objetivo ya conocido en ese origen (selección anidada).",
+      "Las fechas son las de EJECUCIÓN. Si no hay fecha de disponibilidad del registro, el replay no reconstruye exactamente qué sabía el coach en ese momento."
+    ]
+  },
+  "dataQuality": {
+    "exposures": 24,
+    "spanDays": 92,
+    "lastExposureAgeDays": 0,
+    "stale": false,
+    "irregularity": {
+      "medianGapDays": 4,
+      "maxGapDays": 4
+    },
+    "outliers": {
+      "count": 0,
+      "treatment": "Los atípicos se marcan, no se eliminan; se informa la sensibilidad del pronóstico.",
+      "sensitivity": null
+    },
+    "missingRpeSets": 0,
+    "sufficiency": "suficiente",
+    "warnings": []
+  },
+  "exclusions": [],
+  "realMarks": [
+    {
+      "reps": 5,
+      "kg": 123,
+      "date": "2026-11-06",
+      "setId": "ui-23",
+      "rpe": 8
+    }
+  ],
+  "reference": null,
+  "summary": {
+    "trend": {
+      "label": "indeterminada",
+      "basis": "No hay cambio mínimo relevante configurado para este movimiento: se describe el cambio sin clasificarlo.",
+      "slopeKgPerWeek": 2.1578298397040694,
+      "changeKgOverSpan": 28.36004932182491,
+      "spanDays": 92
+    },
+    "projection": {
+      "valueKg": 160.29593094944448,
+      "horizonDays": 28,
+      "date": "2026-12-04",
+      "modelId": "linear",
+      "versusBaseline": "mejora",
+      "baselineKg": 150.43156596794083,
+      "range": {
+        "date": "2026-12-04",
+        "lower": 160.3,
+        "upper": 160.3
+      }
+    },
+    "limitation": "Indicador experimental (e1RM estimado): no es un 1RM real ni una predicción de resultado.",
+    "text": "Cambio de +28,4 kg en 13 semanas (e1RM por curva RPE (requiere RPE real), Squat comp), 24 exposiciones; sin cambio mínimo relevante configurado, no se clasifica. Si se mantiene el patrón, el modelo “Tendencia lineal” ubica el indicador en 160,3 kg a 28 días, rango empírico de errores históricos 160,3–160,3 kg. En la validación temporal mejoró a “mantener el nivel” (15 evaluaciones). Indicador experimental (e1RM estimado): no es un 1RM real ni una predicción de resultado.",
+    "lines": [
+      "Cambio de +28,4 kg en 13 semanas (e1RM por curva RPE (requiere RPE real), Squat comp), 24 exposiciones; sin cambio mínimo relevante configurado, no se clasifica.",
+      "Si se mantiene el patrón, el modelo “Tendencia lineal” ubica el indicador en 160,3 kg a 28 días, rango empírico de errores históricos 160,3–160,3 kg. En la validación temporal mejoró a “mantener el nivel” (15 evaluaciones).",
+      "Indicador experimental (e1RM estimado): no es un 1RM real ni una predicción de resultado."
+    ]
+  },
+  "limitations": [
+    "El indicador es un e1RM estimado del ejercicio/variante elegido: no equivale a un 1RM real, a un resultado de competencia ni al éxito de un intento.",
+    "La proyección es condicional a que continúe el patrón observado; no considera cambios de volumen, intensidad, fatiga ni lesiones.",
+    "No es un candidato a PR, una ventana de expresión ni un TTP: esos conceptos se calculan con otras reglas y pueden discrepar.",
+    "Experimental: las decisiones operativas (mínimos y límites) no están validadas con datos reales."
+  ],
+  "config": [
+    {
+      "id": "horizonDays",
+      "value": 28,
+      "default": 28,
+      "overridden": false,
+      "unit": "días",
+      "note": "Horizonte pedido desde la última exposición observada.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "minExposures",
+      "value": 5,
+      "default": 5,
+      "overridden": false,
+      "unit": "exposiciones",
+      "note": "Mínimo de fechas distintas para proyectar; menos ⇒ solo descriptivo.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "minSpanDays",
+      "value": 21,
+      "default": 21,
+      "overridden": false,
+      "unit": "días",
+      "note": "Extensión mínima entre la primera y la última exposición.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "maxStalenessDays",
+      "value": 42,
+      "default": 42,
+      "overridden": false,
+      "unit": "días",
+      "note": "Más antigua que esto, la última exposición se considera obsoleta.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "maxHorizonDays",
+      "value": 84,
+      "default": 84,
+      "overridden": false,
+      "unit": "días",
+      "note": "Tope absoluto del horizonte.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "maxHorizonToSpanRatio",
+      "value": 0.5,
+      "default": 0.5,
+      "overridden": false,
+      "unit": "razón",
+      "note": "El horizonte no puede superar esta fracción de la extensión observada.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "levelK",
+      "value": 3,
+      "default": 3,
+      "overridden": false,
+      "unit": "exposiciones",
+      "note": "Nivel reciente = mediana de las últimas K exposiciones.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "halfLifeDays",
+      "value": 28,
+      "default": 28,
+      "overridden": false,
+      "unit": "días",
+      "note": "Semivida de los pesos de la tendencia ponderada.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "outlierMadK",
+      "value": 3.5,
+      "default": 3.5,
+      "overridden": false,
+      "unit": "MAD robusto",
+      "note": "Umbral de atípico; se marca y se informa sensibilidad, no se elimina.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "minExposuresForOutlier",
+      "value": 6,
+      "default": 6,
+      "overridden": false,
+      "unit": "exposiciones",
+      "note": "Mínimo para evaluar atípicos.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "targetToleranceDays",
+      "value": 7,
+      "default": 7,
+      "overridden": false,
+      "unit": "días",
+      "note": "Tolerancia al emparejar el objetivo con el horizonte en la validación.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "minTrainExposures",
+      "value": 4,
+      "default": 4,
+      "overridden": false,
+      "unit": "exposiciones",
+      "note": "Entrenamiento mínimo en cada origen de validación.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "minEvaluations",
+      "value": 8,
+      "default": 8,
+      "overridden": false,
+      "unit": "evaluaciones",
+      "note": "Mínimo para declarar mejora o elegir un modelo distinto del baseline.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "minErrorsForRange",
+      "value": 10,
+      "default": 10,
+      "overridden": false,
+      "unit": "errores",
+      "note": "Mínimo de errores fuera de muestra para un rango empírico.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "rangeNominal",
+      "value": 0.8,
+      "default": 0.8,
+      "overridden": false,
+      "unit": "proporción",
+      "note": "Cobertura nominal del rango empírico; no garantiza cobertura futura.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    },
+    {
+      "id": "aggregate",
+      "value": "best",
+      "default": "best",
+      "overridden": false,
+      "unit": "—",
+      "note": "Resumen de varias series por exposición: 'best' (mejor e1RM) o 'median'.",
+      "provenance": "propuesta (decisión operativa configurable, no validada)"
+    }
+  ]
+}

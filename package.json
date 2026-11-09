@@ -1,0 +1,37 @@
+{
+  "name": "coaching-motor",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Motor de decisiones de coaching: registro, cálculos trazables y recomendaciones explicables (local, para pruebas).",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:api dev:web",
+    "dev:api": "npm run dev -w @coaching/api",
+    "dev:web": "npm run dev -w @coaching/web",
+    "seed": "npm run seed -w @coaching/api",
+    "build": "npm run build -ws --if-present",
+    "typecheck": "npm run typecheck -ws --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test -ws --if-present",
+    "e2e": "node e2e/athlete.e2e.mjs",
+    "ci": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "npm-run-all2": "^7.0.1",
+    "prettier": "^3.4.2",
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^2.1.8"
+  }
+}

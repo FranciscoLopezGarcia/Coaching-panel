@@ -1,0 +1,1138 @@
+/* BASE · tema visual (rediseño). Solo presentación: colores, tipografía, espaciado y componentes. Se carga al final y reemplaza los estilos anteriores. */
+:root {
+  color-scheme: dark;
+  --bg: #08080a;
+  --surface: #111114;
+  --surface-2: #17171b;
+  --text: #e9eaee;
+  --muted: #8a8d96;
+  --line: #25252b;
+  --accent: #3d74e0;
+  --accent-2: #3d74e0;
+  --accent-soft: #0e1a33;
+  --ok: #4fb985;
+  --ok-bg: #0f2218;
+  --info: #7aa5f5;
+  --info-bg: #0f1c33;
+  --warn: #d8a63f;
+  --warn-bg: #261f0d;
+  --bad: #e0675f;
+  --bad-bg: #2a1413;
+  --mutedtone: #8a8d96;
+  --muted-bg: #1a1a1f;
+  --sq: #5ea3d8;
+  --bp: #d9904a;
+  --dl: #9bbf7a;
+  --ink: #040405;
+  --ink-2: #08080a;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 10px 26px -16px rgba(0, 0, 0, 0.8);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --ring: 0 0 0 3px rgba(61, 116, 224, 0.4);
+}
+
+/* ---------- base ---------- */
+html {
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font:
+    15px/1.55 'Inter',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-feature-settings:
+    'tnum' 1,
+    'cv11' 1;
+}
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+h1 {
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+h2 {
+  font-size: 20px;
+  font-weight: 700;
+}
+a {
+  color: var(--accent);
+  text-underline-offset: 3px;
+}
+small,
+.small {
+  font-size: 13px;
+}
+.muted {
+  color: var(--muted);
+}
+::selection {
+  background: var(--accent-soft);
+}
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* ---------- controles ---------- */
+button,
+.btn {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 14px;
+  min-height: 38px;
+  box-shadow: var(--shadow-sm);
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    transform 0.05s;
+}
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+button.on,
+button.primary,
+button[aria-pressed='true'],
+button[aria-selected='true'] {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+button.primary:hover:not(:disabled),
+button.on:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(1.07);
+}
+input,
+select,
+textarea {
+  font: inherit;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  min-height: 38px;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+}
+label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* ---------- tarjetas y paneles ---------- */
+.card,
+.panel,
+.stat,
+.lift-card,
+.chart-panel,
+.week-overview {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.panel {
+  padding: 14px 18px 16px;
+}
+.panel h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 6px 0 8px;
+}
+.coach-panels .panel,
+.coach-panels .panel:nth-child(n + 3) {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+}
+.coach-panels .panel:first-child {
+  border-top: 4px solid var(--bp);
+}
+.chip,
+.badge {
+  border-radius: 999px;
+}
+.chip {
+  background: var(--muted-bg);
+  border: 0;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 2px 10px;
+}
+.badge {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+.week-overview {
+  background: var(--accent-soft);
+  border: 1px solid transparent;
+}
+.week-session-list button {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--line);
+}
+.lift-card {
+  border-left: 5px solid var(--move);
+}
+
+/* ---------- tablas ---------- */
+table {
+  border: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: transparent;
+}
+.table-wrap,
+.bd-table {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: auto;
+}
+th {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 14px;
+}
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+tbody tr:hover td {
+  background: var(--surface-2);
+}
+
+/* ---------- estructura general ---------- */
+.app-shell {
+  grid-template-columns: 96px minmax(0, 1fr);
+  background: var(--bg);
+}
+.sidebar {
+  background: linear-gradient(180deg, var(--ink) 0%, var(--ink-2) 100%);
+  color: #aab4d4;
+  padding: 22px 10px 16px;
+  align-items: center;
+  gap: 0;
+}
+.brand {
+  font-size: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  letter-spacing: 0;
+}
+.brand-symbol {
+  width: 46px;
+  height: 46px;
+  margin: 0;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 24px;
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.55);
+}
+.brand-sub,
+.nav-caption,
+.sidebar-foot p,
+.sidebar-foot small {
+  display: none;
+}
+.sidebar nav {
+  margin-top: 34px;
+  width: 100%;
+  gap: 8px;
+}
+.sidebar nav a {
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 14px;
+  color: #aab4d4;
+  text-align: center;
+  line-height: 1.2;
+}
+.sidebar nav a span {
+  font-size: 22px;
+  width: auto;
+}
+.sidebar nav a:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+.sidebar nav a.active {
+  background: rgba(139, 135, 255, 0.18);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(139, 135, 255, 0.35);
+}
+.sidebar-foot {
+  border: 0;
+  padding: 0;
+  margin-top: auto;
+  font-size: 11px;
+  text-align: center;
+  color: #7f8bb0;
+}
+.local-dot {
+  background: #4ade9b;
+  box-shadow: 0 0 0 4px rgba(74, 222, 155, 0.18);
+}
+.topbar {
+  height: 60px;
+  padding: 0 36px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  font-size: 14px;
+  font-weight: 600;
+}
+.local-label {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 0;
+  border-radius: 999px;
+  font-weight: 700;
+  padding: 5px 12px;
+}
+.instance-banner {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 0;
+  font-weight: 650;
+  font-size: 13px;
+  padding: 8px 36px;
+}
+.instance-banner.laboratory {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+main {
+  max-width: 1480px;
+  padding: 28px 36px 64px;
+}
+.app-footer {
+  border-top: 0;
+  color: var(--muted);
+  padding: 20px 36px 28px;
+}
+.eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+.heading-dot {
+  color: var(--accent-2);
+}
+
+/* ---------- inicio del coach ---------- */
+.cards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.stat {
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+}
+.stat::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--accent);
+}
+.stat:nth-child(2)::before {
+  background: var(--bp);
+}
+.stat:nth-child(3)::before {
+  background: var(--ok);
+}
+.stat:nth-child(4)::before {
+  background: var(--dl);
+}
+.stat-n {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+.stat:hover {
+  border-color: var(--accent);
+}
+
+/* plantel en tarjetas */
+.roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+.athlete-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+  display: grid;
+  gap: 14px;
+}
+.athlete-card:hover {
+  border-color: var(--accent);
+}
+.ac-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.ac-avatar,
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  font-size: 17px;
+  border: 0;
+  flex: none;
+}
+.ac-name {
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  text-decoration: none;
+}
+.ac-name:hover {
+  color: var(--accent);
+}
+.ac-sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+.ac-pending {
+  margin-left: auto;
+  background: var(--warn-bg);
+  color: var(--warn);
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+.ac-lifts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.ac-lift {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  border-top: 3px solid var(--move, var(--accent));
+  padding: 8px 10px 10px;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+.ac-lift b {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--move);
+}
+.ac-lift .badge {
+  font-size: 11px;
+  white-space: normal;
+}
+.ac-lift small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.ac-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+  font-size: 13px;
+}
+.ac-meta span {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+}
+.ac-meta strong {
+  font-weight: 650;
+}
+.ac-actions {
+  display: flex;
+  gap: 8px;
+}
+.ac-actions a {
+  flex: 1;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 650;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ac-actions a:first-child {
+  background: var(--accent);
+  color: #fff;
+}
+.ac-actions a:hover {
+  filter: brightness(1.06);
+}
+
+/* ---------- ficha del atleta ---------- */
+.back-link {
+  font-weight: 650;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 14px;
+}
+.back-link:hover {
+  color: var(--accent);
+}
+.athlete-heading {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 22px 26px;
+  margin: 14px 0 16px;
+  position: relative;
+  overflow: hidden;
+}
+.athlete-heading::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--sq), var(--bp), var(--dl));
+}
+.athlete-heading .avatar {
+  width: 72px;
+  height: 72px;
+  font-size: 26px;
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.55);
+}
+.athlete-heading h1 {
+  font-size: 32px;
+  margin: 2px 0;
+}
+.athlete-actions {
+  gap: 14px;
+  margin: 0 0 16px;
+}
+.athlete-actions button {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px 20px 16px 74px;
+  position: relative;
+  min-height: 78px;
+}
+.athlete-actions button::before {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  background: var(--accent-soft);
+}
+.athlete-actions button:nth-child(1)::before {
+  content: '🗓';
+}
+.athlete-actions button:nth-child(2)::before {
+  content: '✍';
+  background: var(--ok-bg);
+}
+.athlete-actions button:nth-child(3)::before {
+  content: '📈';
+  background: var(--warn-bg);
+}
+.athlete-actions span {
+  letter-spacing: 0.08em;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+}
+.athlete-actions small {
+  color: var(--muted);
+  font-size: 13px;
+}
+.athlete-actions b {
+  color: var(--muted);
+}
+.athlete-actions button.selected {
+  background: var(--accent);
+  border-color: transparent;
+}
+.athlete-actions button.selected span,
+.athlete-actions button.selected small,
+.athlete-actions button.selected b {
+  color: #fff;
+}
+.athlete-actions button.selected::before {
+  background: rgba(255, 255, 255, 0.2);
+}
+.context-strip {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 10px 6px;
+  gap: 2px;
+}
+.context-strip > * {
+  padding: 4px 16px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  text-align: left;
+}
+.context-strip > * + * {
+  border-left: 1px solid var(--line);
+  border-radius: 0;
+}
+.context-strip button:hover {
+  background: var(--accent-soft);
+}
+.context-strip small {
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  font-size: 11px;
+  display: block;
+}
+.context-strip strong {
+  font-size: 15px;
+}
+.athlete-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--muted-bg);
+  border: 0;
+  border-radius: 14px;
+  padding: 5px;
+  margin: 16px 0 18px;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.athlete-tabs button {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 14px;
+  min-height: 0;
+  white-space: nowrap;
+}
+.athlete-tabs button:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+.athlete-tabs button.on,
+.athlete-tabs button[aria-current='page'] {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+.athlete-tabs .current-training {
+  color: var(--accent);
+}
+
+/* ---------- tablero de bloques ---------- */
+.bd {
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 20px 24px 24px;
+  border: 1px solid var(--line);
+}
+.bd-head h3 {
+  font-size: 22px;
+  font-weight: 750;
+}
+.bd-kpi {
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+}
+.bd-kpi strong {
+  font-size: 28px;
+  letter-spacing: -0.03em;
+}
+.bd-rms div {
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+}
+.bd-rms strong {
+  color: var(--accent);
+}
+.bd-chart {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+}
+.bd-tabs {
+  border-bottom: 0;
+  background: var(--muted-bg);
+  border-radius: 14px;
+  padding: 5px;
+  width: fit-content;
+  max-width: 100%;
+}
+.bd-tabs button {
+  border: 0;
+  border-radius: 10px;
+  box-shadow: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 16px;
+  min-height: 0;
+}
+.bd-tabs button[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+.bd-chips button {
+  border-radius: 999px;
+  box-shadow: none;
+  min-height: 0;
+  padding: 5px 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+.bd-chips button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.bd-seg button {
+  box-shadow: none;
+  border-radius: 0;
+  border: 0;
+  background: var(--surface);
+  color: var(--text);
+  min-height: 0;
+}
+.bd-seg button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #fff;
+}
+.bd-toggle button[aria-pressed='true'] {
+  background: var(--accent);
+}
+.bd-timeline rect {
+  filter: drop-shadow(0 2px 3px rgba(15, 23, 42, 0.18));
+}
+
+/* ---------- modales y mensajes ---------- */
+.message,
+.notice {
+  border-radius: var(--radius-sm);
+  background: var(--info-bg);
+  color: var(--info);
+  border: 0;
+  border-left: 4px solid var(--info);
+  padding: 10px 14px;
+}
+.message.error {
+  background: var(--bad-bg);
+  color: var(--bad);
+  border-left-color: var(--bad);
+}
+dialog,
+.modal,
+.modal-card {
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7);
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    padding: 10px 12px;
+    gap: 12px;
+  }
+  .sidebar nav {
+    margin: 0;
+    display: flex;
+    width: auto;
+  }
+  .sidebar nav a {
+    flex-direction: row;
+    padding: 8px 12px;
+  }
+  .sidebar-foot {
+    display: none;
+  }
+  main {
+    padding: 18px 16px 48px;
+  }
+  .topbar {
+    padding: 0 16px;
+  }
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .athlete-actions {
+    grid-template-columns: 1fr;
+  }
+  .context-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ac-lift[data-lift='SQ'] {
+  --move: var(--sq);
+}
+.ac-lift[data-lift='BP'] {
+  --move: var(--bp);
+}
+.ac-lift[data-lift='DL'] {
+  --move: var(--dl);
+}
+
+/* gráficos clásicos: más grandes y legibles */
+.overview-grid {
+  grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+  gap: 16px;
+}
+.overview-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+}
+.overview-panel h3 {
+  font-size: 17px;
+  font-weight: 750;
+}
+.overview-panel h4 {
+  font-size: 15px;
+  font-weight: 700;
+}
+.overview-chart svg {
+  min-height: 260px;
+}
+.overview-chart text {
+  font-size: 14px;
+  fill: var(--muted);
+}
+.overview-chart figcaption {
+  font-size: 13px;
+  gap: 8px 16px;
+}
+.overview-chart figcaption span {
+  background: var(--muted-bg);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+.overview-chart figcaption i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.curve-grid {
+  stroke: var(--line);
+}
+.chart-empty {
+  padding: 40px 0;
+  text-align: center;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+}
+.analysis-overview .toolbar,
+.analysis-overview .section-heading {
+  margin: 8px 0 12px;
+}
+
+/* tooltips de gráficos */
+.overview-chart svg {
+  min-height: 300px;
+  cursor: crosshair;
+}
+.chart-guide {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.chart-tip {
+  position: absolute;
+  top: 8px;
+  z-index: 30;
+  max-width: 360px;
+  min-width: 240px;
+  background: var(--ink, #0b1226);
+  color: #eef1ff;
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 18px 40px -12px rgba(15, 23, 42, 0.55);
+  font-size: 13px;
+  pointer-events: none;
+  display: grid;
+  gap: 6px;
+}
+.chart-tip strong {
+  font-size: 13px;
+  text-transform: capitalize;
+  color: #fff;
+}
+.chart-tip-row {
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  padding-top: 6px;
+}
+.chart-tip-row span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #c9d1f0;
+}
+.chart-tip-row i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.chart-tip-row b {
+  font-size: 17px;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+.chart-tip-row small {
+  color: #9fabd6;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.overview-chart text {
+  font-size: 15px;
+}
+
+.period-presets {
+  display: inline-flex;
+  gap: 6px;
+  align-items: end;
+}
+.period-presets button {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.overview-chart .band-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* menos repetición: un solo indicador de entorno, sin datos duplicados en la ficha */
+.local-label {
+  display: none;
+}
+.context-strip > div:first-child {
+  display: none;
+}
+.context-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(185px, 1.4fr);
+}
+.athlete-page > p.small.muted[role='status'] {
+  display: none;
+}
+.summary-cta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 20px;
+  margin: 8px 0 14px;
+}
+.summary-cta h2 {
+  margin: 0 0 2px;
+}
+.summary-cta p {
+  margin: 0;
+}
+.bd-selected-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 10px 0 4px;
+}
+.bd-selected-block > span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.bd-selected-block b {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 14px;
+}
+.bd-selected-block b i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.bd-selected-block em {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 13px;
+}
+.bd-selected-block button {
+  min-height: 32px;
+  padding: 4px 12px;
+  font-size: 13px;
+}
+.bd-embed .mov-filter {
+  display: none;
+}
+.bd-embed .analysis-overview .section-heading h2 {
+  font-size: 18px;
+}
+.bd-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  width: 100%;
+}
+.bd-tabs button {
+  white-space: nowrap;
+  padding: 8px 12px;
+}
+
+dialog {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+}
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+dialog > header {
+  background: var(--surface);
+}
+dialog input,
+dialog select,
+dialog textarea {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--line);
+}
+dialog label,
+dialog legend {
+  color: var(--muted);
+}
+fieldset {
+  border-color: var(--line);
+  background: transparent;
+}
+select option {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.sidebar {
+  background: var(--ink);
+}
+dialog {
+  max-width: min(1180px, 96vw);
+  width: 96vw;
+}
+dialog .data-sheet .table-wrap {
+  max-height: 46vh;
+}
+.data-sheet .sheet-cell input,
+.data-sheet .sheet-cell select {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.data-sheet .sheet-cell input:focus,
+.data-sheet .sheet-cell select:focus {
+  border-color: var(--accent);
+}
+.session-column button.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}

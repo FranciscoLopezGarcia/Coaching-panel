@@ -1,0 +1,574 @@
+/* Portal del atleta: oscuro, tarjetas grandes y tabla de series al estilo Hevy. Mobile first. */
+.ath {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ath-body {
+  width: 100%;
+  max-width: 560px;
+  padding: 18px 16px 110px;
+}
+.ath-stack {
+  display: grid;
+  gap: 14px;
+}
+.ath h1 {
+  font-size: 26px;
+  margin: 0;
+}
+.ath h2 {
+  font-size: 19px;
+  margin: 0;
+}
+.ath .muted {
+  color: var(--muted);
+  margin: 2px 0;
+}
+.ath .small {
+  font-size: 13px;
+}
+.ath-hello {
+  padding: 6px 2px;
+}
+.ath-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px 18px;
+  display: grid;
+  gap: 10px;
+  box-shadow: var(--shadow);
+}
+.ath-session h2 {
+  font-size: 22px;
+}
+.ath-tag {
+  justify-self: start;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+.ath-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.ath-ex {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.ath-ex li {
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  font-weight: 600;
+}
+.ath-progress {
+  position: relative;
+  height: 8px;
+  background: var(--muted-bg);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.ath-progress span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.25s;
+}
+.ath-progress.big {
+  height: 26px;
+}
+.ath-progress em {
+  position: relative;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  padding-left: 12px;
+  line-height: 26px;
+  color: #fff;
+}
+.ath-primary {
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 750;
+  padding: 14px 18px;
+  min-height: 52px;
+  width: 100%;
+}
+.ath-primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+  background: var(--accent);
+}
+.ath-primary.big {
+  margin-top: 8px;
+}
+.ath-ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-weight: 650;
+  width: 100%;
+  min-height: 48px;
+}
+.ath-error {
+  color: var(--bad);
+  background: var(--bad-bg);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.ath-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.ath-info dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+.ath-info dd {
+  margin: 0;
+  font-weight: 700;
+}
+.ath-objective {
+  margin: 0;
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.ath-slider {
+  display: grid;
+  gap: 4px;
+}
+.ath-slider > span {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 650;
+}
+.ath-slider b {
+  color: var(--accent);
+  font-size: 18px;
+}
+.ath-slider input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+  min-height: 30px;
+  padding: 0;
+}
+.ath-slider small {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+}
+.ath label {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--muted);
+}
+.ath select,
+.ath input,
+.ath textarea {
+  font-size: 16px;
+}
+/* login */
+.ath-login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: var(--bg);
+  color: var(--text);
+}
+.ath-login form {
+  width: min(380px, 100%);
+  display: grid;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 28px 24px;
+  box-shadow: var(--shadow);
+}
+.ath-login h1 {
+  margin: 0;
+  letter-spacing: 0.2em;
+  text-align: center;
+}
+.ath-login p {
+  margin: 0;
+  text-align: center;
+}
+.ath-logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 30px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+}
+/* navegación inferior */
+.ath-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  z-index: 30;
+}
+.ath-nav a,
+.ath-nav button {
+  flex: 1;
+  max-width: 160px;
+  display: grid;
+  justify-items: center;
+  gap: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 6px;
+  border-radius: 12px;
+  min-height: 0;
+}
+.ath-nav a span,
+.ath-nav button span {
+  font-size: 22px;
+  line-height: 1.1;
+}
+.ath-nav a.on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+/* selector */
+.ath-next {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  border-radius: 18px;
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+}
+.ath-next .ath-tag {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+.ath-next strong {
+  font-size: 22px;
+}
+.ath-next .muted {
+  color: rgba(255, 255, 255, 0.8);
+}
+.ath-next b {
+  margin-top: 6px;
+}
+.ath-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.ath-chip {
+  display: grid;
+  gap: 1px;
+  text-align: left;
+  border-radius: 12px;
+  padding: 10px 12px;
+  min-height: 0;
+}
+.ath-chip span,
+.ath-chip small {
+  color: var(--muted);
+  font-weight: 500;
+}
+.ath-chip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.ath-chip.done {
+  border-left: 4px solid var(--ok);
+}
+.ath-chip.part {
+  border-left: 4px solid var(--warn);
+}
+/* entreno */
+.ath-wk-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ath-wk-head > div {
+  flex: 1;
+  min-width: 0;
+}
+.ath-wk-head h1 {
+  font-size: 22px;
+}
+.ath-back {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 20px;
+  flex: none;
+}
+.ath-timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--muted);
+}
+.ath-legend {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ath-legend .k,
+.ath-k {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 12px;
+  background: var(--muted-bg);
+  color: var(--text);
+}
+.ath-k.warmup,
+.ath-legend .k.warmup {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+.ath-k.top,
+.ath-legend .k.top {
+  background: var(--accent);
+  color: #fff;
+}
+.ath-k.backoff,
+.ath-legend .k.backoff {
+  background: var(--info-bg);
+  color: var(--info);
+}
+.ath-exercise h2 {
+  color: var(--accent);
+}
+.ath-sets {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 6px;
+  table-layout: fixed;
+}
+.ath-sets th {
+  background: transparent;
+  border: 0;
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.06em;
+}
+.ath-sets td {
+  padding: 0 3px;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  vertical-align: middle;
+}
+.ath-sets th:first-child,
+.ath-sets td:first-child {
+  width: 54px;
+}
+.ath-sets th:last-child,
+.ath-sets td:last-child {
+  width: 52px;
+}
+.ath-sets td.prev {
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.ath-sets input {
+  width: 100%;
+  min-height: 42px;
+  text-align: center;
+  padding: 4px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.ath-sets input::placeholder {
+  color: var(--muted);
+  font-weight: 500;
+  opacity: 0.7;
+}
+.ath-sets tr.done input {
+  background: color-mix(in srgb, var(--ok) 18%, var(--surface-2));
+}
+.ath-sets tr.meta td {
+  padding-top: 0;
+  text-align: left;
+}
+.ath-check {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  padding: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 0;
+  box-shadow: none;
+}
+.ath-check.on {
+  background: var(--ok);
+  color: #fff;
+}
+.ath-pill {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--muted-bg);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin: 0 6px 4px 0;
+}
+.ath-note {
+  font-size: 13px;
+  color: var(--muted);
+}
+.ath-slider input[type='range'] {
+  background: transparent;
+  border: 0;
+}
+
+.ath-sync {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.ath-sync.warn {
+  background: #3a2a10;
+  color: #f2c879;
+}
+.ath-sync.ok {
+  background: #0f2a44;
+  color: #9cc9f5;
+}
+.ath-rest {
+  position: sticky;
+  bottom: 70px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #0b1f36;
+  border: 1px solid #1d4a7a;
+  overflow: hidden;
+}
+.ath-rest > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #14406b;
+  opacity: 0.55;
+  transition: width 0.5s linear;
+}
+.ath-rest > * {
+  position: relative;
+}
+.ath-rest b {
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+}
+.ath-rest small {
+  color: var(--muted);
+  flex: 1;
+}
+.ath-rest button {
+  background: transparent;
+  color: inherit;
+  border: 1px solid #2c5f94;
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+
+.ath-coachnote {
+  margin: 0 0 6px;
+  padding: 8px 10px;
+  border-left: 3px solid #2c5f94;
+  background: rgba(20, 60, 110, 0.25);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.ath-goal {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: #a9d0f7;
+}
+.ath-pill.goal {
+  background: #0f2f52;
+  color: #bcdcff;
+}
+.ath-exnote {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+.ath-exnote textarea {
+  width: 100%;
+  resize: vertical;
+  background: #0a1626;
+  color: inherit;
+  border: 1px solid #1b2f4a;
+  border-radius: 8px;
+  padding: 8px;
+  font: inherit;
+}
+.ath-exnote small {
+  color: var(--muted);
+  min-height: 1em;
+}

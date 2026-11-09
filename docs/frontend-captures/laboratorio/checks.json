@@ -1,0 +1,13 @@
+[
+  "Entrada identificada y alta ficticia por formulario",
+  "Macro y meso creados y seleccionados sin IDs manuales",
+  "Semana publicada con preview y persistencia de programación y aviso al recargar",
+  "Duplicación de semana publicada",
+  "Protocolo cambiado sin reconstruir distribución",
+  "Borrador de registro recuperado tras recarga",
+  "Ejecución y cuestionario guardados con recuperación ante fallo de red",
+  "Fecha elegida, evaluación ejecutada y estado actualizado persistente",
+  "Resultado parcial honesto y análisis móvil sin desborde",
+  "Duplicación sin ejecución y protocolos persistidos por API",
+  "Cambio de otro cliente detectado por huella y reevaluación limpia el aviso"
+]

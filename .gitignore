@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+*.tsbuildinfo
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+.env
+data/
+# Datos personales: nunca versionar exports de Hevy ni CSV de entrenamientos
+*.csv

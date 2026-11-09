@@ -1,0 +1,10 @@
+{
+  "checks": [
+    "Alta de atleta por formulario y estado vacío",
+    "Referencia de fuerza fechada guardada desde formulario",
+    "Plan CSV canónico: dry-run y aplicación real",
+    "Sesión importada sin IDs: bloqueo honesto y campos deshabilitados",
+    "Mapeo editable conserva formulario e invalida aplicación hasta nuevo dry-run",
+    "Foco dentro del diálogo y cierre por Escape"
+  ]
+}

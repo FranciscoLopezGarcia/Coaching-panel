@@ -1,0 +1,2 @@
+title,start_time,end_time,exercise_title,set_index,set_type,weight_kg,reps,rpe
+Sintético,2026-11-05 10:00:00,2026-11-05 11:00:00,Squat (Barbell),0,normal,100,5,8

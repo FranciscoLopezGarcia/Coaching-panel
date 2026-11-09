@@ -1,0 +1,1004 @@
+/* Interaction layer: navigation, progressive disclosure and movement identity. */
+:root {
+  --sq: #3f74a0;
+  --bp: #a4732a;
+  --dl: #7e62a8;
+  --accent: #285a48;
+  --bg: #f3f4f0;
+  --line: #e2e5df;
+}
+h1 {
+  font-size: 32px;
+  font-weight: 720;
+  letter-spacing: -1.2px;
+}
+h2 {
+  font-size: 21px;
+}
+small,
+.eyebrow {
+  font-weight: 600;
+}
+.topbar {
+  height: 48px;
+}
+.sidebar {
+  width: auto;
+}
+.sidebar nav a {
+  border-radius: 3px;
+}
+.sidebar-foot p {
+  font-size: 15px;
+}
+.athlete-heading {
+  margin: 18px 0;
+}
+.athlete-heading h1 {
+  font-size: 28px;
+}
+.athlete-heading > div:last-child {
+  font-size: 12px;
+}
+.athlete-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 24px 0 16px;
+}
+.athlete-actions button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 10px;
+  text-align: left;
+  background: var(--surface-2);
+  border: 0;
+  border-bottom: 2px solid var(--surface-2);
+  border-radius: 4px;
+  padding: 15px 18px;
+}
+.athlete-actions span {
+  letter-spacing: 1.2px;
+  font-size: 13px;
+  font-weight: 750;
+}
+.athlete-actions small {
+  grid-row: 2;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.athlete-actions b {
+  grid-column: 2;
+  grid-row: 1/3;
+  font-size: 21px;
+  font-weight: 400;
+}
+.athlete-actions button.selected {
+  background: var(--accent);
+  color: white;
+  border-color: var(--surface-2);
+}
+.athlete-actions button.selected small {
+  color: var(--muted);
+}
+.context-strip {
+  position: static;
+  margin: 0;
+  padding: 10px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+}
+.context-strip small {
+  font-size: 12px;
+}
+.athlete-tabs {
+  margin-top: 5px;
+  gap: 18px;
+}
+.athlete-tabs button {
+  font-size: 12px;
+  padding: 12px 0;
+}
+.athlete-tabs .current-training {
+  white-space: nowrap;
+}
+.lift-card {
+  border: 0;
+  border-left: 3px solid var(--move);
+  border-radius: 2px;
+  padding: 16px 18px;
+  background: var(--surface);
+  --move: var(--sq);
+}
+[data-lift='BP'] {
+  --move: var(--bp);
+}
+[data-lift='DL'] {
+  --move: var(--dl);
+}
+.lift-card h3 {
+  margin: 10px 0 12px;
+  font-size: 18px;
+}
+.lift-symbol {
+  color: var(--move);
+}
+.lift-reading {
+  display: grid;
+  gap: 4px;
+}
+.lift-reading small {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.lift-reading strong {
+  font-size: 13px;
+}
+.lift-card details {
+  font-size: 12px;
+  margin: 10px 0;
+  padding: 8px 0 0;
+}
+.lift-card .conclusion-detail {
+  border: 0;
+  margin: 8px 0;
+}
+.principal-conclusion {
+  min-height: 0;
+  font-size: 12px;
+}
+.lift-card .text-button {
+  font-size: 12px;
+  font-weight: 650;
+}
+.lift-grid {
+  gap: 14px;
+}
+.week-overview {
+  margin: 26px 0;
+  background: var(--surface-2);
+  padding: 20px;
+  border-radius: 5px;
+}
+.week-overview h2 {
+  margin: 6px 0;
+}
+.week-session-list {
+  display: flex;
+  gap: 9px;
+  overflow: auto;
+  padding: 14px 0 2px;
+}
+.week-session-list button {
+  flex: 1 0 160px;
+  max-width: 230px;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 0;
+  border-radius: 3px;
+}
+.week-session-list time {
+  font-size: 12px;
+  color: var(--muted);
+}
+.week-session-list strong {
+  font-size: 12px;
+}
+.week-session-list span {
+  font-size: 12px;
+  color: var(--accent);
+}
+.recent-changes {
+  margin: 18px 0;
+}
+.analysis-grid .performance-panel {
+  grid-column: 1/-1;
+  grid-row: 1;
+  border: 0;
+  border-top: 2px solid var(--line);
+  padding: 22px;
+}
+.analysis-grid .chart-panel {
+  border: 0;
+  box-shadow: 0 1px 0 var(--line);
+  border-radius: 3px;
+}
+.performance-curve {
+  margin: 12px 0;
+}
+.performance-curve svg {
+  display: block;
+  width: 100%;
+  min-height: 180px;
+  max-height: 360px;
+  overflow: visible;
+}
+.performance-curve text {
+  font-size: 12px;
+  fill: var(--accent);
+}
+.curve-grid {
+  stroke: var(--surface-2);
+  stroke-width: 1;
+}
+.future-zone {
+  fill: var(--surface-2);
+  opacity: 0.7;
+}
+.cutoff-line {
+  stroke: var(--line);
+  stroke-dasharray: 4 4;
+}
+.fit-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.3;
+}
+.forecast-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.3;
+  stroke-dasharray: 7 5;
+}
+.forecast-band {
+  fill: var(--line);
+  opacity: 0.2;
+}
+.observed-dot {
+  fill: var(--surface-2);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.performance-curve figcaption {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 6px 0;
+}
+.curve-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  padding: 14px 0 4px;
+  gap: 16px;
+}
+.curve-summary > div {
+  display: grid;
+  gap: 5px;
+}
+.curve-summary small {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.curve-summary strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+.curve-limit {
+  font-size: 12px;
+  margin: 8px 0;
+}
+.curve-module label {
+  font-size: 12px;
+  margin: 0;
+}
+.curve-module select {
+  min-height: 30px;
+  font-size: 12px;
+}
+.coach-panels {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+.coach-panels .panel {
+  border: 0;
+  border-radius: 3px;
+  min-height: 0;
+  padding: 16px 20px;
+}
+.coach-panels .panel:first-child {
+  border-top: 3px solid var(--line);
+}
+.coach-panels .panel:nth-child(n + 3) {
+  background: transparent;
+  padding-top: 8px;
+}
+.coach-panels .panel ul {
+  max-height: 240px;
+}
+.coach-panels .panel:nth-child(n + 3) ul {
+  max-height: 130px;
+}
+.coach-panels .panel h3 {
+  font-size: 13px;
+  letter-spacing: 0.1px;
+}
+.queue-actions {
+  margin: 9px 0;
+}
+.queue-actions a {
+  font-size: 12px;
+  border: 1px solid var(--surface-2);
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+.coach-panels details {
+  color: var(--muted);
+  font-size: 12px;
+}
+.coach-panels details p {
+  margin: 8px 0;
+}
+.cards {
+  margin: 20px 0;
+  gap: 12px;
+}
+.stat {
+  padding: 12px 18px;
+  box-shadow: none;
+  border: 0;
+  border-left: 2px solid var(--surface-2) !important;
+  border-top: 0 !important;
+  border-radius: 3px;
+}
+.stat-n {
+  font-size: 30px;
+}
+.table-wrap td {
+  font-size: 12px;
+  padding: 10px 12px;
+}
+.table-wrap th {
+  font-size: 12px;
+}
+.table-wrap tbody tr:hover {
+  background: var(--surface-2);
+}
+.session-column {
+  box-shadow: 0 2px 6px #29452708;
+}
+.session-column header {
+  background: var(--surface-2);
+}
+.session-column header p {
+  display: none;
+}
+.session-column h3 button {
+  font-size: 18px;
+}
+.prescription-row {
+  padding: 10px 0;
+}
+.exercise-label {
+  font-size: 12px;
+  color: var(--muted);
+  display: block;
+}
+.session-column .session-body > .full {
+  font-size: 12px;
+}
+.session-column .session-body > .full:first-of-type {
+  background: transparent;
+  border: 0;
+  padding: 4px;
+}
+.parallel {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+.week-column {
+  border: 0;
+  border-top: 3px solid var(--line);
+  border-radius: 3px;
+}
+.week-column h3 {
+  font-size: 20px;
+}
+.toolbar button {
+  font-size: 12px;
+}
+.form-grid label[hidden] {
+  display: none;
+}
+.record-set {
+  border: 0;
+  border-left: 2px solid var(--surface-2);
+}
+.record-session {
+  border: 0;
+}
+.record-session .prescription {
+  background: var(--surface-2);
+  padding: 10px;
+}
+.record-session .sticky-actions {
+  bottom: 0;
+}
+.recording .athlete-actions {
+  margin: 16px 0;
+}
+.recording .message {
+  font-size: 12px;
+}
+.app-footer {
+  font-size: 12px;
+}
+dialog {
+  border-radius: 6px;
+}
+dialog .preview {
+  background: var(--surface-2);
+  border-color: var(--surface-2);
+}
+.detail-fields {
+  margin-top: 12px;
+}
+.message {
+  font-size: 12px;
+}
+button:disabled {
+  opacity: 0.5;
+}
+@media (max-width: 1100px) {
+  .athlete-tabs {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .athlete-tabs .current-training {
+    margin-left: 0;
+  }
+  .athlete-actions button {
+    padding: 12px;
+  }
+  .curve-summary strong {
+    font-size: 14px;
+  }
+}
+@media (max-width: 800px) {
+  .coach-panels {
+    grid-template-columns: 1fr;
+  }
+  .curve-summary {
+    gap: 10px;
+  }
+  .athlete-actions small {
+    font-size: 12px;
+  }
+  .athlete-actions span {
+    font-size: 12px;
+  }
+  .week-overview {
+    padding: 16px;
+  }
+  .analysis-grid .performance-panel {
+    padding: 16px;
+  }
+}
+@media (max-width: 520px) {
+  .athlete-actions {
+    gap: 6px;
+    margin: 14px 0;
+  }
+  .athlete-actions button {
+    padding: 12px 8px;
+    display: block;
+    text-align: center;
+  }
+  .athlete-actions small,
+  .athlete-actions b {
+    display: none;
+  }
+  .athlete-actions span {
+    font-size: 12px;
+    letter-spacing: 0.6px;
+  }
+  .recording .athlete-actions {
+    margin: 10px 0;
+  }
+  .context-strip {
+    position: static;
+  }
+  .athlete-tabs {
+    flex-wrap: nowrap;
+    gap: 16px;
+  }
+  .athlete-tabs .current-training {
+    display: block;
+  }
+  .curve-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  .curve-summary > div:last-child {
+    grid-column: 1/-1;
+  }
+  .curve-summary strong {
+    font-size: 14px;
+  }
+  .performance-curve svg {
+    min-height: 150px;
+  }
+  .performance-curve figcaption {
+    gap: 8px;
+    font-size: 12px;
+  }
+  .coach-panels .panel {
+    padding: 14px;
+  }
+  .week-session-list button {
+    flex-basis: 145px;
+  }
+  .lift-card {
+    padding: 14px;
+  }
+  .week-overview > .row button {
+    width: 100%;
+  }
+  .recording .athlete-heading {
+    margin-bottom: 8px;
+  }
+  .recording .context-strip {
+    padding: 6px 0;
+  }
+  .recording .context-strip strong {
+    font-size: 12px;
+  }
+  .recording .context-strip > div:first-child {
+    display: none;
+  }
+  .recording .context-strip > :last-child {
+    border: 0;
+    grid-column: auto;
+    margin: 0;
+    padding: 0 12px;
+  }
+  .recording .context-strip {
+    grid-template-columns: 1fr 1fr;
+  }
+  .record-session .form-grid input {
+    font-size: 16px;
+  }
+  .period-controls input {
+    font-size: 12px;
+  }
+}
+
+.lift-value {
+  font-size: 26px !important;
+  letter-spacing: -0.7px;
+  color: var(--move);
+}
+.lift-value span {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.brief-signal {
+  font-size: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.6;
+  margin: 12px 0 6px;
+}
+.brief-signal.critical {
+  display: block;
+  overflow: visible;
+  color: var(--bad);
+}
+.instance-banner {
+  padding: 8px 34px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-weight: 600;
+}
+.instance-banner.laboratory {
+  background: var(--surface-2);
+  color: var(--muted);
+  border-bottom-color: #ddc38e;
+}
+.instance-banner span {
+  font-weight: 400;
+}
+.laboratory-entry {
+  margin: 20px 0 26px;
+}
+.lab-cases {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  margin-top: 15px;
+}
+.lab-cases article {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 16px;
+}
+.lab-cases p {
+  font-size: 12px;
+}
+.lab-cases a {
+  font-size: 12px;
+  text-decoration: none;
+  padding: 4px 0;
+}
+.lab-cases h3 {
+  margin: 8px 0;
+}
+.instance-banner + main {
+  padding-top: 20px;
+}
+@media (max-width: 520px) {
+  .instance-banner {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+  .instance-banner span {
+    display: block;
+  }
+  .lab-cases {
+    grid-template-columns: 1fr;
+  }
+}
+/* Vista esencial: mismas integraciones, menos niveles y métricas secundarias bajo demanda. */
+.essential-controls {
+  justify-content: space-between;
+  margin: 18px 0;
+}
+.essential-controls label {
+  min-width: 240px;
+}
+.essential-panel {
+  background: var(--surface-2);
+  border-radius: 4px;
+  padding: 20px;
+  margin: 16px 0;
+}
+.essential-panel > h3,
+.essential-panel > .row h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.essential-metrics {
+  margin: 16px 0;
+  gap: 8px;
+}
+.essential-metrics button {
+  display: grid;
+  text-align: left;
+  gap: 3px;
+  min-width: 120px;
+  border-color: transparent;
+  background: var(--surface-2);
+}
+.essential-metrics button strong {
+  font-size: 17px;
+}
+.essential-metrics button small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.essential-metrics button.selected {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+.essential-bars {
+  margin: 18px 0;
+  max-height: 390px;
+  overflow: auto;
+  padding-right: 12px;
+}
+.essential-bar {
+  display: grid;
+  grid-template-columns: 105px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  margin: 10px 0;
+  font-size: 12px;
+}
+.essential-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 16px;
+  margin: 2px 0;
+  padding-right: 70px;
+}
+.essential-fill {
+  height: 10px;
+  max-width: calc(100% - 30px);
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+.essential-fill.actual {
+  background: var(--accent);
+}
+.essential-track b {
+  font-size: 12px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+.force-readings {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 20px 0;
+}
+.force-readings > div {
+  display: grid;
+  gap: 6px;
+  border-left: 2px solid var(--surface-2);
+  padding: 10px 14px;
+  background: var(--surface-2);
+}
+.force-readings small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.force-readings strong {
+  font-size: 24px;
+  font-weight: 600;
+}
+.force-readings span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.advanced-analysis,
+.coach-context {
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  margin: 20px 0;
+}
+.advanced-analysis > summary,
+.coach-context > summary {
+  font-weight: 600;
+  color: var(--accent);
+}
+.essential-panel .session-observations details {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+@media (max-width: 520px) {
+  .essential-panel {
+    padding: 14px;
+  }
+  .essential-controls {
+    align-items: stretch;
+  }
+  .essential-controls label {
+    width: 100%;
+    min-width: 0;
+  }
+  .essential-metrics {
+    flex-wrap: nowrap;
+  }
+  .essential-metrics button {
+    min-width: 0;
+    flex: 1;
+  }
+  .essential-bar {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 6px;
+  }
+  .force-readings {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .force-readings strong {
+    font-size: 21px;
+  }
+}
+
+/* Comparación simultánea y edición de celdas: sin cambiar el resto de la aplicación. */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 25px;
+}
+.overview-panel {
+  background: var(--surface, var(--surface-2));
+  padding: 16px;
+  min-width: 0;
+  border-radius: 4px;
+}
+.overview-panel h3 {
+  font-size: 15px;
+  margin: 0 0 6px;
+}
+.overview-panel h4 {
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+.overview-chart {
+  margin: 8px 0 0;
+}
+.overview-chart svg {
+  display: block;
+  width: 100%;
+}
+.overview-chart text {
+  fill: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.overview-chart figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+  margin-top: 7px;
+}
+.overview-chart figcaption span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.overview-chart figcaption i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+.chart-empty {
+  color: var(--muted);
+  padding: 17px 0;
+}
+.muscle-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.chart-organizer {
+  max-width: 460px;
+}
+.chart-organizer[open] {
+  width: 100%;
+  background: var(--surface-2);
+  padding: 16px;
+}
+.chart-organizer label {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  margin: 10px 0;
+}
+.exercise-analysis-detail,
+.overview-data {
+  padding: 14px 0;
+  border-top: 1px solid var(--border, var(--surface-2));
+  margin-top: 16px;
+}
+.sheet-layout-switch {
+  margin: 12px 0;
+}
+.data-sheet .table-wrap {
+  max-width: 100%;
+  max-height: 65vh;
+  border: 1px solid var(--surface-2);
+  background: var(--surface-2);
+}
+.data-sheet table {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 100%;
+  font-size: 12px;
+}
+.data-sheet th {
+  background: var(--surface-2);
+}
+.data-sheet thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  white-space: nowrap;
+}
+.data-sheet th,
+.data-sheet td {
+  border-right: 1px solid var(--surface-2);
+  border-bottom: 1px solid var(--surface-2);
+  padding: 0;
+}
+.data-sheet th {
+  padding: 8px;
+}
+.data-sheet tbody > tr > th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 34px;
+}
+.data-sheet .sheet-cell:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.data-sheet input,
+.data-sheet select {
+  border: 0;
+  border-radius: 0;
+  width: 100%;
+  min-width: 85px;
+  max-width: none;
+  padding: 10px 8px;
+  font-size: 12px;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+.data-sheet input:focus,
+.data-sheet select:focus {
+  outline: none;
+  background: var(--surface-2);
+}
+.data-sheet .sheet-readonly {
+  padding: 6px 9px;
+  background: var(--surface-2);
+  min-width: 150px;
+  max-width: 260px;
+}
+.data-sheet .sheet-readonly span {
+  display: block;
+}
+.data-sheet .sheet-cell:has(input[aria-label^='Ejercicio']),
+.data-sheet .sheet-cell:has(input[aria-label^='Variante']),
+.data-sheet .sheet-cell:has(input[aria-label^='Instrucciones']) {
+  min-width: 190px;
+}
+.sheet-hint {
+  margin: 8px 0;
+}
+.sheet-review {
+  padding: 16px;
+  margin-top: 15px;
+  background: var(--surface-2);
+}
+.programming-sheet {
+  margin: 15px 0;
+}
+@media (min-width: 1600px) {
+  .pattern-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1100px) {
+  .overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 650px) {
+  .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .analysis-overview .toolbar {
+    align-items: flex-start;
+  }
+  .chart-organizer label {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .data-sheet .table-wrap {
+    max-height: 65vh;
+  }
+}
+.overview-panel h3,
+.overview-panel h4 {
+  font-family: inherit;
+}
+.overview-main .overview-panel {
+  display: flex;
+  flex-direction: column;
+}
+.overview-main .overview-chart {
+  margin-top: auto;
+}

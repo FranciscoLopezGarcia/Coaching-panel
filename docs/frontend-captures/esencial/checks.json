@@ -1,0 +1,11 @@
+[
+  "Vista semanal, tres métricas, e1RM histórico y detalle oficial; avanzado cerrado",
+  "Métricas oficiales por sesión y variante, series por sesión y selección conservada tras recargar",
+  "Singles reales separados del e1RM; vacío honesto cuando no hay singles",
+  "Análisis avanzado conservado y cargado al desplegar",
+  "Programación y retorno mantienen fecha, período y escala",
+  "Celular de 390 px sin desborde horizontal de página",
+  "Error de consulta recuperable con Reintentar; sin datos sintéticos de sustitución",
+  "LAB-E: sesiones separadas contrastadas con /core al cambiar de 2 a 3 por semana",
+  "LAB-D: SI ausente sin rellenar; NL disponible y falta de RPE explicada en detalle"
+]
