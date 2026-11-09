@@ -45,19 +45,19 @@ export class ProgrammingService {
     private history?: HistoryRepo,
   ) {}
 
-  baseVersion(athleteId: string): string | null {
-    return this.history?.latestApplied(athleteId)?.id ?? null;
+  async baseVersion(athleteId: string): Promise<string | null> {
+    return (await this.history?.latestApplied(athleteId))?.id ?? null;
   }
 
-  run(athleteId: string, input: ProgramOpFullInput, stepKg?: number): ProgramResult {
-    const base = this.baseVersion(athleteId);
+  async run(athleteId: string, input: ProgramOpFullInput, stepKg?: number): Promise<ProgramResult> {
+    const base = await this.baseVersion(athleteId);
     if (input.mode !== 'preview' && input.baseVersionId !== undefined && input.baseVersionId !== base)
       throw new ConflictError(
         'El plan cambió desde la vista previa: volvé a calcularla (no se sobrescribe nada).',
         { expectedBaseVersionId: base, received: input.baseVersionId },
       );
     const warnings: string[] = [];
-    const current = this.records.listActivePlanned(athleteId);
+    const current = await this.records.listActivePlanned(athleteId);
     let after: PlannedSet[];
     let overwrites: PlannedSet[] = [];
     try {
@@ -82,7 +82,7 @@ export class ProgrammingService {
           break;
         }
         case 'apply_template': {
-          const t = this.programming.getTemplate(athleteId, op.templateId);
+          const t = await this.programming.getTemplate(athleteId, op.templateId);
           if (!t) throw new NotFoundError('Plantilla inexistente');
           const r = applyTemplate(current, t, op);
           overwrites = r.overwrites;
@@ -99,8 +99,7 @@ export class ProgrammingService {
           const r = removeSets(current, op.selection);
           after = r.sets;
           const done = new Set(
-            this.records
-              .listActual(athleteId)
+            (await this.records.listActual(athleteId))
               .filter((a) => a.status === 'done')
               .map((a) => a.plannedSetId),
           );
@@ -124,7 +123,7 @@ export class ProgrammingService {
     const preview = previewChange(current, after, { overwrites });
     if (input.mode === 'preview')
       return { mode: 'preview', baseVersionId: base, warnings, preview, saved: null };
-    const saved = this.plans.importPlan(
+    const saved = await this.plans.importPlan(
       athleteId,
       {
         sets: after as never,
@@ -139,21 +138,19 @@ export class ProgrammingService {
   }
 
   /** Lectura íntegra de la programación vigente: toda la prescripción con ids estables, protocolo resuelto y ejecución vinculada. */
-  readPlan(athleteId: string, f: PlanReadFilter, stepKg?: number) {
-    const done = new Map(this.records.listActual(athleteId).map((a) => [a.plannedSetId, a]));
-    const sets = this.records
-      .listActivePlanned(athleteId)
-      .filter(
-        (x) =>
-          (!f.sessionKey || x.sessionKey === f.sessionKey) &&
-          (!f.blockKey || x.blockKey === f.blockKey) &&
-          (!f.weekNo || x.weekNo === f.weekNo) &&
-          (!f.exposureId || x.exposureId === f.exposureId) &&
-          (!f.from || x.plannedDate >= f.from) &&
-          (!f.to || x.plannedDate <= f.to),
-      );
+  async readPlan(athleteId: string, f: PlanReadFilter, stepKg?: number) {
+    const done = new Map((await this.records.listActual(athleteId)).map((a) => [a.plannedSetId, a]));
+    const sets = (await this.records.listActivePlanned(athleteId)).filter(
+      (x) =>
+        (!f.sessionKey || x.sessionKey === f.sessionKey) &&
+        (!f.blockKey || x.blockKey === f.blockKey) &&
+        (!f.weekNo || x.weekNo === f.weekNo) &&
+        (!f.exposureId || x.exposureId === f.exposureId) &&
+        (!f.from || x.plannedDate >= f.from) &&
+        (!f.to || x.plannedDate <= f.to),
+    );
     return {
-      baseVersionId: this.baseVersion(athleteId),
+      baseVersionId: await this.baseVersion(athleteId),
       count: sets.length,
       sets: sets.map((x) => ({
         ...x,
@@ -165,8 +162,8 @@ export class ProgrammingService {
   }
 
   /** Foto completa de una versión del plan (aplicada o borrador): permite reabrir un borrador y ver el historial de publicación. */
-  version(athleteId: string, versionId: string) {
-    const v = this.history?.listVersions(athleteId).find((x) => x.id === versionId);
+  async version(athleteId: string, versionId: string) {
+    const v = ((await this.history?.listVersions(athleteId)) ?? []).find((x) => x.id === versionId);
     if (!v) throw new NotFoundError('Versión inexistente');
     return {
       id: v.id,
@@ -180,12 +177,15 @@ export class ProgrammingService {
     };
   }
 
-  saveTemplate(athleteId: string, o: { name: string; blockKey: string; weekNo: number }): { id: string } {
+  async saveTemplate(
+    athleteId: string,
+    o: { name: string; blockKey: string; weekNo: number },
+  ): Promise<{ id: string }> {
     try {
       return {
-        id: this.programming.saveTemplate(
+        id: await this.programming.saveTemplate(
           athleteId,
-          saveTemplate(this.records.listActivePlanned(athleteId), o),
+          saveTemplate(await this.records.listActivePlanned(athleteId), o),
           this.nowIso(),
         ),
       };

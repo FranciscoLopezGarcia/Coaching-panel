@@ -9,15 +9,15 @@ export class ReplayService {
     private history: HistoryRepo,
   ) {}
 
-  run(
+  async run(
     athleteId: string,
     q: { from: string; to: string; step: 'weekly' | 'sessions'; horizonN?: number },
-  ): ReplayReport {
-    const d = this.loader.load(athleteId);
+  ): Promise<ReplayReport> {
+    const d = await this.loader.load(athleteId);
     return runReplay({
       plannedSets: d.planned,
       actualSets: d.actual,
-      snapshots: this.history.listVersions(athleteId),
+      snapshots: await this.history.listVersions(athleteId),
       readinessHistory: d.readinessHistory,
       sessionFeedback: d.feedback,
       coachReviews: d.reviews,

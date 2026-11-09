@@ -1,4 +1,3 @@
-import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,9 +24,9 @@ const post = (url: string, payload: unknown) =>
 const put = (url: string, payload: unknown) => app.inject({ method: 'PUT', url, payload: payload as object });
 
 beforeEach(async () => {
-  ctx = buildContext({ ...loadConfig({}), dbPath: ':memory:' }, openDb(':memory:'), () => TODAY);
+  ctx = await buildContext({ ...loadConfig({}), dbPath: ':memory:' }, await openDb(':memory:'), () => TODAY);
   app = await buildApp(ctx);
-  ids = seedDemoData(ctx);
+  ids = await seedDemoData(ctx);
 });
 
 /* ---------- datos SINTÉTICOS ---------- */
@@ -47,29 +46,29 @@ const HEVY = [
 ].join('\n');
 
 describe('Migración 003: compatibilidad con datos del esquema anterior', () => {
-  const require_ = createRequire(import.meta.url);
   const dir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'db', 'migrations');
-  function legacyDb() {
-    const { DatabaseSync } = require_('node:sqlite') as typeof import('node:sqlite');
-    const db = new DatabaseSync(':memory:');
-    db.exec(
+  async function legacyDb() {
+    const db = await openDb(':memory:', { migrate: false });
+    await db.exec(
       'PRAGMA foreign_keys = ON; CREATE TABLE schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)',
     );
     for (const f of ['001_init.sql', '002_stages_2_4.sql']) {
-      db.exec(readFileSync(join(dir, f), 'utf8'));
-      db.prepare('INSERT INTO schema_migrations VALUES (?, ?)').run(f, 'x');
+      await db.exec(readFileSync(join(dir, f), 'utf8'));
+      await db.run('INSERT INTO schema_migrations VALUES (?, ?)', f, 'x');
     }
-    db.prepare(
+    await db.run(
       "INSERT INTO athletes (id,name,competition_exercises,created_at) VALUES ('a','Legacy','{\"SQ\":\"Squat comp\"}','x')",
-    ).run();
-    const ins = db.prepare(
-      "INSERT INTO planned_sets (id,athlete_id,session_key,slot_key,exercise_name,lift,planned_date,set_no,reps,target_rpe,planned_kg,is_warmup,block_key,week_no,day_no,family_key,ref_kg) VALUES (?,'a',?,?,?,?,?,1,5,8,?,0,'B1',1,1,'F1',180)",
     );
-    ins.run('s1', 'k1', 'squat-comp|D1', 'Squat comp', 'SQ', '2026-03-02', 150);
-    ins.run('s2', 'k2', 'squat-comp|D3', 'Squat comp', 'SQ', '2026-03-04', null);
-    db.prepare(
+    const ins = (...p: (string | number | null)[]) =>
+      db.run(
+        "INSERT INTO planned_sets (id,athlete_id,session_key,slot_key,exercise_name,lift,planned_date,set_no,reps,target_rpe,planned_kg,is_warmup,block_key,week_no,day_no,family_key,ref_kg) VALUES (?,'a',?,?,?,?,?,1,5,8,?,0,'B1',1,1,'F1',180)",
+        ...p,
+      );
+    await ins('s1', 'k1', 'squat-comp|D1', 'Squat comp', 'SQ', '2026-03-02', 150);
+    await ins('s2', 'k2', 'squat-comp|D3', 'Squat comp', 'SQ', '2026-03-04', null);
+    await db.run(
       "INSERT INTO actual_sets (athlete_id,planned_set_id,status,kg,reps,rpe,performed_on,updated_at) VALUES ('a','s1','done',150,5,8,'2026-03-02','x')",
-    ).run();
+    );
     const old = {
       key: 'SQ|squat-comp|D1|R-LOAD|2026-03-02|reglas-v0.1-propuesta',
       evaluatedOn: '2026-03-03',
@@ -97,12 +96,13 @@ describe('Migración 003: compatibilidad con datos del esquema anterior', () => 
       paramsText: '',
       readiness: '',
     };
-    db.prepare(
+    await db.run(
       "INSERT INTO decisions (athlete_id,key,lift,rule_id,validity,coach_decision,evaluated_on,payload) VALUES ('a',?,'SQ','R-LOAD','vigente','Aprobada','2026-03-03',?)",
-    ).run(old.key, JSON.stringify(old));
-    db.prepare(
+      old.key,
+      JSON.stringify(old),
+    );
+    await db.run(
       "INSERT INTO evaluations (athlete_id,cutoff,rules_version,payload) VALUES ('a','2026-03-03','reglas-v0.1-propuesta',?)",
-    ).run(
       JSON.stringify({
         cutoff: '2026-03-03',
         rulesVersion: 'reglas-v0.1-propuesta',
@@ -129,33 +129,35 @@ describe('Migración 003: compatibilidad con datos del esquema anterior', () => 
       familyKey: 'F1',
       refKg: 180,
     };
-    db.prepare(
+    await db.run(
       "INSERT INTO plan_versions (id,athlete_id,seq,status,detected_on,effective_on,label,fingerprint,content) VALUES ('v1','a',1,'aplicado','2026-03-01',NULL,'','x',?)",
-    ).run(JSON.stringify([oldSet]));
+      JSON.stringify([oldSet]),
+    );
     return db;
   }
-  it('conserva todo: cada slot antiguo pasa a ser su PROPIA identidad (legacy_slot), sin fusiones por inferencia', () => {
-    const db = legacyDb();
-    expect(runMigrations(db)).toEqual([
+  it('conserva todo: cada slot antiguo pasa a ser su PROPIA identidad (legacy_slot), sin fusiones por inferencia', async () => {
+    const db = await legacyDb();
+    expect(await runMigrations(db)).toEqual([
       '003_consolidacion.sql',
       '004_handoff.sql',
       '005_portal_atleta.sql',
       '006_notas_atleta.sql',
+      '007_coach_y_tiempo_real.sql',
     ]);
-    const recs = new RecordsRepo(db as never);
-    const sets = recs.listPlanned('a');
+    const recs = new RecordsRepo(db);
+    const sets = await recs.listPlanned('a');
     expect(sets.map((s) => [s.id, s.exposureId, s.variantKey, s.plannedKgSource])).toEqual([
       ['s1', 'squat-comp|D1', 'Squat comp', 'fixed'],
       ['s2', 'squat-comp|D3', 'Squat comp', null],
     ]);
-    expect(recs.identitySource('a', 'squat-comp|D1')).toBe('legacy_slot');
-    expect(recs.listActual('a')).toHaveLength(1); // la ejecución sigue intacta
-    expect(runMigrations(db)).toEqual([]); // idempotente
+    expect(await recs.identitySource('a', 'squat-comp|D1')).toBe('legacy_slot');
+    expect(await recs.listActual('a')).toHaveLength(1); // la ejecución sigue intacta
+    expect(await runMigrations(db)).toEqual([]); // idempotente
   });
-  it('lee decisiones guardadas con el esquema anterior y las traduce (slot→exposición, confianza→suficiencia, decisión→ciclo)', () => {
-    const db = legacyDb();
-    runMigrations(db);
-    const [d] = new DecisionsRepo(db as never).list('a');
+  it('lee decisiones guardadas con el esquema anterior y las traduce (slot→exposición, confianza→suficiencia, decisión→ciclo)', async () => {
+    const db = await legacyDb();
+    await runMigrations(db);
+    const [d] = await new DecisionsRepo(db).list('a');
     expect(d).toMatchObject({
       exposureId: 'squat-comp|D1',
       sufficiency: 'suficiente',
@@ -169,13 +171,13 @@ describe('Migración 003: compatibilidad con datos del esquema anterior', () => 
     expect(d!.coachNote).toBe('ok'); // la nota y la fecha de decisión del coach no se pierden
     expect(d!.decidedOn).toBe('2026-03-03');
   });
-  it('una evaluación del esquema anterior se trata como obsoleta (hay que reevaluar) y los snapshots se actualizan al leerlos', () => {
-    const db = legacyDb();
-    runMigrations(db);
-    const dec = new DecisionsRepo(db as never);
-    expect(dec.latestEvaluation('a')).toBeNull();
-    expect(dec.hasLegacyEvaluation('a')).toBe(true);
-    const v = new HistoryRepo(db as never).listVersions('a')[0]!;
+  it('una evaluación del esquema anterior se trata como obsoleta (hay que reevaluar) y los snapshots se actualizan al leerlos', async () => {
+    const db = await legacyDb();
+    await runMigrations(db);
+    const dec = new DecisionsRepo(db);
+    expect(await dec.latestEvaluation('a')).toBeNull();
+    expect(await dec.hasLegacyEvaluation('a')).toBe(true);
+    const v = (await new HistoryRepo(db).listVersions('a'))[0]!;
     expect(v.sets[0]).toMatchObject({
       exposureId: 'squat-comp|D1',
       variantKey: 'Squat comp',
@@ -184,15 +186,15 @@ describe('Migración 003: compatibilidad con datos del esquema anterior', () => 
       copiedFrom: null,
     });
   });
-  it('reimportar con una identidad declarada distinta la reclasifica; con la misma, conserva el origen legacy', () => {
-    const db = legacyDb();
-    runMigrations(db);
-    const recs = new RecordsRepo(db as never);
-    const [a] = recs.listPlanned('a');
-    recs.upsertPlanned('a', [a!]);
-    expect(recs.identitySource('a', 'squat-comp|D1')).toBe('legacy_slot');
-    recs.upsertPlanned('a', [{ ...a!, exposureId: 'squat-primaria' }]);
-    expect(recs.identitySource('a', 'squat-primaria')).toBe('declarada');
+  it('reimportar con una identidad declarada distinta la reclasifica; con la misma, conserva el origen legacy', async () => {
+    const db = await legacyDb();
+    await runMigrations(db);
+    const recs = new RecordsRepo(db);
+    const [a] = await recs.listPlanned('a');
+    await recs.upsertPlanned('a', [a!]);
+    expect(await recs.identitySource('a', 'squat-comp|D1')).toBe('legacy_slot');
+    await recs.upsertPlanned('a', [{ ...a!, exposureId: 'squat-primaria' }]);
+    expect(await recs.identitySource('a', 'squat-primaria')).toBe('declarada');
   });
 });
 
@@ -212,7 +214,7 @@ describe('Importación de Hevy: dry-run, confirmación e idempotencia', () => {
     });
     expect(r.preview.unmappedExercises).toEqual([{ title: 'Row (Dumbbell)', sets: 1 }]);
     expect(r.preview.dateInterpretation).toMatch(/hora local escrita/);
-    expect(ctx.observed.list(C())).toHaveLength(0);
+    expect(await ctx.observed.list(C())).toHaveLength(0);
   });
   it('aplicar exige confirmar exactamente lo que se vio (token)', async () => {
     const dry = (await imp({ mode: 'dry_run' })).json();
@@ -220,10 +222,10 @@ describe('Importación de Hevy: dry-run, confirmación e idempotencia', () => {
     expect(sin.statusCode).toBe(422);
     expect(sin.json().details.expectedToken).toBe(dry.preview.token);
     expect((await imp({ mode: 'apply', confirmToken: 'otro' })).statusCode).toBe(422);
-    expect(ctx.observed.list(C())).toHaveLength(0);
+    expect(await ctx.observed.list(C())).toHaveLength(0);
     const ok = (await imp({ mode: 'apply', confirmToken: dry.preview.token })).json();
     expect(ok.applied).toMatchObject({ inserted: 7, ignored: 0 });
-    expect(ctx.observed.list(C())).toHaveLength(7);
+    expect(await ctx.observed.list(C())).toHaveLength(7);
   });
   it('reimportar el mismo archivo no duplica; un archivo con filas nuevas suma solo las nuevas', async () => {
     const t = (await imp({ mode: 'dry_run' })).json().preview.token;
@@ -235,16 +237,16 @@ describe('Importación de Hevy: dry-run, confirmación e idempotencia', () => {
     expect(d2.preview.newRows).toBe(1);
     const a2 = (await imp({ csv: more, mode: 'apply', confirmToken: d2.preview.token })).json();
     expect(a2.applied.inserted).toBe(1);
-    expect(ctx.observed.list(C())).toHaveLength(8);
+    expect(await ctx.observed.list(C())).toHaveLength(8);
     expect((await get(`/api/athletes/${C()}/imports`)).length).toBe(2);
   });
   it('no deduce prescripción ni descanso de lo ejecutado: el plan y las versiones quedan intactos', async () => {
-    const plannedBefore = ctx.records.listPlanned(C()).length;
-    const versionsBefore = ctx.history.listVersions(C()).length;
+    const plannedBefore = (await ctx.records.listPlanned(C())).length;
+    const versionsBefore = (await ctx.history.listVersions(C())).length;
     const t = (await imp({ mode: 'dry_run' })).json().preview.token;
     await imp({ mode: 'apply', confirmToken: t });
-    expect(ctx.records.listPlanned(C()).length).toBe(plannedBefore);
-    expect(ctx.history.listVersions(C()).length).toBe(versionsBefore);
+    expect((await ctx.records.listPlanned(C())).length).toBe(plannedBefore);
+    expect((await ctx.history.listVersions(C())).length).toBe(versionsBefore);
   });
   it('un archivo que no es de Hevy falla con mensaje claro y 404 si el atleta no existe', async () => {
     const r = await imp({ csv: 'a,b\n1,2', mode: 'apply', confirmToken: 'x' });
@@ -347,8 +349,8 @@ describe('Programación canónica por CSV', () => {
     expect(dry.parse).toMatchObject({ ok: true, summary: { sets: 6, sessions: 2 } });
     const bp = dry.parse.availability.find((a: { lift: string }) => a.lift === 'BP');
     expect(bp.metrics.find((m: { id: string }) => m.id === 'tonnage').status).toBe('unavailable'); // banca sin referencia: no hay carga prevista
-    const versionsBefore = ctx.history.listVersions(C()).length;
-    expect(ctx.history.listVersions(C()).length).toBe(versionsBefore); // el dry-run no crea versiones
+    const versionsBefore = (await ctx.history.listVersions(C())).length;
+    expect((await ctx.history.listVersions(C())).length).toBe(versionsBefore); // el dry-run no crea versiones
     expect(
       (await post(`/api/athletes/${C()}/imports/plan-csv`, { csv: good, mode: 'apply' })).statusCode,
     ).toBe(422);
@@ -360,8 +362,8 @@ describe('Programación canónica por CSV', () => {
       })
     ).json();
     expect(ok.applied).toMatchObject({ changed: true });
-    expect(ctx.history.listVersions(C()).length).toBe(versionsBefore + 1); // UNA versión
-    expect(ctx.records.listActivePlanned(C()).filter((s) => s.blockKey === 'B9')).toHaveLength(6);
+    expect((await ctx.history.listVersions(C())).length).toBe(versionsBefore + 1); // UNA versión
+    expect((await ctx.records.listActivePlanned(C())).filter((s) => s.blockKey === 'B9')).toHaveLength(6);
     const again = (
       await post(`/api/athletes/${C()}/imports/plan-csv`, {
         csv: good,
@@ -506,11 +508,11 @@ describe('Intervenciones: hallazgo → propuesta → decisión → aplicación �
 
 describe('Operaciones de programación', () => {
   const op = (body: Record<string, unknown>) => post(`/api/athletes/${A()}/program`, body);
-  const counts = () => ({
-    planned: ctx.records.listActivePlanned(A()).length,
-    versions: ctx.history.listVersions(A()).length,
-    events: ctx.history.listEvents(A()).length,
-    actual: ctx.records.listActual(A()).length,
+  const counts = async () => ({
+    planned: (await ctx.records.listActivePlanned(A())).length,
+    versions: (await ctx.history.listVersions(A())).length,
+    events: (await ctx.history.listEvents(A())).length,
+    actual: (await ctx.records.listActual(A())).length,
   });
   const dup = {
     type: 'duplicate_session',
@@ -520,34 +522,36 @@ describe('Operaciones de programación', () => {
     dayNo: 4,
   };
   it('la vista previa NO guarda nada y trae diferencias y disponibilidad', async () => {
-    const before = counts();
+    const before = await counts();
     const r = (await op({ mode: 'preview', op: dup })).json();
     expect(r.mode).toBe('preview');
     expect(r.saved).toBeNull();
     expect(r.preview.addedSets).toBe(3);
     expect(r.preview.availability.length).toBeGreaterThan(0);
-    expect(counts()).toEqual(before);
+    expect(await counts()).toEqual(before);
   });
   it('un borrador no modifica el plan vigente ni genera eventos; aplicar genera UNA versión y UN evento', async () => {
-    const before = counts();
+    const before = await counts();
     const d = (await op({ mode: 'draft', op: dup })).json();
     expect(d.saved.status).toBe('borrador');
-    expect(counts().planned).toBe(before.planned);
-    expect(counts().events).toBe(before.events);
+    expect((await counts()).planned).toBe(before.planned);
+    expect((await counts()).events).toBe(before.events);
     const a = (await op({ mode: 'apply', op: dup, label: 'copia' })).json();
     expect(a.saved).toMatchObject({ changed: true, status: 'aplicado' });
-    const after = counts();
+    const after = await counts();
     expect(after.planned).toBe(before.planned + 3);
     expect(after.events).toBe(before.events + 1);
     expect(after.actual).toBe(before.actual); // no se copian resultados
-    const copied = ctx.records.listActivePlanned(A()).filter((s) => s.sessionKey === 'a-sq-extra');
+    const copied = (await ctx.records.listActivePlanned(A())).filter((s) => s.sessionKey === 'a-sq-extra');
     expect(
       copied.every(
         (s) => s.copiedFrom !== null && s.exposureId === 'sq-primaria' && s.id.startsWith('a-sq-extra-'),
       ),
     ).toBe(true);
     expect(new Set(copied.map((s) => s.id)).size).toBe(3);
-    expect(ctx.records.listActual(A()).some((x) => x.plannedSetId.startsWith('a-sq-extra'))).toBe(false);
+    expect((await ctx.records.listActual(A())).some((x) => x.plannedSetId.startsWith('a-sq-extra'))).toBe(
+      false,
+    );
   });
   it('nunca sobrescribe programación existente sin confirmación explícita', async () => {
     const dupExisting = await op({ mode: 'apply', op: { ...dup, newSessionKey: 'a-sq-ACUM-1-2' } });
@@ -572,7 +576,7 @@ describe('Operaciones de programación', () => {
         })
       ).statusCode,
     ).toBe(422);
-    const before = ctx.records.listActivePlanned(A());
+    const before = await ctx.records.listActivePlanned(A());
     const r = (
       await op({
         mode: 'apply',
@@ -580,7 +584,7 @@ describe('Operaciones de programación', () => {
       })
     ).json();
     expect(r.saved.changed).toBe(true);
-    const after = ctx.records.listActivePlanned(A());
+    const after = await ctx.records.listActivePlanned(A());
     expect(after.filter((s) => s.reps === 6).every((s) => s.sessionKey === 'a-sq-ACUM-2-f1')).toBe(true);
     expect(after.filter((s) => s.sessionKey !== 'a-sq-ACUM-2-f1').map((s) => s.reps)).toEqual(
       before.filter((s) => s.sessionKey !== 'a-sq-ACUM-2-f1').map((s) => s.reps),
@@ -605,7 +609,7 @@ describe('Operaciones de programación', () => {
       })
     ).json();
     expect(r.saved.changed).toBe(true);
-    const nuevos = ctx.records.listActivePlanned(A()).filter((s) => s.blockKey === 'NUEVO');
+    const nuevos = (await ctx.records.listActivePlanned(A())).filter((s) => s.blockKey === 'NUEVO');
     expect(nuevos).toHaveLength(3);
     expect(
       nuevos.every(
@@ -640,7 +644,7 @@ describe('Operaciones de programación', () => {
     ).toBe(404);
   });
   it('mover una sesión cambia la ubicación pero conserva ids e identidad', async () => {
-    const before = ctx.records.listActivePlanned(A()).filter((s) => s.sessionKey === 'a-sq-ACUM-1-6');
+    const before = (await ctx.records.listActivePlanned(A())).filter((s) => s.sessionKey === 'a-sq-ACUM-1-6');
     await op({
       mode: 'apply',
       op: {
@@ -651,7 +655,7 @@ describe('Operaciones de programación', () => {
         slotKey: 'squat-comp|D2',
       },
     });
-    const after = ctx.records.listActivePlanned(A()).filter((s) => s.sessionKey === 'a-sq-ACUM-1-6');
+    const after = (await ctx.records.listActivePlanned(A())).filter((s) => s.sessionKey === 'a-sq-ACUM-1-6');
     expect(after.map((s) => s.id)).toEqual(before.map((s) => s.id));
     expect(
       after.every((s) => s.exposureId === 'sq-primaria' && s.dayNo === 2 && s.plannedDate === '2026-03-09'),

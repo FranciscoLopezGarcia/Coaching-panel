@@ -1,28 +1,40 @@
+import type { Db } from '../db/connection.js';
+
 /**
- * Sincronización en vivo coach ↔ atleta. Cada atleta tiene una «revisión» que sube con CADA escritura que le afecta
- * (plan, ajustes de vista, series registradas, check-ins). Los clientes abiertos reciben el aviso al instante por SSE y vuelven a pedir
- * lo suyo; si el canal se corta, preguntan la revisión cada pocos segundos (respaldo). La revisión arranca en la hora de inicio del
- * proceso: tras reiniciar el servidor, todo cliente ve un número distinto y recarga.
+ * Sincronización en vivo coach ↔ atleta. Cada atleta tiene una «revisión» (tabla athlete_rev) que sube con CADA escritura que le
+ * afecta (plan, ajustes de vista, series registradas, check-ins, notas). Los clientes la consultan (sondeo corto) y, si cambió, vuelven
+ * a pedir lo que muestran. Vive en la base, no en memoria: sirve igual con varias instancias del servidor (Vercel). Con un proceso
+ * único (local) además se avisa por SSE al instante a los suscriptores de ese proceso.
  */
 type Listener = (rev: number) => void;
-const START = Date.now();
 export class LiveBus {
-  private readonly revs = new Map<string, number>();
   private readonly subs = new Map<string, Set<Listener>>();
-  rev(athleteId: string): number {
-    return this.revs.get(athleteId) ?? START;
+  constructor(private db: Db) {}
+  async rev(athleteId: string): Promise<number> {
+    const r = await this.db.get<{ rev: number }>(
+      'SELECT rev FROM athlete_rev WHERE athlete_id = ?',
+      athleteId,
+    );
+    return Number(r?.rev ?? 0);
   }
-  bump(athleteId: string): number {
-    const next = Math.max(this.rev(athleteId) + 1, Date.now());
-    this.revs.set(athleteId, next);
+  async bump(athleteId: string): Promise<number> {
+    const next = Date.now();
+    // max(ahora, anterior + 1): estrictamente creciente aunque dos escrituras caigan en el mismo milisegundo
+    await this.db.run(
+      `INSERT INTO athlete_rev (athlete_id, rev) VALUES (?, ?)
+       ON CONFLICT (athlete_id) DO UPDATE SET rev = MAX(excluded.rev, athlete_rev.rev + 1)`,
+      athleteId,
+      next,
+    );
+    const rev = await this.rev(athleteId);
     for (const l of this.subs.get(athleteId) ?? []) {
       try {
-        l(next);
+        l(rev);
       } catch {
         /* un cliente caído no frena a los demás */
       }
     }
-    return next;
+    return rev;
   }
   subscribe(athleteId: string, l: Listener): () => void {
     const set = this.subs.get(athleteId) ?? new Set<Listener>();
@@ -31,8 +43,5 @@ export class LiveBus {
     return () => {
       set.delete(l);
     };
-  }
-  listeners(athleteId: string): number {
-    return this.subs.get(athleteId)?.size ?? 0;
   }
 }

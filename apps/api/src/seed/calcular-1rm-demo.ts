@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { openDb } from '../db/connection.js';
 import { pctFromTable } from '@coaching/engine';
 
 /**
@@ -81,11 +81,9 @@ for (const a of athletes) {
     }
   // se recalculan las referencias estimadas por curva (las del coach no se tocan)
   if (process.env.DB_PATH) {
-    const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite');
-    const d = new DatabaseSync(process.env.DB_PATH);
-    d.exec('PRAGMA busy_timeout = 5000');
-    d.prepare("DELETE FROM strength_references WHERE athlete_id = ? AND source = 'estimada_curva'").run(a.id);
-    d.close();
+    const d = await openDb(process.env.DB_PATH);
+    await d.run("DELETE FROM strength_references WHERE athlete_id = ? AND source = 'estimada_curva'", a.id);
+    await d.close();
     known.splice(0, known.length, ...known.filter((r) => r.source !== 'estimada_curva'));
   }
   const real = excel[a.name] ?? {};

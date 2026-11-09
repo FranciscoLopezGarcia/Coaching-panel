@@ -58,7 +58,7 @@ export class QueryService {
   }
 
   /** Variables núcleo (NL, SI, tonelaje, volumen muscular, fatiga) por sesión y semana. Solo lo observado hasta el corte. */
-  core(
+  async core(
     athleteId: string,
     q: {
       from: string;
@@ -71,7 +71,7 @@ export class QueryService {
       basis?: 'realizado' | 'previsto';
     },
   ) {
-    const d = this.loader.load(athleteId, q.cutoff);
+    const d = await this.loader.load(athleteId, q.cutoff);
     const previsto = q.basis === 'previsto';
     const obs = previsto
       ? d.planned
@@ -122,9 +122,9 @@ export class QueryService {
     };
   }
 
-  state(athleteId: string): AthleteStateData {
-    const d = this.loader.load(athleteId);
-    const ev = this.decisions.latestEvaluation(athleteId);
+  async state(athleteId: string): Promise<AthleteStateData> {
+    const d = await this.loader.load(athleteId);
+    const ev = await this.decisions.latestEvaluation(athleteId);
     const lifts: AthleteStateData['lifts'] = {};
     if (ev) for (const l of Object.keys(ev.lifts) as Lift[]) if (ev.lifts[l]) lifts[l] = ev.lifts[l]!.state;
     return {
@@ -138,10 +138,10 @@ export class QueryService {
         label: m.label,
         suspends: m.suspends,
       })),
-      legacyEvaluation: !ev && this.decisions.hasLegacyEvaluation(athleteId),
+      legacyEvaluation: !ev && (await this.decisions.hasLegacyEvaluation(athleteId)),
       freshness: ev
-        ? (() => {
-            const current = inputsFingerprint(this.loader, this.history, athleteId, ev.cutoff);
+        ? await (async () => {
+            const current = await inputsFingerprint(this.loader, this.history, athleteId, ev.cutoff);
             return {
               evaluatedCutoff: ev.cutoff,
               storedFingerprint: ev.inputFingerprint ?? null,
@@ -153,7 +153,7 @@ export class QueryService {
     };
   }
 
-  metrics(
+  async metrics(
     athleteId: string,
     q: {
       from: string;
@@ -164,8 +164,8 @@ export class QueryService {
       cutoff: string;
       source?: string;
     },
-  ): MetricsData {
-    const d = this.loader.load(athleteId, q.cutoff);
+  ): Promise<MetricsData> {
+    const d = await this.loader.load(athleteId, q.cutoff);
     return {
       cutoff: q.cutoff,
       period: { from: q.from, to: q.to },
@@ -183,8 +183,8 @@ export class QueryService {
     };
   }
 
-  records(athleteId: string, cutoff: string, source?: string) {
-    const d = this.loader.load(athleteId, cutoff);
+  async records(athleteId: string, cutoff: string, source?: string) {
+    const d = await this.loader.load(athleteId, cutoff);
     return {
       cutoff,
       source: source ?? 'todas',
@@ -193,8 +193,8 @@ export class QueryService {
     };
   }
 
-  weekly(athleteId: string, q: { from: string; to: string; cutoff: string; source?: string }) {
-    const d = this.loader.load(athleteId, q.cutoff);
+  async weekly(athleteId: string, q: { from: string; to: string; cutoff: string; source?: string }) {
+    const d = await this.loader.load(athleteId, q.cutoff);
     return weeklyByMovement({
       planned: d.planned,
       observed: bySource(d.observed, q.source),
@@ -204,19 +204,19 @@ export class QueryService {
       references: d.references,
     });
   }
-  weeklyMuscles(athleteId: string, q: { from: string; to: string; cutoff: string; source?: string }) {
+  async weeklyMuscles(athleteId: string, q: { from: string; to: string; cutoff: string; source?: string }) {
     return weeklyByMuscle(
-      bySource(this.loader.load(athleteId, q.cutoff).observed, q.source),
+      bySource((await this.loader.load(athleteId, q.cutoff)).observed, q.source),
       q.from,
       q.to,
       q.cutoff,
     );
   }
-  weekCompare(
+  async weekCompare(
     athleteId: string,
     q: { lift: Lift | 'ALL'; exercise?: string; cutoff: string; source?: string },
   ) {
-    const d = this.loader.load(athleteId, q.cutoff);
+    const d = await this.loader.load(athleteId, q.cutoff);
     return compareWeeks({
       observed: bySource(d.observed, q.source),
       cutoff: q.cutoff,
@@ -224,7 +224,7 @@ export class QueryService {
       references: d.references,
     });
   }
-  comparePeriods(
+  async comparePeriods(
     athleteId: string,
     q: {
       aFrom: string;
@@ -237,7 +237,7 @@ export class QueryService {
       source?: string;
     },
   ) {
-    const d = this.loader.load(athleteId, q.cutoff);
+    const d = await this.loader.load(athleteId, q.cutoff);
     return comparePeriods({
       observed: bySource(d.observed, q.source),
       a: { from: q.aFrom, to: q.aTo },
@@ -249,8 +249,8 @@ export class QueryService {
   }
 
   /** Series de rendimiento por método (con velas OHLC solo si hay ≥ 2 observaciones comparables), carga solo en días con registro y recuperación. */
-  series(athleteId: string, q: { from: string; to: string; cutoff: string; source?: string }) {
-    const d = this.loader.load(athleteId, q.cutoff);
+  async series(athleteId: string, q: { from: string; to: string; cutoff: string; source?: string }) {
+    const d = await this.loader.load(athleteId, q.cutoff);
     const obs = bySource(d.observed, q.source);
     const perf = performanceSeries(obs, q.cutoff);
     return {
@@ -266,8 +266,8 @@ export class QueryService {
     };
   }
 
-  annotations(athleteId: string, q: { from: string; to: string }) {
-    const d = this.loader.load(athleteId);
+  async annotations(athleteId: string, q: { from: string; to: string }) {
+    const d = await this.loader.load(athleteId);
     return annotations({
       changes: d.events.map((e) => ({
         id: e.id,
@@ -280,26 +280,28 @@ export class QueryService {
         appliedOn: i.appliedOn,
         description: i.appliedDescription,
       })),
-      competitions: this.history
-        .listCompetitions(athleteId)
-        .map((c) => ({ id: c.id, date: c.date, name: c.name })),
+      competitions: (await this.history.listCompetitions(athleteId)).map((c) => ({
+        id: c.id,
+        date: c.date,
+        name: c.name,
+      })),
       from: q.from,
       to: q.to,
     });
   }
 
-  macros(athleteId: string) {
-    return this.programming.listMacros(athleteId);
+  async macros(athleteId: string) {
+    return await this.programming.listMacros(athleteId);
   }
-  macro(athleteId: string, id: string, cutoff: string) {
-    const d = this.loader.load(athleteId, cutoff);
+  async macro(athleteId: string, id: string, cutoff: string) {
+    const d = await this.loader.load(athleteId, cutoff);
     const macro = d.macros.find((m) => m.id === id);
     if (!macro) throw new NotFoundError('Macro inexistente');
     return macroSummary({ macro, mesos: d.mesos, planned: d.planned, cutoff });
   }
   /** Macro activo. Con varios activos devuelve el de inicio más reciente (o el pedido por id) e informa los demás: no se elige en silencio. */
-  activeMacro(athleteId: string, cutoff: string, macroId?: string) {
-    const d = this.loader.load(athleteId, cutoff);
+  async activeMacro(athleteId: string, cutoff: string, macroId?: string) {
+    const d = await this.loader.load(athleteId, cutoff);
     const actives = d.macros.filter((m) => m.status === 'activo');
     const macro = macroId ? (d.macros.find((m) => m.id === macroId) ?? null) : (actives[0] ?? null);
     if (macroId && !macro) throw new NotFoundError('Macro inexistente');
@@ -316,8 +318,8 @@ export class QueryService {
         .map((m) => ({ id: m.id, name: m.name, startDate: m.startDate })),
     };
   }
-  meso(athleteId: string, blockKey: string, cutoff: string) {
-    const d = this.loader.load(athleteId, cutoff);
+  async meso(athleteId: string, blockKey: string, cutoff: string) {
+    const d = await this.loader.load(athleteId, cutoff);
     // un meso creado y todavía sin series existe (resumen vacío); solo es 404 si no hay ni meso ni series
     if (!d.planned.some((s) => s.blockKey === blockKey) && !d.mesos.some((m) => m.blockKey === blockKey))
       throw new NotFoundError('Meso inexistente');
@@ -336,8 +338,8 @@ export class QueryService {
   }
 
   /** Detalle de una exposición: sus instancias (programación y ejecución), segmentos de comparabilidad y origen de la identidad. */
-  exposure(athleteId: string, exposureId: string, cutoff: string) {
-    const d = this.loader.load(athleteId, cutoff);
+  async exposure(athleteId: string, exposureId: string, cutoff: string) {
+    const d = await this.loader.load(athleteId, cutoff);
     const sets = d.planned.filter((s) => s.exposureId === exposureId);
     if (!sets.length) throw new NotFoundError('Exposición inexistente');
     const amap = new Map(d.actual.map((a) => [a.plannedSetId, a]));
@@ -376,7 +378,7 @@ export class QueryService {
       priority: sets[0]!.priority,
       exercise: sets[0]!.exerciseName,
       identity: {
-        source: this.recordsRepo.identitySource(athleteId, exposureId),
+        source: await this.recordsRepo.identitySource(athleteId, exposureId),
         links: d.appliedLinks.filter((l) => l.to === exposureId || l.from === exposureId),
         note: 'La identidad es estable al mover la sesión; compartirla NO implica comparabilidad (ver segmentos).',
       },
@@ -385,10 +387,10 @@ export class QueryService {
     };
   }
   /** Abre los registros que sustentan una recomendación: sesiones (con series previstas y hechas), check-ins y revisiones. */
-  evidence(athleteId: string, key: string, cutoff: string) {
-    const dec = this.decisions.get(athleteId, key);
+  async evidence(athleteId: string, key: string, cutoff: string) {
+    const dec = await this.decisions.get(athleteId, key);
     if (!dec) throw new NotFoundError('Recomendación inexistente');
-    const d = this.loader.load(athleteId, cutoff);
+    const d = await this.loader.load(athleteId, cutoff);
     const amap = new Map(d.actual.map((a) => [a.plannedSetId, a]));
     const refs = dec.explanation?.refs ?? [];
     return {

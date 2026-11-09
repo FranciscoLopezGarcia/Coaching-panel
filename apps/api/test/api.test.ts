@@ -20,14 +20,14 @@ const post = async (url: string, payload: unknown) =>
   app.inject({ method: 'POST', url, payload: payload as object });
 
 beforeEach(async () => {
-  ctx = buildContext({ ...loadConfig({}), dbPath: ':memory:' }, openDb(':memory:'), () => TODAY);
+  ctx = await buildContext({ ...loadConfig({}), dbPath: ':memory:' }, await openDb(':memory:'), () => TODAY);
   app = await buildApp(ctx);
-  ids = seedDemoData(ctx);
+  ids = await seedDemoData(ctx);
 });
 
 describe('API · recorrido registro → evaluación → decisión del coach', () => {
   it('atleta que progresa: propuesta principal pendiente; el coach la aprueba sin tocar la programación', async () => {
-    const planBefore = ctx.records.listPlanned(A());
+    const planBefore = await ctx.records.listPlanned(A());
     const ev = (await post(`/api/athletes/${A()}/evaluate`, {})).json();
     expect(ev.evaluation.lifts.SQ.principal.status).toBe('ventana_expresion');
     expect(
@@ -51,7 +51,7 @@ describe('API · recorrido registro → evaluación → decisión del coach', ()
     expect(again.decisions.find((d: { key: string }) => d.key === principal.key).coachDecision).toBe(
       'Aprobada',
     );
-    expect(ctx.records.listPlanned(A())).toEqual(planBefore);
+    expect(await ctx.records.listPlanned(A())).toEqual(planBefore);
   });
 
   it('molestia reciente ⇒ revisión del coach en squat y sin propuestas ofensivas', async () => {
@@ -112,7 +112,7 @@ describe('API · versiones del plan e historial automático', () => {
   });
 
   it('reimportar el mismo plan no crea versiones ni eventos; los borradores no generan eventos', async () => {
-    const planned = ctx.records.listActivePlanned(A()).map((s) => ({ ...s }));
+    const planned = (await ctx.records.listActivePlanned(A())).map((s) => ({ ...s }));
     const before = (await get(`/api/athletes/${A()}/plan-versions`)).length;
     const again = (
       await post(`/api/athletes/${A()}/plan`, { sets: planned.reverse(), replace: true })
@@ -129,7 +129,7 @@ describe('API · versiones del plan e historial automático', () => {
     expect(draft.status).toBe('borrador');
     expect(draft.event).toBeNull();
     expect((await get(`/api/athletes/${A()}/history`)).events).toHaveLength(1); // sigue 1
-    expect(ctx.records.listActivePlanned(A()).some((s) => s.reps === 6)).toBe(false); // el plan vigente no cambió
+    expect((await ctx.records.listActivePlanned(A())).some((s) => s.reps === 6)).toBe(false); // el plan vigente no cambió
     const applied = (
       await post(`/api/athletes/${A()}/plan`, { sets: edited, status: 'aplicado', replace: true })
     ).json();
@@ -139,13 +139,13 @@ describe('API · versiones del plan e historial automático', () => {
   });
 
   it('retirar series con ejecución las conserva como historial; sin ejecución se borran', async () => {
-    const planned = ctx.records.listActivePlanned(B()).map((s) => ({ ...s }));
+    const planned = (await ctx.records.listActivePlanned(B())).map((s) => ({ ...s }));
     const keep = planned.filter((s) => s.lift !== 'SQ' || s.sessionKey !== 'b-sq-B1-1');
     const r = (await post(`/api/athletes/${B()}/plan`, { sets: keep, replace: true })).json();
     expect(r.retired).toBe(3);
-    expect(ctx.records.listActual(B()).length).toBeGreaterThan(0);
-    expect(ctx.records.listPlanned(B()).some((s) => s.sessionKey === 'b-sq-B1-1')).toBe(true); // historial
-    expect(ctx.records.listActivePlanned(B()).some((s) => s.sessionKey === 'b-sq-B1-1')).toBe(false);
+    expect((await ctx.records.listActual(B())).length).toBeGreaterThan(0);
+    expect((await ctx.records.listPlanned(B())).some((s) => s.sessionKey === 'b-sq-B1-1')).toBe(true); // historial
+    expect((await ctx.records.listActivePlanned(B())).some((s) => s.sessionKey === 'b-sq-B1-1')).toBe(false);
   });
 
   it('el motivo del coach es opcional y se puede agregar después', async () => {
@@ -258,7 +258,7 @@ describe('API · validación y errores', () => {
     expect(r.statusCode).toBe(422);
   });
   it('rechaza un plan con ids de serie duplicados (no se fusionan en silencio)', async () => {
-    const one = ctx.records.listActivePlanned(A())[0]!;
+    const one = (await ctx.records.listActivePlanned(A()))[0]!;
     const r = await post(`/api/athletes/${A()}/plan`, { sets: [one, one] });
     expect(r.statusCode).toBe(422);
     expect(r.json().details.duplicates).toEqual([one.id]);

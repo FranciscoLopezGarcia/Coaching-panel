@@ -8,7 +8,6 @@ import {
 } from '@coaching/engine';
 import type { ImportPlanInput } from '@coaching/contracts';
 import type { Db } from '../db/connection.js';
-import { transaction } from '../db/connection.js';
 import type { HistoryRepo } from '../repositories/history.js';
 import type { RecordsRepo } from '../repositories/records.js';
 import { UnprocessableError } from './errors.js';
@@ -121,11 +120,11 @@ export class PlanService {
   ) {}
 
   /** Estado resultante de aplicar `input` sobre el plan vigente (sin guardar nada). Sirve para vistas previas. */
-  resolve(
+  async resolve(
     athleteId: string,
     input: ImportPlanInput,
     stepKg?: number,
-  ): { current: PlannedSet[]; next: PlannedSet[]; derivedIdentity: string[] } {
+  ): Promise<{ current: PlannedSet[]; next: PlannedSet[]; derivedIdentity: string[] }> {
     const seen = new Set<string>();
     const dup = input.sets.filter((s) => (seen.has(s.id) ? true : (seen.add(s.id), false))).map((s) => s.id);
     if (dup.length)
@@ -133,16 +132,16 @@ export class PlanService {
         'Hay series con el mismo id en el plan: cada serie necesita un id único y estable',
         { duplicates: [...new Set(dup)].slice(0, 10) },
       );
-    const current = this.records.listActivePlanned(athleteId);
+    const current = await this.records.listActivePlanned(athleteId);
     const { sets: incoming, derivedIdentity } = normalizePlan(input.sets, current, stepKg);
     const merged = new Map(current.map((s) => [s.id, s]));
     for (const s of incoming) merged.set(s.id, s);
     return { current, next: input.replace ? incoming : [...merged.values()], derivedIdentity };
   }
 
-  importPlan(athleteId: string, input: ImportPlanInput, stepKg?: number): ImportResult {
-    const { next, derivedIdentity } = this.resolve(athleteId, input, stepKg);
-    const lastApplied = this.history.latestApplied(athleteId);
+  async importPlan(athleteId: string, input: ImportPlanInput, stepKg?: number): Promise<ImportResult> {
+    const { next, derivedIdentity } = await this.resolve(athleteId, input, stepKg);
+    const lastApplied = await this.history.latestApplied(athleteId);
     const warnings = derivedIdentity.length
       ? [
           `${derivedIdentity.length} ejercicio(s) sin exposureId: la identidad se derivó del nombre (${derivedIdentity.slice(0, 5).join(', ')}).`,
@@ -161,14 +160,14 @@ export class PlanService {
     const source = derivedIdentity.length ? ('derivada_del_nombre' as const) : ('declarada' as const);
 
     if (input.status === 'borrador') {
-      const draft = this.history.latestDraft(athleteId);
+      const draft = await this.history.latestDraft(athleteId);
       if (lastApplied && plansEqual(lastApplied.sets, next))
         return { ...base, note: 'El borrador es igual a la versión aplicada: no se guarda.' };
       if (draft && plansEqual(draft.sets, next))
         return { ...base, version: { id: draft.id, seq: draft.seq }, note: 'El borrador no cambió.' };
-      const v = transaction(this.db, () => {
-        this.history.dropDrafts(athleteId);
-        return this.history.addVersion(athleteId, {
+      const v = await this.db.transaction(async () => {
+        await this.history.dropDrafts(athleteId);
+        return await this.history.addVersion(athleteId, {
           status: 'borrador',
           detectedOn: this.today(),
           effectiveOn: input.effectiveOn ?? null,
@@ -190,13 +189,13 @@ export class PlanService {
         version: { id: lastApplied.id, seq: lastApplied.seq },
         note: 'Sin cambios respecto de la versión aplicada.',
       };
-    return transaction(this.db, () => {
+    return await this.db.transaction(async () => {
       this.records.upsertPlanned(athleteId, next, source);
       const gone = input.replace
-        ? this.records.retireMissing(athleteId, new Set(next.map((s) => s.id)))
+        ? await this.records.retireMissing(athleteId, new Set(next.map((s) => s.id)))
         : { retired: 0, deleted: 0 };
-      this.history.dropDrafts(athleteId);
-      const v: PlanSnapshot = this.history.addVersion(athleteId, {
+      await this.history.dropDrafts(athleteId);
+      const v: PlanSnapshot = await this.history.addVersion(athleteId, {
         status: 'aplicado',
         detectedOn: this.today(),
         effectiveOn: input.effectiveOn ?? null,
@@ -207,7 +206,7 @@ export class PlanService {
       if (lastApplied) {
         const e = diffSnapshots(lastApplied, v);
         if (e.changes.length || e.setChanges.added || e.setChanges.removed || e.setChanges.modified) {
-          this.history.saveEvent(athleteId, e);
+          await this.history.saveEvent(athleteId, e);
           event = e;
         }
       }

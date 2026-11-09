@@ -35,14 +35,18 @@ export function useLive(onChange: () => void): LiveState {
         setState('offline');
       }
     };
+    let sse = true;
     const open = async () => {
-      while (!stopped) {
+      while (!stopped && sse) {
         const h = auth();
         if (!h) return;
         ctrl = new AbortController();
         try {
           const r = await fetch('/api/me/events', { headers: h, signal: ctrl.signal, cache: 'no-store' });
-          if (!r.ok || !r.body) throw new Error('sin canal');
+          if (!r.ok || !r.body) {
+            sse = false; // este servidor no tiene canal en vivo (p. ej. Vercel): solo sondeo, más seguido
+            break;
+          }
           setState('live');
           const reader = r.body.getReader();
           const dec = new TextDecoder();
@@ -68,7 +72,7 @@ export function useLive(onChange: () => void): LiveState {
     };
     void poll();
     void open();
-    const timer = setInterval(() => void poll(), 4000);
+    const timer = setInterval(() => void poll(), 2000);
     const wake = () => document.visibilityState !== 'hidden' && void poll();
     document.addEventListener('visibilitychange', wake);
     window.addEventListener('online', wake);

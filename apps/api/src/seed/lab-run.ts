@@ -37,9 +37,9 @@ if (new Date(`${start}T00:00:00Z`).getUTCDay() !== 1) {
 }
 mkdirSync(dirname(target), { recursive: true });
 const clock = { value: start };
-const ctx = buildContext({ ...loadConfig(), dbPath: target }, undefined, () => clock.value);
+const ctx = await buildContext({ ...loadConfig(), dbPath: target }, undefined, () => clock.value);
 const only = flag('--only')?.split(',');
-const made = createLab(ctx, clock, start, console.log, only);
+const made = await createLab(ctx, clock, start, console.log, only);
 // identificación de la instancia (no requiere migración): la API la expone en /api/health y /api/instance
 const datasetId = `lab-${start}-${createHash('sha1')
   .update(made.map((m) => m.key).join(''))

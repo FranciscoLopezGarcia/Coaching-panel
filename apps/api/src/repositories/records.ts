@@ -70,13 +70,12 @@ const mapPlanned = (r: PRaw): PlannedSet => ({
 export class RecordsRepo {
   constructor(private db: Db) {}
 
-  upsertPlanned(
+  async upsertPlanned(
     athleteId: string,
     sets: PlannedSet[],
     identitySource: 'declarada' | 'derivada_del_nombre' = 'declarada',
-  ): number {
-    const st = this.db
-      .prepare(`INSERT INTO planned_sets (id, athlete_id, session_key, slot_key, exercise_name, lift, planned_date, set_no, reps, target_rpe, planned_kg, is_warmup,
+  ): Promise<number> {
+    const sql = `INSERT INTO planned_sets (id, athlete_id, session_key, slot_key, exercise_name, lift, planned_date, set_no, reps, target_rpe, planned_kg, is_warmup,
         block_key, week_no, day_no, family_key, ref_kg, retired, exposure_id, exposure_role, priority, variant_key, copied_from, planned_kg_source, protocol, identity_source)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?,?,?,?,?)
       ON CONFLICT (athlete_id, id) DO UPDATE SET session_key=excluded.session_key, slot_key=excluded.slot_key, exercise_name=excluded.exercise_name, lift=excluded.lift,
@@ -84,100 +83,110 @@ export class RecordsRepo {
         block_key=excluded.block_key, week_no=excluded.week_no, day_no=excluded.day_no, family_key=excluded.family_key, ref_kg=excluded.ref_kg, retired=0,
         exposure_id=excluded.exposure_id, exposure_role=excluded.exposure_role, priority=excluded.priority, variant_key=excluded.variant_key, copied_from=excluded.copied_from,
         planned_kg_source=excluded.planned_kg_source, protocol=excluded.protocol,
-        identity_source=CASE WHEN planned_sets.identity_source = 'legacy_slot' AND excluded.exposure_id = planned_sets.exposure_id THEN 'legacy_slot' ELSE excluded.identity_source END`);
-    for (const s of sets) {
-      st.run(
-        s.id,
-        athleteId,
-        s.sessionKey,
-        s.slotKey,
-        s.exerciseName,
-        s.lift,
-        s.plannedDate,
-        s.setNo,
-        s.reps,
-        s.targetRpe,
-        s.plannedKg,
-        s.isWarmup ? 1 : 0,
-        s.blockKey,
-        s.weekNo,
-        s.dayNo,
-        s.familyKey,
-        s.refKg,
-        s.exposureId,
-        s.exposureRole,
-        s.priority,
-        s.variantKey,
-        s.copiedFrom,
-        s.plannedKgSource,
-        s.protocol ? JSON.stringify(s.protocol) : null,
-        identitySource,
-      );
-    }
+        identity_source=CASE WHEN planned_sets.identity_source = 'legacy_slot' AND excluded.exposure_id = planned_sets.exposure_id THEN 'legacy_slot' ELSE excluded.identity_source END`;
+    const rows = sets.map((s) => [
+      s.id,
+      athleteId,
+      s.sessionKey,
+      s.slotKey,
+      s.exerciseName,
+      s.lift,
+      s.plannedDate,
+      s.setNo,
+      s.reps,
+      s.targetRpe,
+      s.plannedKg,
+      s.isWarmup ? 1 : 0,
+      s.blockKey,
+      s.weekNo,
+      s.dayNo,
+      s.familyKey,
+      s.refKg,
+      s.exposureId,
+      s.exposureRole,
+      s.priority,
+      s.variantKey,
+      s.copiedFrom,
+      s.plannedKgSource,
+      s.protocol ? JSON.stringify(s.protocol) : null,
+      identitySource,
+    ]);
+    await this.db.runMany(sql, rows);
     return sets.length;
   }
   /** Origen de la identidad de una exposición: 'declarada', 'derivada_del_nombre' o 'legacy_slot' (migrada del esquema anterior). */
-  identitySource(athleteId: string, exposureId: string): string {
-    const r = this.db
-      .prepare('SELECT identity_source FROM planned_sets WHERE athlete_id = ? AND exposure_id = ? LIMIT 1')
-      .get(athleteId, exposureId) as { identity_source: string } | undefined;
+  async identitySource(athleteId: string, exposureId: string): Promise<string> {
+    const r = (await this.db.get(
+      'SELECT identity_source FROM planned_sets WHERE athlete_id = ? AND exposure_id = ? LIMIT 1',
+      athleteId,
+      exposureId,
+    )) as { identity_source: string } | undefined;
     return r?.identity_source ?? 'declarada';
   }
   /** Plan VIGENTE (sin series retiradas): es lo que se versiona. */
-  listActivePlanned(athleteId: string): PlannedSet[] {
+  async listActivePlanned(athleteId: string): Promise<PlannedSet[]> {
     return (
-      this.db
-        .prepare(
-          'SELECT * FROM planned_sets WHERE athlete_id = ? AND retired = 0 ORDER BY planned_date, session_key, set_no',
-        )
-        .all(athleteId) as PRaw[]
+      (await this.db.all(
+        'SELECT * FROM planned_sets WHERE athlete_id = ? AND retired = 0 ORDER BY planned_date, session_key, set_no',
+        athleteId,
+      )) as PRaw[]
     ).map(mapPlanned);
   }
   /** Para el motor: el plan vigente MÁS las series retiradas que tienen ejecución (historial). */
-  listPlanned(athleteId: string): PlannedSet[] {
+  async listPlanned(athleteId: string): Promise<PlannedSet[]> {
     return (
-      this.db
-        .prepare(
-          `SELECT p.* FROM planned_sets p WHERE p.athlete_id = ? AND (p.retired = 0 OR EXISTS (SELECT 1 FROM actual_sets a WHERE a.athlete_id = p.athlete_id AND a.planned_set_id = p.id))
+      (await this.db.all(
+        `SELECT p.* FROM planned_sets p WHERE p.athlete_id = ? AND (p.retired = 0 OR EXISTS (SELECT 1 FROM actual_sets a WHERE a.athlete_id = p.athlete_id AND a.planned_set_id = p.id))
            ORDER BY p.planned_date, p.session_key, p.set_no`,
-        )
-        .all(athleteId) as PRaw[]
+        athleteId,
+      )) as PRaw[]
     ).map(mapPlanned);
   }
   /** Retira del plan vigente lo que no está en `keepIds`: con ejecución queda como historial; sin ejecución se borra. */
-  retireMissing(athleteId: string, keepIds: Set<string>): { retired: number; deleted: number } {
+  async retireMissing(
+    athleteId: string,
+    keepIds: Set<string>,
+  ): Promise<{ retired: number; deleted: number }> {
     let retired = 0;
     let deleted = 0;
-    const rows = this.db
-      .prepare('SELECT id FROM planned_sets WHERE athlete_id = ? AND retired = 0')
-      .all(athleteId) as { id: string }[];
-    const hasActual = this.db.prepare(
-      'SELECT 1 FROM actual_sets WHERE athlete_id = ? AND planned_set_id = ?',
-    );
+    const rows = (await this.db.all(
+      'SELECT id FROM planned_sets WHERE athlete_id = ? AND retired = 0',
+      athleteId,
+    )) as { id: string }[];
     for (const { id } of rows) {
       if (keepIds.has(id)) continue;
-      if (hasActual.get(athleteId, id)) {
-        this.db
-          .prepare('UPDATE planned_sets SET retired = 1 WHERE athlete_id = ? AND id = ?')
-          .run(athleteId, id);
+      if (
+        await this.db.get(
+          'SELECT 1 FROM actual_sets WHERE athlete_id = ? AND planned_set_id = ?',
+          athleteId,
+          id,
+        )
+      ) {
+        await this.db.run(
+          'UPDATE planned_sets SET retired = 1 WHERE athlete_id = ? AND id = ?',
+          athleteId,
+          id,
+        );
         retired++;
       } else {
-        this.db.prepare('DELETE FROM planned_sets WHERE athlete_id = ? AND id = ?').run(athleteId, id);
+        await this.db.run('DELETE FROM planned_sets WHERE athlete_id = ? AND id = ?', athleteId, id);
         deleted++;
       }
     }
     return { retired, deleted };
   }
   /** Devuelve los ids que no existen como series previstas (la ejecución siempre cuelga de una prescripción). */
-  missingPlanned(athleteId: string, ids: string[]): string[] {
-    const st = this.db.prepare('SELECT 1 FROM planned_sets WHERE athlete_id = ? AND id = ?');
-    return ids.filter((id) => !st.get(athleteId, id));
+  async missingPlanned(athleteId: string, ids: string[]): Promise<string[]> {
+    const have = new Set(
+      (await this.db.all<{ id: string }>('SELECT id FROM planned_sets WHERE athlete_id = ?', athleteId)).map(
+        (r) => r.id,
+      ),
+    );
+    return ids.filter((id) => !have.has(id));
   }
-  upsertActual(athleteId: string, sets: ActualSet[], nowIso: string, reason?: string): number {
-    const st = this.db
-      .prepare(`INSERT INTO actual_sets (athlete_id, planned_set_id, status, kg, reps, rpe, performed_on, pain, updated_at) VALUES (?,?,?,?,?,?,?,?,?)
-      ON CONFLICT (athlete_id, planned_set_id) DO UPDATE SET status=excluded.status, kg=excluded.kg, reps=excluded.reps, rpe=excluded.rpe, performed_on=excluded.performed_on, pain=excluded.pain, updated_at=excluded.updated_at`);
-    const cur = this.db.prepare('SELECT * FROM actual_sets WHERE athlete_id = ? AND planned_set_id = ?');
+  async upsertActual(athleteId: string, sets: ActualSet[], nowIso: string, reason?: string): Promise<number> {
+    const upsert = `INSERT INTO actual_sets (athlete_id, planned_set_id, status, kg, reps, rpe, performed_on, pain, updated_at) VALUES (?,?,?,?,?,?,?,?,?)
+      ON CONFLICT (athlete_id, planned_set_id) DO UPDATE SET status=excluded.status, kg=excluded.kg, reps=excluded.reps, rpe=excluded.rpe, performed_on=excluded.performed_on, pain=excluded.pain, updated_at=excluded.updated_at`;
     const pick = (r: ARaw | undefined): ActualSet | null =>
       r
         ? {
@@ -191,14 +200,31 @@ export class RecordsRepo {
           }
         : null;
     for (const s of sets) {
-      const before = pick(cur.get(athleteId, s.plannedSetId) as ARaw | undefined);
-      st.run(athleteId, s.plannedSetId, s.status, s.kg, s.reps, s.rpe, s.performedOn, s.pain, nowIso);
-      logRevision(this.db, athleteId, 'actual_set', s.plannedSetId, before, s, nowIso, reason);
+      const before = pick(
+        (await this.db.get(
+          'SELECT * FROM actual_sets WHERE athlete_id = ? AND planned_set_id = ?',
+          athleteId,
+          s.plannedSetId,
+        )) as ARaw | undefined,
+      );
+      await this.db.run(
+        upsert,
+        athleteId,
+        s.plannedSetId,
+        s.status,
+        s.kg,
+        s.reps,
+        s.rpe,
+        s.performedOn,
+        s.pain,
+        nowIso,
+      );
+      await logRevision(this.db, athleteId, 'actual_set', s.plannedSetId, before, s, nowIso, reason);
     }
     return sets.length;
   }
-  listActual(athleteId: string): ActualSet[] {
-    return (this.db.prepare('SELECT * FROM actual_sets WHERE athlete_id = ?').all(athleteId) as ARaw[]).map(
+  async listActual(athleteId: string): Promise<ActualSet[]> {
+    return ((await this.db.all('SELECT * FROM actual_sets WHERE athlete_id = ?', athleteId)) as ARaw[]).map(
       (r) => ({
         plannedSetId: r.planned_set_id,
         status: r.status,
@@ -210,19 +236,20 @@ export class RecordsRepo {
       }),
     );
   }
-  lastRecordDate(athleteId: string): string | null {
-    const r = this.db
-      .prepare("SELECT MAX(performed_on) AS d FROM actual_sets WHERE athlete_id = ? AND status = 'done'")
-      .get(athleteId) as { d: string | null };
+  async lastRecordDate(athleteId: string): Promise<string | null> {
+    const r = (await this.db.get(
+      "SELECT MAX(performed_on) AS d FROM actual_sets WHERE athlete_id = ? AND status = 'done'",
+      athleteId,
+    )) as { d: string | null };
     return r.d;
   }
-  upsertCheckIn(athleteId: string, c: CheckInInput, reason?: string): void {
-    const before = this.db
-      .prepare(
-        'SELECT date, sleep, energy, motivation, stress, pain FROM checkins WHERE athlete_id = ? AND date = ?',
-      )
-      .get(athleteId, c.date) as CheckInInput | undefined;
-    logRevision(
+  async upsertCheckIn(athleteId: string, c: CheckInInput, reason?: string): Promise<void> {
+    const before = (await this.db.get(
+      'SELECT date, sleep, energy, motivation, stress, pain FROM checkins WHERE athlete_id = ? AND date = ?',
+      athleteId,
+      c.date,
+    )) as CheckInInput | undefined;
+    await logRevision(
       this.db,
       athleteId,
       'checkin',
@@ -232,18 +259,22 @@ export class RecordsRepo {
       new Date().toISOString(),
       reason,
     );
-    this.db
-      .prepare(
-        `INSERT INTO checkins (athlete_id, date, sleep, energy, motivation, stress, pain) VALUES (?,?,?,?,?,?,?)
+    await this.db.run(
+      `INSERT INTO checkins (athlete_id, date, sleep, energy, motivation, stress, pain) VALUES (?,?,?,?,?,?,?)
       ON CONFLICT (athlete_id, date) DO UPDATE SET sleep=excluded.sleep, energy=excluded.energy, motivation=excluded.motivation, stress=excluded.stress, pain=excluded.pain`,
-      )
-      .run(athleteId, c.date, c.sleep, c.energy, c.motivation, c.stress, c.pain);
+      athleteId,
+      c.date,
+      c.sleep,
+      c.energy,
+      c.motivation,
+      c.stress,
+      c.pain,
+    );
   }
-  listCheckIns(athleteId: string): CheckInInput[] {
-    return this.db
-      .prepare(
-        'SELECT date, sleep, energy, motivation, stress, pain FROM checkins WHERE athlete_id = ? ORDER BY date',
-      )
-      .all(athleteId) as unknown as CheckInInput[];
+  async listCheckIns(athleteId: string): Promise<CheckInInput[]> {
+    return (await this.db.all(
+      'SELECT date, sleep, energy, motivation, stress, pain FROM checkins WHERE athlete_id = ? ORDER BY date',
+      athleteId,
+    )) as unknown as CheckInInput[];
   }
 }

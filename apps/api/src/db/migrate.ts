@@ -1,44 +1,44 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { DatabaseSync } from 'node:sqlite';
+import type { Db } from './connection.js';
+import { EMBEDDED_MIGRATIONS } from './migrations.generated.js';
 
-/** Carpeta de migraciones: junto al código (dev) o junto al bundle (dist/migrations). */
-function migrationsDir(): string {
+/** Migraciones del disco (dev/tests) o, si no hay carpeta (bundle de Vercel), las embebidas en el código. */
+function migrationFiles(): { name: string; sql: string }[] {
   const here = dirname(fileURLToPath(import.meta.url));
   for (const c of [
     join(here, 'migrations'),
     join(here, 'db', 'migrations'),
     join(here, '..', 'src', 'db', 'migrations'),
   ]) {
-    if (existsSync(c)) return c;
+    if (existsSync(c))
+      return readdirSync(c)
+        .filter((f) => /^\d+_.+\.sql$/.test(f))
+        .sort()
+        .map((f) => ({ name: f, sql: readFileSync(join(c, f), 'utf8') }));
   }
-  throw new Error('No se encontró la carpeta de migraciones');
+  return EMBEDDED_MIGRATIONS;
 }
 
 /** Migraciones NNN_nombre.sql, aplicadas una sola vez y en orden. Nunca se editan las ya aplicadas. */
-export function runMigrations(db: DatabaseSync): string[] {
-  db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)');
-  const done = new Set(
-    (db.prepare('SELECT name FROM schema_migrations').all() as { name: string }[]).map((r) => r.name),
+export async function runMigrations(db: Db): Promise<string[]> {
+  await db.exec(
+    'CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)',
   );
-  const dir = migrationsDir();
+  const done = new Set(
+    (await db.all<{ name: string }>('SELECT name FROM schema_migrations')).map((r) => r.name),
+  );
   const applied: string[] = [];
-  for (const file of readdirSync(dir)
-    .filter((f) => /^\d+_.+\.sql$/.test(f))
-    .sort()) {
+  for (const { name: file, sql } of migrationFiles()) {
     if (done.has(file)) continue;
-    db.exec('BEGIN');
     try {
-      db.exec(readFileSync(join(dir, file), 'utf8'));
-      db.prepare('INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)').run(
-        file,
-        new Date().toISOString(),
-      );
-      db.exec('COMMIT');
+      // el script y su registro van en un solo bloque: o se aplica todo o nada
+      const stamp = `INSERT INTO schema_migrations (name, applied_at) VALUES ('${file.replace(/'/g, "''")}', '${new Date().toISOString()}');`;
+      await db.exec(`BEGIN;\n${sql}\n${stamp}\nCOMMIT;`);
       applied.push(file);
     } catch (e) {
-      db.exec('ROLLBACK');
+      await db.exec('ROLLBACK').catch(() => undefined);
       throw new Error(`Migración ${file} falló: ${(e as Error).message}`);
     }
   }

@@ -47,13 +47,10 @@ export function useAthleteLive(id: string, onChange: () => void) {
         /* sin red: se reintenta */
       }
     };
-    const es = new EventSource(`/api/athletes/${encodeURIComponent(id)}/events`);
-    es.addEventListener('rev', (e) => seen((JSON.parse((e as MessageEvent).data) as { rev: number }).rev));
-    const t = setInterval(() => !stop && void poll(), 5000);
+    const t = setInterval(() => !stop && void poll(), 3000);
     void poll();
     return () => {
       stop = true;
-      es.close();
       clearInterval(t);
     };
   }, [id]);

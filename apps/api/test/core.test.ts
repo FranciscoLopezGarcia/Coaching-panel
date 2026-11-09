@@ -14,9 +14,13 @@ const status = async (url: string) => (await app.inject({ method: 'GET', url }))
 
 beforeAll(async () => {
   const k = { value: LAB_DEFAULT_START };
-  const ctx = buildContext({ ...loadConfig({}), dbPath: ':memory:' }, openDb(':memory:'), () => '2026-11-08');
+  const ctx = await buildContext(
+    { ...loadConfig({}), dbPath: ':memory:' },
+    await openDb(':memory:'),
+    () => '2026-11-08',
+  );
   app = await buildApp(ctx);
-  ids = Object.fromEntries(createLab(ctx, k, LAB_DEFAULT_START).map((c) => [c.key, c.id]));
+  ids = Object.fromEntries((await createLab(ctx, k, LAB_DEFAULT_START)).map((c) => [c.key, c.id]));
 });
 
 describe('GET /athletes/:id/core', () => {
@@ -124,7 +128,11 @@ describe('GET /tables/*', () => {
 describe('Fatiga entre series con la prescripción (rango de repeticiones y RPE objetivo) y patrones', () => {
   it('3×8-10 con carga fija (10-10-8) y 3×3@7 (6-7-7): cada serie contra lo previsto y contra las demás', async () => {
     const k = { value: '2026-03-02' };
-    const c2 = buildContext({ ...loadConfig({}), dbPath: ':memory:' }, openDb(':memory:'), () => k.value);
+    const c2 = await buildContext(
+      { ...loadConfig({}), dbPath: ':memory:' },
+      await openDb(':memory:'),
+      () => k.value,
+    );
     const app2 = await buildApp(c2);
     const send = (method: 'POST' | 'GET', url: string, payload?: unknown) =>
       app2.inject({ method, url, payload: payload as object });

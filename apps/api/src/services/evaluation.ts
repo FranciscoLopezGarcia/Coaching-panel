@@ -8,7 +8,6 @@ import {
   type DecisionRow,
 } from '@coaching/engine';
 import type { Db } from '../db/connection.js';
-import { transaction } from '../db/connection.js';
 import type { HistoryRepo } from '../repositories/history.js';
 import type { DecisionsRepo } from '../repositories/decisions.js';
 import type { DataLoader } from './data.js';
@@ -28,14 +27,17 @@ export class EvaluationService {
     private history?: HistoryRepo,
   ) {}
 
-  evaluate(athleteId: string, cutoff: string): { evaluation: AthleteEvaluation; decisions: DecisionRow[] } {
-    const d = this.loader.load(athleteId, cutoff);
+  async evaluate(
+    athleteId: string,
+    cutoff: string,
+  ): Promise<{ evaluation: AthleteEvaluation; decisions: DecisionRow[] }> {
+    const d = await this.loader.load(athleteId, cutoff);
     // Solo lo conocido al corte: programación vigente entonces, ejecución, cuestionarios, revisiones y cambios hasta esa fecha.
     const k = knownAt(
       {
         plannedSets: d.planned,
         actualSets: d.actual,
-        snapshots: this.history?.listVersions(athleteId),
+        snapshots: await this.history?.listVersions(athleteId),
         sessionFeedback: d.feedback,
         coachReviews: d.reviews,
         changeEvents: d.events,
@@ -55,15 +57,15 @@ export class EvaluationService {
       changeEvents: k.changeEvents,
       competitionExercises: d.competitionExercises,
     });
-    evaluation.inputFingerprint = inputsFingerprint(this.loader, this.history, athleteId, cutoff);
+    evaluation.inputFingerprint = await inputsFingerprint(this.loader, this.history, athleteId, cutoff);
     const merged = mergeDecisions(
-      this.decisions.list(athleteId),
+      await this.decisions.list(athleteId),
       toDecisionRows(evaluation, d.params),
       cutoff,
     );
-    transaction(this.db, () => {
+    await this.db.transaction(async () => {
       this.decisions.saveAll(athleteId, merged);
-      this.decisions.saveEvaluation(athleteId, evaluation);
+      await this.decisions.saveEvaluation(athleteId, evaluation);
     });
     return { evaluation, decisions: merged };
   }

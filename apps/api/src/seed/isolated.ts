@@ -18,9 +18,9 @@ if (existsSync(target)) {
   process.exit(1);
 }
 const config = { ...loadConfig(), dbPath: target };
-const ctx = buildContext(config);
-const created = seedDemoData(ctx, console.log);
-if (withProjection) seedProjectionDemo(ctx, console.log);
+const ctx = await buildContext(config);
+const created = await seedDemoData(ctx, console.log);
+if (withProjection) await seedProjectionDemo(ctx, console.log);
 console.log(
   `\nBase sintética creada en ${target} (${Object.keys(created).length} atletas, sin datos reales).`,
 );

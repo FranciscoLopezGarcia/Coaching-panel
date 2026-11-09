@@ -15,16 +15,22 @@ type RRaw = {
 /** Referencias de fuerza fechadas. Nunca se editan en el lugar: una referencia nueva se agrega con su fecha y rige desde ahí. */
 export class ReferencesRepo {
   constructor(private db: Db) {}
-  add(
+  async add(
     athleteId: string,
     r: Omit<StrengthReference, 'id' | 'version'> & { version?: string },
-  ): StrengthReference {
+  ): Promise<StrengthReference> {
     const id = randomUUID();
-    this.db
-      .prepare(
-        'INSERT INTO strength_references (id, athlete_id, exercise_name, kg, source, as_of, version, note) VALUES (?,?,?,?,?,?,?,?)',
-      )
-      .run(id, athleteId, r.exerciseName, r.kg, r.source, r.asOf, r.version ?? 'v1', r.note);
+    await this.db.run(
+      'INSERT INTO strength_references (id, athlete_id, exercise_name, kg, source, as_of, version, note) VALUES (?,?,?,?,?,?,?,?)',
+      id,
+      athleteId,
+      r.exerciseName,
+      r.kg,
+      r.source,
+      r.asOf,
+      r.version ?? 'v1',
+      r.note,
+    );
     return {
       id,
       exerciseName: r.exerciseName,
@@ -35,11 +41,12 @@ export class ReferencesRepo {
       note: r.note,
     };
   }
-  list(athleteId: string): StrengthReference[] {
+  async list(athleteId: string): Promise<StrengthReference[]> {
     return (
-      this.db
-        .prepare('SELECT * FROM strength_references WHERE athlete_id = ? ORDER BY exercise_name, as_of')
-        .all(athleteId) as RRaw[]
+      (await this.db.all(
+        'SELECT * FROM strength_references WHERE athlete_id = ? ORDER BY exercise_name, as_of',
+        athleteId,
+      )) as RRaw[]
     ).map((r) => ({
       id: r.id,
       exerciseName: r.exercise_name,

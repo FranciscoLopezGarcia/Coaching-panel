@@ -23,37 +23,47 @@ const principalOf = (
 ) => ev.evaluation.lifts[lift]?.principal?.status;
 
 beforeAll(async () => {
-  ctx = buildContext({ ...loadConfig({}), dbPath: ':memory:' }, openDb(':memory:'), () => clock.value);
+  ctx = await buildContext(
+    { ...loadConfig({}), dbPath: ':memory:' },
+    await openDb(':memory:'),
+    () => clock.value,
+  );
   app = await buildApp(ctx);
-  ids = Object.fromEntries(createLab(ctx, clock, LAB_DEFAULT_START).map((c) => [c.key, c]));
+  ids = Object.fromEntries((await createLab(ctx, clock, LAB_DEFAULT_START)).map((c) => [c.key, c]));
   clock.value = NOW;
 });
 
 describe('Laboratorio · creación', () => {
-  it('crea 6 casos ficticios identificados, con macro, mesos, referencias fechadas, cuestionarios y programación por versiones', () => {
+  it('crea 6 casos ficticios identificados, con macro, mesos, referencias fechadas, cuestionarios y programación por versiones', async () => {
     expect(Object.keys(ids)).toEqual(['A', 'B', 'C', 'D', 'E', 'F']);
     for (const c of LAB_CASES) {
       const a = ids[c.key]!;
       expect(a.name).toMatch(/^LAB-.*\(ficticio\)$/);
-      expect(ctx.programmingRepo.listMacros(a.id)).toHaveLength(1);
-      expect(ctx.programmingRepo.listMesos(a.id).length).toBe(c.blocks.length);
-      expect(ctx.references.list(a.id).length).toBe(c.refs.length);
-      expect(ctx.history.listVersions(a.id)).toHaveLength(c.publishAtWeek.length);
-      expect(ctx.records.listActual(a.id).length).toBeGreaterThan(0);
+      expect(await ctx.programmingRepo.listMacros(a.id)).toHaveLength(1);
+      expect((await ctx.programmingRepo.listMesos(a.id)).length).toBe(c.blocks.length);
+      expect((await ctx.references.list(a.id)).length).toBe(c.refs.length);
+      expect(await ctx.history.listVersions(a.id)).toHaveLength(c.publishAtWeek.length);
+      expect((await ctx.records.listActual(a.id)).length).toBeGreaterThan(0);
     }
   });
-  it('es reproducible: dos creaciones dan exactamente los mismos datos', () => {
-    const c2 = buildContext({ ...loadConfig({}), dbPath: ':memory:' }, openDb(':memory:'), () => clock.value);
+  it('es reproducible: dos creaciones dan exactamente los mismos datos', async () => {
+    const c2 = await buildContext(
+      { ...loadConfig({}), dbPath: ':memory:' },
+      await openDb(':memory:'),
+      () => clock.value,
+    );
     const k2 = { value: LAB_DEFAULT_START };
-    const again = Object.fromEntries(createLab(c2, k2, LAB_DEFAULT_START).map((c) => [c.key, c]));
+    const again = Object.fromEntries((await createLab(c2, k2, LAB_DEFAULT_START)).map((c) => [c.key, c]));
     for (const k of Object.keys(ids)) {
-      expect(c2.records.listActivePlanned(again[k]!.id)).toEqual(ctx.records.listActivePlanned(ids[k]!.id));
-      expect(c2.records.listActual(again[k]!.id)).toEqual(ctx.records.listActual(ids[k]!.id));
-      expect(c2.records.listCheckIns(again[k]!.id)).toEqual(ctx.records.listCheckIns(ids[k]!.id));
+      expect(await c2.records.listActivePlanned(again[k]!.id)).toEqual(
+        await ctx.records.listActivePlanned(ids[k]!.id),
+      );
+      expect(await c2.records.listActual(again[k]!.id)).toEqual(await ctx.records.listActual(ids[k]!.id));
+      expect(await c2.records.listCheckIns(again[k]!.id)).toEqual(await ctx.records.listCheckIns(ids[k]!.id));
     }
   });
-  it('la programación se publicó por bloques con fecha propia (el plan de la semana 13 no existía en la semana 8)', () => {
-    const v = ctx.history.listVersions(ids['A']!.id);
+  it('la programación se publicó por bloques con fecha propia (el plan de la semana 13 no existía en la semana 8)', async () => {
+    const v = await ctx.history.listVersions(ids['A']!.id);
     expect(v.map((x) => x.detectedOn)).toEqual([
       addDays(LAB_DEFAULT_START, -3),
       addDays(LAB_DEFAULT_START, 25),
@@ -68,9 +78,13 @@ describe('Corte de evaluación sin fuga de futuro', () => {
   it('evaluar a un corte pasado no cambia aunque después se agreguen ejecución, cuestionarios, revisiones y una versión de plan nueva', async () => {
     // laboratorio propio: este test agrega datos y no debe contaminar a los demás
     const k = { value: LAB_DEFAULT_START };
-    const c3 = buildContext({ ...loadConfig({}), dbPath: ':memory:' }, openDb(':memory:'), () => k.value);
+    const c3 = await buildContext(
+      { ...loadConfig({}), dbPath: ':memory:' },
+      await openDb(':memory:'),
+      () => k.value,
+    );
     const app3 = await buildApp(c3);
-    const f = createLab(c3, k, LAB_DEFAULT_START, undefined, ['F'])[0]!;
+    const f = (await createLab(c3, k, LAB_DEFAULT_START, undefined, ['F']))[0]!;
     k.value = NOW;
     const send3 = (method: 'POST' | 'PUT' | 'PATCH', url: string, payload?: unknown) =>
       app3.inject({ method, url, payload: payload as object });
@@ -89,8 +103,7 @@ describe('Corte de evaluación sin fuga de futuro', () => {
       );
     // información POSTERIOR al corte: ejecución de las semanas 13–14 (ya programadas), cuestionarios, revisión técnica, fatiga y un cambio de plan
     const id = f.id;
-    const future = c3.records
-      .listActivePlanned(id)
+    const future = (await c3.records.listActivePlanned(id))
       .filter((s) => s.plannedDate > cutoff && s.weekNo >= 1 && s.plannedDate >= wk(12))
       .slice(0, 10);
     await send3('POST', `/api/athletes/${id}/sets`, {
@@ -118,7 +131,7 @@ describe('Corte de evaluación sin fuga de futuro', () => {
       verdict: 'no_comparable',
       note: 'posterior',
     });
-    const sess = c3.records.listActivePlanned(id).find((s) => s.plannedDate <= cutoff)!;
+    const sess = (await c3.records.listActivePlanned(id)).find((s) => s.plannedDate <= cutoff)!;
     await send3('POST', `/api/athletes/${id}/session-feedback`, {
       sessionKey: sess.sessionKey,
       endFatigue: 10,
@@ -185,10 +198,10 @@ describe('Condiciones de cada caso (sin etiquetas forzadas)', () => {
   });
   it('B · deterioro: el esfuerzo real supera al objetivo, el rendimiento cae y los cuestionarios empeoran', async () => {
     const id = ids['B']!.id;
-    const pesada = ctx.records
-      .listActivePlanned(id)
-      .filter((s) => s.sessionKey.endsWith('squat-comp') && !s.isWarmup);
-    const act = new Map(ctx.records.listActual(id).map((a) => [a.plannedSetId, a]));
+    const pesada = (await ctx.records.listActivePlanned(id)).filter(
+      (s) => s.sessionKey.endsWith('squat-comp') && !s.isWarmup,
+    );
+    const act = new Map((await ctx.records.listActual(id)).map((a) => [a.plannedSetId, a]));
     const dev = (w: number) => {
       const xs = pesada.filter(
         (s) =>
@@ -199,7 +212,7 @@ describe('Condiciones de cada caso (sin etiquetas forzadas)', () => {
     };
     expect(dev(2)).toBeLessThanOrEqual(0);
     expect(dev(11)).toBeGreaterThanOrEqual(1);
-    const cks = ctx.records.listCheckIns(id);
+    const cks = await ctx.records.listCheckIns(id);
     expect(cks.at(-1)!.energy!).toBeLessThan(cks[0]!.energy!);
     expect(cks.at(-1)!.stress!).toBeGreaterThan(cks[0]!.stress!);
     const s8 = await evalAt('B', wk(8));
@@ -228,7 +241,7 @@ describe('Condiciones de cada caso (sin etiquetas forzadas)', () => {
     expect(later.metrics.intensity_rel.status).not.toBe('unavailable');
     expect(principalOf(await evalAt('D', wk(10)))).toBe('datos_insuficientes');
     // semana 8 sin registro: no hay series realizadas ese día, y las omitidas siguen siendo omitidas
-    const act = ctx.records.listActual(id);
+    const act = await ctx.records.listActual(id);
     expect(act.filter((a) => a.status === 'skipped').length).toBeGreaterThan(0);
     expect(
       act.some(
@@ -238,14 +251,14 @@ describe('Condiciones de cada caso (sin etiquetas forzadas)', () => {
           a.performedOn < addDays(LAB_DEFAULT_START, 56),
       ),
     ).toBe(false);
-    expect(ctx.records.listCheckIns(id).every((c) => c.date <= wk(3))).toBe(true); // cuestionario antiguo
+    expect((await ctx.records.listCheckIns(id)).every((c) => c.date <= wk(3))).toBe(true); // cuestionario antiguo
   });
   it('E · redistribución: NL semanal constante, 2 → 3 sesiones por semana, misma exposición', async () => {
     const id = ids['E']!.id;
     const w = await get(`/api/athletes/${id}/weekly?from=${LAB_DEFAULT_START}&to=${wk(12)}&cutoff=${wk(12)}`);
     const text = JSON.stringify(w);
     expect(text).toContain('nl');
-    const planned = ctx.records.listActivePlanned(id).filter((s) => !s.isWarmup);
+    const planned = (await ctx.records.listActivePlanned(id)).filter((s) => !s.isWarmup);
     for (let wkn = 1; wkn <= 12; wkn++) {
       const xs = planned.filter(
         (s) =>
@@ -420,11 +433,11 @@ describe('Piloto real · plantilla y comandos de solo lectura', () => {
       'utf8',
     );
     const id = ids['A']!.id;
-    const before = ctx.records.listActivePlanned(id).length;
+    const before = (await ctx.records.listActivePlanned(id)).length;
     const r = (await send('POST', `/api/athletes/${id}/imports/plan-csv`, { csv, mode: 'dry_run' })).json();
     expect(r.parse.ok).toBe(true);
     expect(r.applied).toBeNull();
-    expect(ctx.records.listActivePlanned(id).length).toBe(before);
+    expect((await ctx.records.listActivePlanned(id)).length).toBe(before);
     // aplicar sin token coincidente se rechaza
     expect(
       (await send('POST', `/api/athletes/${id}/imports/plan-csv`, { csv, mode: 'apply' })).statusCode,

@@ -47,7 +47,11 @@ const set = (
 });
 
 beforeAll(async () => {
-  const ctx = buildContext({ ...loadConfig({}), dbPath: ':memory:' }, openDb(':memory:'), () => '2026-11-10');
+  const ctx = await buildContext(
+    { ...loadConfig({}), dbPath: ':memory:' },
+    await openDb(':memory:'),
+    () => '2026-11-10',
+  );
   app = await buildApp(ctx);
   a1 = (await j(call('POST', '/api/athletes', { name: 'Ana' }))).id;
   a2 = (await j(call('POST', '/api/athletes', { name: 'Beto' }))).id;

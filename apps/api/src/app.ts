@@ -13,6 +13,8 @@ import { ExerciseMapRepo, RevisionsRepo } from './repositories/revisions.js';
 import { RecordsRepo } from './repositories/records.js';
 import { ReferencesRepo } from './repositories/references.js';
 import { AccountsRepo } from './repositories/accounts.js';
+import { CoachesRepo } from './repositories/coaches.js';
+import { LiveBus } from './services/live.js';
 import { registerPortalRoutes } from './routes/portal.js';
 import { registerAthleteRoutes } from './routes/athletes.js';
 import { registerConsolidationRoutes } from './routes/consolidation.js';
@@ -57,16 +59,14 @@ export interface AppContext {
   replay: ReplayService;
   projection: ProjectionService;
   loader: DataLoader;
-  live?: import('./services/live.js').LiveBus;
+  coaches: CoachesRepo;
+  live: LiveBus;
   today: () => string;
 }
 
 /** Composición de dependencias (sin estado global): permite tests con DB en memoria y reloj fijo. */
-export function buildContext(
-  config: Config,
-  db: Db = openDb(config.dbPath),
-  today?: () => string,
-): AppContext {
+export async function buildContext(config: Config, db?: Db, today?: () => string): Promise<AppContext> {
+  db ??= await openDb(config.dbPath, { authToken: config.tursoToken });
   const athletes = new AthletesRepo(db);
   const records = new RecordsRepo(db);
   const decisions = new DecisionsRepo(db);
@@ -74,6 +74,8 @@ export function buildContext(
   const observed = new ObservedRepo(db);
   const references = new ReferencesRepo(db);
   const accounts = new AccountsRepo(db);
+  const coaches = new CoachesRepo(db);
+  const live = new LiveBus(db);
   const revisions = new RevisionsRepo(db);
   const exerciseMap = new ExerciseMapRepo(db);
   const interventionsRepo = new InterventionsRepo(db);
@@ -103,6 +105,8 @@ export function buildContext(
     exerciseMap,
     references,
     accounts,
+    coaches,
+    live,
     interventionsRepo,
     programmingRepo,
     loader,
@@ -120,10 +124,8 @@ export function buildContext(
   };
 }
 
-export async function buildApp(
-  ctx: AppContext = buildContext(loadConfig()),
-  opts: { logger?: boolean } = {},
-): Promise<FastifyInstance> {
+export async function buildApp(ctx0?: AppContext, opts: { logger?: boolean } = {}): Promise<FastifyInstance> {
+  const ctx = ctx0 ?? (await buildContext(loadConfig()));
   const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 25 * 1024 * 1024 });
   await app.register(cors, { origin: ctx.config.webOrigin });
   registerErrorHandler(app);
@@ -132,5 +134,7 @@ export async function buildApp(
   registerConsolidationRoutes(app, ctx);
   registerTableRoutes(app);
   registerPortalRoutes(app, ctx);
+  if (ctx.config.coachEmail && ctx.config.coachPassword)
+    await ctx.coaches.ensure(ctx.config.coachEmail, ctx.config.coachPassword, new Date().toISOString());
   return app;
 }

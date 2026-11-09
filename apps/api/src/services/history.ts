@@ -39,8 +39,8 @@ export class HistoryService {
     };
   }
 
-  versions(athleteId: string): PlanVersionRow[] {
-    return this.history.listVersions(athleteId).map((v) => ({
+  async versions(athleteId: string): Promise<PlanVersionRow[]> {
+    return (await this.history.listVersions(athleteId)).map((v) => ({
       id: v.id,
       seq: v.seq,
       status: v.status,
@@ -51,9 +51,12 @@ export class HistoryService {
     }));
   }
 
-  events(athleteId: string, cutoff: string): { events: EventWithFollowUp[]; deviations: Deviation[] } {
-    const d = this.loader.load(athleteId);
-    const events = this.history.listEvents(athleteId);
+  async events(
+    athleteId: string,
+    cutoff: string,
+  ): Promise<{ events: EventWithFollowUp[]; deviations: Deviation[] }> {
+    const d = await this.loader.load(athleteId);
+    const events = await this.history.listEvents(athleteId);
     const inp = { ...this.inputs(d, cutoff), events };
     return {
       events: events.map((event) => ({ event, outcomes: followUps(event, inp) })).reverse(),
@@ -61,14 +64,17 @@ export class HistoryService {
     };
   }
 
-  blocks(athleteId: string, cutoff: string): { blocks: BlockSummary[]; families: FamilySummary[] } {
-    const d = this.loader.load(athleteId);
+  async blocks(
+    athleteId: string,
+    cutoff: string,
+  ): Promise<{ blocks: BlockSummary[]; families: FamilySummary[] }> {
+    const d = await this.loader.load(athleteId);
     const blocks = summarizeBlocks({ ...this.inputs(d, cutoff), events: d.events });
     return { blocks, families: summarizeFamilies(blocks, d.families, d.params) };
   }
 
-  compare(athleteId: string, q: CompareQuery, cutoff: string): Comparison {
-    const d = this.loader.load(athleteId);
+  async compare(athleteId: string, q: CompareQuery, cutoff: string): Promise<Comparison> {
+    const d = await this.loader.load(athleteId);
     return compareBlocks(
       { ...this.inputs(d, cutoff), families: d.families },
       { lift: q.lift, blockKey: q.a },
@@ -79,8 +85,11 @@ export class HistoryService {
   }
 
   /** Carga por bloque y semana, PLANIFICADA y REALIZADA por separado. */
-  load(athleteId: string, cutoff: string): { planned: BlockMetrics[]; actual: BlockMetrics[] } {
-    const d = this.loader.load(athleteId);
+  async load(
+    athleteId: string,
+    cutoff: string,
+  ): Promise<{ planned: BlockMetrics[]; actual: BlockMetrics[] }> {
+    const d = await this.loader.load(athleteId);
     const out = { planned: [] as BlockMetrics[], actual: [] as BlockMetrics[] };
     for (const universe of ['planned', 'actual'] as const) {
       const views = toViews(d.planned, d.actual, universe, cutoff);
@@ -95,11 +104,13 @@ export class HistoryService {
   }
 
   /** E por exposición (benchmark = ejercicio de competencia) y récords REALES de kg por repeticiones, claramente separados del e1RM. */
-  performance(
+  async performance(
     athleteId: string,
     cutoff: string,
-  ): Partial<Record<Lift, { exposures: Exposure[]; records: { reps: number; kg: number; date: string }[] }>> {
-    const d = this.loader.load(athleteId);
+  ): Promise<
+    Partial<Record<Lift, { exposures: Exposure[]; records: { reps: number; kg: number; date: string }[] }>>
+  > {
+    const d = await this.loader.load(athleteId);
     const amap = new Map(d.actual.map((a) => [a.plannedSetId, a]));
     const out: Partial<
       Record<Lift, { exposures: Exposure[]; records: { reps: number; kg: number; date: string }[] }>
@@ -135,8 +146,8 @@ export class HistoryService {
   }
 
   /** Sesiones completas: toda la prescripción (incluye aproximaciones) con ids estables, protocolo y ejecución vinculada por serie. */
-  sessions(athleteId: string): SessionRow[] {
-    const d = this.loader.load(athleteId);
+  async sessions(athleteId: string): Promise<SessionRow[]> {
+    const d = await this.loader.load(athleteId);
     const amap = new Map(d.actual.map((a) => [a.plannedSetId, a]));
     const fat = new Map(d.feedback.map((f) => [f.sessionKey, f.endFatigue]));
     const by = new Map<string, SessionRow>();

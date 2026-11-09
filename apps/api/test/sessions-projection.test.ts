@@ -12,7 +12,7 @@ const get = async (url: string) => (await app.inject({ method: 'GET', url })).js
 const send = (method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', url: string, payload?: unknown) =>
   app.inject({ method, url, payload: payload as object });
 beforeEach(async () => {
-  ctx = buildContext({ ...loadConfig({}), dbPath: ':memory:' }, openDb(':memory:'), () => TODAY);
+  ctx = await buildContext({ ...loadConfig({}), dbPath: ':memory:' }, await openDb(':memory:'), () => TODAY);
   app = await buildApp(ctx);
 });
 const newAthlete = async (name = 'Sintético') =>
@@ -203,7 +203,7 @@ describe('Sesiones y protocolos completos', () => {
       actual: { kg: 120 },
     });
     expect(sets.find((x: { plannedSetId: string }) => x.plannedSetId === 's1-3')).toBeUndefined(); // sin ejecución: se borra
-    expect(ctx.records.listActual(id)).toHaveLength(1);
+    expect(await ctx.records.listActual(id)).toHaveLength(1);
   });
 
   it('agregar series con vista previa; un id repetido nunca pisa lo existente', async () => {
@@ -437,6 +437,6 @@ describe('GET /performance-projection', () => {
     expect((await send('GET', `${base}?exposureId=zzz`)).statusCode).toBe(422);
     expect((await send('GET', `${base}?lift=SQ&blockKey=NOPE`)).statusCode).toBe(404);
     expect((await send('GET', '/api/athletes/nope/performance-projection?lift=SQ')).statusCode).toBe(404);
-    expect(ctx.records.listActual(id)).toHaveLength(18); // solo lectura: no escribió nada
+    expect(await ctx.records.listActual(id)).toHaveLength(18); // solo lectura: no escribió nada
   });
 });

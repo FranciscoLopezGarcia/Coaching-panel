@@ -19,13 +19,13 @@ if (!athleteId || !file) {
   );
   process.exit(2);
 }
-const ctx = buildContext(loadConfig());
-if (!ctx.athletes.get(athleteId)) {
+const ctx = await buildContext(loadConfig());
+if (!(await ctx.athletes.get(athleteId))) {
   console.error(`No existe el atleta ${athleteId}`);
   process.exit(2);
 }
 const apply = flags.has('apply');
-const r = ctx.imports.hevy(athleteId, {
+const r = await ctx.imports.hevy(athleteId, {
   csv: readFileSync(file, 'utf8'),
   mode: apply ? 'apply' : 'dry_run',
   timeZone: opts.get('tz'),

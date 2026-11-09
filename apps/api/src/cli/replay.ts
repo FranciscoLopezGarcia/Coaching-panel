@@ -18,8 +18,8 @@ if (!athleteId || !from || !to) {
   );
   process.exit(2);
 }
-const ctx = buildContext(loadConfig());
-const rep = ctx.replay.run(athleteId, {
+const ctx = await buildContext(loadConfig());
+const rep = await ctx.replay.run(athleteId, {
   from,
   to,
   step: opts.get('step') === 'sessions' ? 'sessions' : 'weekly',

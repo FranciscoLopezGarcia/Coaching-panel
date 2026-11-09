@@ -1,4 +1,4 @@
-import { createRequire } from 'node:module';
+import { openDb } from '../db/connection.js';
 
 /**
  * Corrige en la demo qué ejercicios son movimientos de competición (o sus variantes) y quita los 1RM de accesorios.
@@ -8,8 +8,6 @@ import { createRequire } from 'node:module';
  * Es repetible. Usa la API (API_BASE) para el plan y la base de datos (DB_PATH) para borrar referencias.
  *   DB_PATH=<ruta.sqlite> tsx src/seed/corregir-lift-demo.ts
  */
-const require = createRequire(import.meta.url);
-const { DatabaseSync } = require('node:sqlite') as typeof import('node:sqlite');
 const BASE = process.env.API_BASE ?? 'http://localhost:3200/api';
 const dbPath = process.env.DB_PATH;
 if (!dbPath) {
@@ -27,8 +25,8 @@ const api = async (m: string, p: string, b?: unknown) => {
   if (!r.ok) throw new Error(`${m} ${p} ${r.status} ${JSON.stringify(t).slice(0, 300)}`);
   return t;
 };
-const db = new DatabaseSync(dbPath);
-db.exec('PRAGMA busy_timeout = 5000');
+const db = await openDb(dbPath);
+await db.exec('PRAGMA busy_timeout = 5000');
 const athletes = (await api('GET', '/athletes')) as { id: string; name: string }[];
 for (const a of athletes) {
   const plan = (await api('GET', `/athletes/${a.id}/plan`)) as {
@@ -51,9 +49,11 @@ for (const a of athletes) {
   const accessories = [...new Set(sets.filter((s) => !s.lift).map((s) => s.exerciseName))];
   let removed = 0;
   for (const name of accessories) {
-    const r = db
-      .prepare('DELETE FROM strength_references WHERE athlete_id = ? AND exercise_name = ?')
-      .run(a.id, name);
+    const r = await db.run(
+      'DELETE FROM strength_references WHERE athlete_id = ? AND exercise_name = ?',
+      a.id,
+      name,
+    );
     removed += Number(r.changes);
   }
   console.log(
@@ -61,4 +61,4 @@ for (const a of athletes) {
   );
   for (const [n, c] of [...changed.entries()].slice(0, 10)) console.log(`   · ${n}: ${c}`);
 }
-db.close();
+await db.close();

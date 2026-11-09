@@ -64,11 +64,11 @@ export class DataLoader {
   ) {}
 
   /** `cutoff` recorta lo ejecutado/observado (sin fuga de futuro). La programación se carga completa. */
-  load(athleteId: string, cutoff?: string): AthleteData {
-    const athlete = this.athletes.get(athleteId);
+  async load(athleteId: string, cutoff?: string): Promise<AthleteData> {
+    const athlete = await this.athletes.get(athleteId);
     if (!athlete) throw new NotFoundError('Atleta inexistente');
     const readinessHistory: Readiness[] = [];
-    for (const c of this.records.listCheckIns(athleteId)) {
+    for (const c of await this.records.listCheckIns(athleteId)) {
       const value = readinessOf({
         date: c.date,
         sleep: c.sleep,
@@ -79,14 +79,14 @@ export class DataLoader {
       });
       if (value !== null) readinessHistory.push({ date: c.date, value });
     }
-    const links = this.programming.links(athleteId);
+    const links = await this.programming.links(athleteId);
     const map = new Map(links.map((l) => [l.from, l.to]));
     // Un vínculo EXPLÍCITO reasigna la identidad de exposición; sin vínculo no se infiere nada.
-    const planned = this.records
-      .listPlanned(athleteId)
-      .map((s) => (map.has(s.exposureId) ? { ...s, exposureId: map.get(s.exposureId) as string } : s));
-    const actual = this.records.listActual(athleteId);
-    const activeIds = new Set(this.records.listActivePlanned(athleteId).map((x) => x.id));
+    const planned = (await this.records.listPlanned(athleteId)).map((s) =>
+      map.has(s.exposureId) ? { ...s, exposureId: map.get(s.exposureId) as string } : s,
+    );
+    const actual = await this.records.listActual(athleteId);
+    const activeIds = new Set((await this.records.listActivePlanned(athleteId)).map((x) => x.id));
     const retiredIds = new Set(planned.filter((x) => !activeIds.has(x.id)).map((x) => x.id));
     const top = cutoff ?? '9999-12-31';
     return {
@@ -96,16 +96,19 @@ export class DataLoader {
       planned,
       retiredIds,
       actual,
-      observed: [...observedFromPlan(planned, actual, top), ...this.observed.list(athleteId, { to: top })],
+      observed: [
+        ...observedFromPlan(planned, actual, top),
+        ...(await this.observed.list(athleteId, { to: top })),
+      ],
       readinessHistory,
-      feedback: this.history.listFeedback(athleteId),
-      reviews: this.history.listReviews(athleteId),
-      references: this.references.list(athleteId),
-      interventions: this.interventions.list(athleteId),
-      events: this.history.listEvents(athleteId),
-      macros: this.programming.listMacros(athleteId),
-      mesos: this.programming.listMesos(athleteId),
-      micros: this.programming.listMicros(athleteId),
+      feedback: await this.history.listFeedback(athleteId),
+      reviews: await this.history.listReviews(athleteId),
+      references: await this.references.list(athleteId),
+      interventions: await this.interventions.list(athleteId),
+      events: await this.history.listEvents(athleteId),
+      macros: await this.programming.listMacros(athleteId),
+      mesos: await this.programming.listMesos(athleteId),
+      micros: await this.programming.listMicros(athleteId),
       competitionExercises: athlete.competitionExercises,
       appliedLinks: links.map((l) => ({ from: l.from, to: l.to })),
     };

@@ -23,8 +23,8 @@ if (!athleteId || !file) {
   process.exit(2);
 }
 const config = loadConfig();
-const ctx = buildContext(config);
-const a = ctx.athletes.get(athleteId);
+const ctx = await buildContext(config);
+const a = await ctx.athletes.get(athleteId);
 if (!a) {
   console.error(`No existe el atleta ${athleteId}`);
   process.exit(2);
@@ -32,7 +32,7 @@ if (!a) {
 const apply = flags.has('apply');
 const status = (opts.get('status') ?? 'aplicado') as 'aplicado' | 'borrador';
 const step = stepFor(toEngineParams(a.params), 'SQ' as Lift);
-const r = ctx.imports.planCsv(
+const r = await ctx.imports.planCsv(
   athleteId,
   {
     csv: readFileSync(file, 'utf8'),

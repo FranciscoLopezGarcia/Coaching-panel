@@ -21,24 +21,27 @@ const map = (r: Raw): AthleteRow => ({
 
 export class AthletesRepo {
   constructor(private db: Db) {}
-  create(name: string, competitionExercises: Partial<Record<Lift, string>>): AthleteRow {
+  async create(name: string, competitionExercises: Partial<Record<Lift, string>>): Promise<AthleteRow> {
     const id = randomUUID();
     const createdAt = new Date().toISOString();
-    this.db
-      .prepare(
-        'INSERT INTO athletes (id, name, competition_exercises, params, created_at) VALUES (?,?,?,?,?)',
-      )
-      .run(id, name, JSON.stringify(competitionExercises), '{}', createdAt);
+    await this.db.run(
+      'INSERT INTO athletes (id, name, competition_exercises, params, created_at) VALUES (?,?,?,?,?)',
+      id,
+      name,
+      JSON.stringify(competitionExercises),
+      '{}',
+      createdAt,
+    );
     return { id, name, competitionExercises, params: {}, createdAt };
   }
-  list(): AthleteRow[] {
-    return (this.db.prepare('SELECT * FROM athletes ORDER BY name').all() as Raw[]).map(map);
+  async list(): Promise<AthleteRow[]> {
+    return ((await this.db.all('SELECT * FROM athletes ORDER BY name')) as Raw[]).map(map);
   }
-  get(id: string): AthleteRow | null {
-    const r = this.db.prepare('SELECT * FROM athletes WHERE id = ?').get(id) as Raw | undefined;
+  async get(id: string): Promise<AthleteRow | null> {
+    const r = (await this.db.get('SELECT * FROM athletes WHERE id = ?', id)) as Raw | undefined;
     return r ? map(r) : null;
   }
-  setParams(id: string, params: ParamsInput): void {
-    this.db.prepare('UPDATE athletes SET params = ? WHERE id = ?').run(JSON.stringify(params), id);
+  async setParams(id: string, params: ParamsInput): Promise<void> {
+    await this.db.run('UPDATE athletes SET params = ? WHERE id = ?', JSON.stringify(params), id);
   }
 }

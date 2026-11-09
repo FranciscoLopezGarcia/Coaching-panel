@@ -13,7 +13,7 @@ export interface RevisionRow {
 }
 
 /** Registra una revisión SOLO si el valor cambia (reenviar lo mismo no ensucia el historial). */
-export function logRevision(
+export async function logRevision(
   db: Db,
   athleteId: string,
   entity: RevisionEntity,
@@ -22,12 +22,11 @@ export function logRevision(
   after: object,
   at: string,
   reason?: string | null,
-): void {
+): Promise<void> {
   const a = JSON.stringify(after);
   if (before && JSON.stringify(before) === a) return;
-  db.prepare(
+  await db.run(
     'INSERT INTO record_revisions (athlete_id, entity, entity_key, at, action, before_json, after_json, reason) VALUES (?,?,?,?,?,?,?,?)',
-  ).run(
     athleteId,
     entity,
     key,
@@ -41,10 +40,10 @@ export function logRevision(
 
 export class RevisionsRepo {
   constructor(private db: Db) {}
-  list(
+  async list(
     athleteId: string,
     f: { entity?: RevisionEntity; key?: string; limit: number; offset: number },
-  ): { total: number; items: RevisionRow[] } {
+  ): Promise<{ total: number; items: RevisionRow[] }> {
     const where = ['athlete_id = ?'];
     const args: (string | number)[] = [athleteId];
     if (f.entity) {
@@ -57,11 +56,14 @@ export class RevisionsRepo {
     }
     const w = where.join(' AND ');
     const total = (
-      this.db.prepare(`SELECT COUNT(*) AS n FROM record_revisions WHERE ${w}`).get(...args) as { n: number }
+      (await this.db.get(`SELECT COUNT(*) AS n FROM record_revisions WHERE ${w}`, ...args)) as { n: number }
     ).n;
-    const rows = this.db
-      .prepare(`SELECT * FROM record_revisions WHERE ${w} ORDER BY id DESC LIMIT ? OFFSET ?`)
-      .all(...args, f.limit, f.offset) as {
+    const rows = (await this.db.all(
+      `SELECT * FROM record_revisions WHERE ${w} ORDER BY id DESC LIMIT ? OFFSET ?`,
+      ...args,
+      f.limit,
+      f.offset,
+    )) as {
       id: number;
       entity: RevisionEntity;
       entity_key: string;
@@ -89,14 +91,15 @@ export class RevisionsRepo {
 
 export class ExerciseMapRepo {
   constructor(private db: Db) {}
-  list(
+  async list(
     athleteId: string,
-  ): Record<string, { lift?: 'SQ' | 'BP' | 'DL' | null; variantKey?: string; loadKind?: string }> {
+  ): Promise<Record<string, { lift?: 'SQ' | 'BP' | 'DL' | null; variantKey?: string; loadKind?: string }>> {
     const out: Record<string, { lift?: 'SQ' | 'BP' | 'DL' | null; variantKey?: string; loadKind?: string }> =
       {};
-    for (const r of this.db
-      .prepare('SELECT * FROM hevy_exercise_map WHERE athlete_id = ?')
-      .all(athleteId) as {
+    for (const r of (await this.db.all(
+      'SELECT * FROM hevy_exercise_map WHERE athlete_id = ?',
+      athleteId,
+    )) as {
       title: string;
       lift: 'SQ' | 'BP' | 'DL' | null;
       variant_key: string | null;
@@ -109,24 +112,32 @@ export class ExerciseMapRepo {
       };
     return out;
   }
-  put(
+  async put(
     athleteId: string,
     title: string,
     m: { lift?: 'SQ' | 'BP' | 'DL' | null; variantKey?: string; loadKind?: string },
     at: string,
-  ): void {
-    this.db
-      .prepare(
-        `INSERT INTO hevy_exercise_map (athlete_id, title, lift, variant_key, load_kind, updated_at) VALUES (?,?,?,?,?,?)
+  ): Promise<void> {
+    await this.db.run(
+      `INSERT INTO hevy_exercise_map (athlete_id, title, lift, variant_key, load_kind, updated_at) VALUES (?,?,?,?,?,?)
          ON CONFLICT (athlete_id, title) DO UPDATE SET lift=excluded.lift, variant_key=excluded.variant_key, load_kind=excluded.load_kind, updated_at=excluded.updated_at`,
-      )
-      .run(athleteId, title, m.lift ?? null, m.variantKey ?? null, m.loadKind ?? null, at);
+      athleteId,
+      title,
+      m.lift ?? null,
+      m.variantKey ?? null,
+      m.loadKind ?? null,
+      at,
+    );
   }
-  remove(athleteId: string, title: string): boolean {
+  async remove(athleteId: string, title: string): Promise<boolean> {
     return (
-      this.db
-        .prepare('DELETE FROM hevy_exercise_map WHERE athlete_id = ? AND title = ?')
-        .run(athleteId, title).changes > 0
+      (
+        await this.db.run(
+          'DELETE FROM hevy_exercise_map WHERE athlete_id = ? AND title = ?',
+          athleteId,
+          title,
+        )
+      ).changes > 0
     );
   }
 }

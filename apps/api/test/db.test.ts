@@ -3,11 +3,11 @@ import { openDb } from '../src/db/connection.js';
 import { runMigrations } from '../src/db/migrate.js';
 
 describe('DB · migraciones', () => {
-  it('se aplican una sola vez y crean el esquema completo', () => {
-    const db = openDb(':memory:');
-    expect(runMigrations(db)).toEqual([]); // ya aplicadas por openDb
+  it('se aplican una sola vez y crean el esquema completo', async () => {
+    const db = await openDb(':memory:');
+    expect(await runMigrations(db)).toEqual([]); // ya aplicadas por openDb
     const tables = (
-      db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]
+      (await db.all("SELECT name FROM sqlite_master WHERE type='table'")) as { name: string }[]
     ).map((t) => t.name);
     for (const t of [
       'athletes',
@@ -35,7 +35,7 @@ describe('DB · migraciones', () => {
       expect(tables).toContain(t);
     }
     const applied = (
-      db.prepare('SELECT name FROM schema_migrations ORDER BY name').all() as { name: string }[]
+      (await db.all('SELECT name FROM schema_migrations ORDER BY name')) as { name: string }[]
     ).map((r) => r.name);
     expect(applied).toEqual([
       '001_init.sql',
@@ -44,47 +44,49 @@ describe('DB · migraciones', () => {
       '004_handoff.sql',
       '005_portal_atleta.sql',
       '006_notas_atleta.sql',
+      '007_coach_y_tiempo_real.sql',
     ]);
   });
-  it('las restricciones impiden RPE/molestia fuera de rango y ejecución sin prescripción', () => {
-    const db = openDb(':memory:');
-    db.prepare(
-      "INSERT INTO athletes (id,name,competition_exercises,created_at) VALUES ('a','n','{}','x')",
-    ).run();
-    db.prepare(
+  it('las restricciones impiden RPE/molestia fuera de rango y ejecución sin prescripción', async () => {
+    const db = await openDb(':memory:');
+    await db.run("INSERT INTO athletes (id,name,competition_exercises,created_at) VALUES ('a','n','{}','x')");
+    await db.run(
       "INSERT INTO planned_sets (id,athlete_id,session_key,slot_key,exercise_name,planned_date,set_no,reps) VALUES ('p','a','s','l','e','2026-01-01',1,5)",
-    ).run();
-    expect(() =>
-      db
-        .prepare(
-          "INSERT INTO actual_sets (athlete_id,planned_set_id,status,rpe,updated_at) VALUES ('a','p','done',11,'x')",
-        )
-        .run(),
-    ).toThrow();
-    expect(() =>
-      db
-        .prepare(
-          "INSERT INTO actual_sets (athlete_id,planned_set_id,status,updated_at) VALUES ('a','no-existe','done','x')",
-        )
-        .run(),
-    ).toThrow();
-    expect(() =>
-      db
-        .prepare("INSERT INTO session_feedback (athlete_id,session_key,end_fatigue) VALUES ('a','s',11)")
-        .run(),
-    ).toThrow();
+    );
+    await expect(
+      db.run(
+        "INSERT INTO actual_sets (athlete_id,planned_set_id,status,rpe,updated_at) VALUES ('a','p','done',11,'x')",
+      ),
+    ).rejects.toThrow();
+    await expect(
+      db.run(
+        "INSERT INTO actual_sets (athlete_id,planned_set_id,status,updated_at) VALUES ('a','no-existe','done','x')",
+      ),
+    ).rejects.toThrow();
+    await expect(
+      db.run("INSERT INTO session_feedback (athlete_id,session_key,end_fatigue) VALUES ('a','s',11)"),
+    ).rejects.toThrow();
   });
-  it('una referencia 1RM no positiva es inválida', () => {
-    const db = openDb(':memory:');
-    db.prepare(
-      "INSERT INTO athletes (id,name,competition_exercises,created_at) VALUES ('a','n','{}','x')",
-    ).run();
-    expect(() =>
-      db
-        .prepare(
-          "INSERT INTO planned_sets (id,athlete_id,session_key,slot_key,exercise_name,planned_date,set_no,reps,ref_kg) VALUES ('p','a','s','l','e','2026-01-01',1,5,0)",
-        )
-        .run(),
-    ).toThrow();
+  it('una referencia 1RM no positiva es inválida', async () => {
+    const db = await openDb(':memory:');
+    await db.run("INSERT INTO athletes (id,name,competition_exercises,created_at) VALUES ('a','n','{}','x')");
+    await expect(
+      db.run(
+        "INSERT INTO planned_sets (id,athlete_id,session_key,slot_key,exercise_name,planned_date,set_no,reps,ref_kg) VALUES ('p','a','s','l','e','2026-01-01',1,5,0)",
+      ),
+    ).rejects.toThrow();
+  });
+});
+
+describe('DB · migraciones embebidas', () => {
+  it('el módulo generado para Vercel coincide con los .sql del disco (si falla: node apps/api/scripts/embed-migrations.mjs)', async () => {
+    const { readdirSync, readFileSync } = await import('node:fs');
+    const { EMBEDDED_MIGRATIONS } = await import('../src/db/migrations.generated.js');
+    const dir = new URL('../src/db/migrations/', import.meta.url).pathname;
+    const disk = readdirSync(dir)
+      .filter((f) => /^\d+_.+\.sql$/.test(f))
+      .sort()
+      .map((f) => ({ name: f, sql: readFileSync(dir + f, 'utf8') }));
+    expect(EMBEDDED_MIGRATIONS).toEqual(disk);
   });
 });

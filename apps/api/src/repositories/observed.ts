@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { ObservedSet } from '@coaching/engine';
 import type { Db } from '../db/connection.js';
-import { transaction } from '../db/connection.js';
 
 type ORaw = {
   id: string;
@@ -43,75 +42,75 @@ export interface BatchInfo {
 export class ObservedRepo {
   constructor(private db: Db) {}
 
-  existingKeys(athleteId: string, source: string): Set<string> {
+  async existingKeys(athleteId: string, source: string): Promise<Set<string>> {
     return new Set(
       (
-        this.db
-          .prepare('SELECT external_key FROM observed_sets WHERE athlete_id = ? AND source = ?')
-          .all(athleteId, source) as { external_key: string }[]
+        (await this.db.all(
+          'SELECT external_key FROM observed_sets WHERE athlete_id = ? AND source = ?',
+          athleteId,
+          source,
+        )) as { external_key: string }[]
       ).map((r) => r.external_key),
     );
   }
 
   /** Inserta en una transacción; las filas ya existentes se ignoran (no se duplican ni se pisan). */
-  insertBatch(
+  async insertBatch(
     athleteId: string,
     batch: Omit<BatchInfo, 'id' | 'createdAt'>,
     rows: (ObservedSet & { externalKey: string })[],
     nowIso: string,
-  ): { batchId: string; inserted: number; ignored: number } {
+  ): Promise<{ batchId: string; inserted: number; ignored: number }> {
     const batchId = randomUUID();
-    return transaction(this.db, () => {
-      this.db
-        .prepare(
-          'INSERT INTO import_batches (id, athlete_id, source, kind, parser_version, time_zone, token, summary, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
-        )
-        .run(
-          batchId,
+    return await this.db.transaction(async () => {
+      await this.db.run(
+        'INSERT INTO import_batches (id, athlete_id, source, kind, parser_version, time_zone, token, summary, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+        batchId,
+        athleteId,
+        batch.source,
+        batch.kind,
+        batch.parserVersion,
+        batch.timeZone,
+        batch.token,
+        JSON.stringify(batch.summary),
+        nowIso,
+      );
+      const sql = `INSERT OR IGNORE INTO observed_sets (athlete_id, id, source, batch_id, external_key, session_key, date, exercise_name, exercise_id, lift, variant_key, set_type, kg, reps, rpe, load_kind)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+      const inserted = await this.db.runMany(
+        sql,
+        rows.map((r) => [
           athleteId,
-          batch.source,
-          batch.kind,
-          batch.parserVersion,
-          batch.timeZone,
-          batch.token,
-          JSON.stringify(batch.summary),
-          nowIso,
-        );
-      const st = this.db
-        .prepare(`INSERT OR IGNORE INTO observed_sets (athlete_id, id, source, batch_id, external_key, session_key, date, exercise_name, exercise_id, lift, variant_key, set_type, kg, reps, rpe, load_kind)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
-      let inserted = 0;
-      for (const r of rows)
-        inserted += Number(
-          st.run(
-            athleteId,
-            r.id,
-            r.source,
-            batchId,
-            r.externalKey,
-            r.sessionKey,
-            r.date,
-            r.exerciseName,
-            r.exerciseId,
-            r.lift,
-            r.variantKey,
-            r.setType,
-            r.kg,
-            r.reps,
-            r.rpe,
-            r.loadKind,
-          ).changes,
-        );
+          r.id,
+          r.source,
+          batchId,
+          r.externalKey,
+          r.sessionKey,
+          r.date,
+          r.exerciseName,
+          r.exerciseId,
+          r.lift,
+          r.variantKey,
+          r.setType,
+          r.kg,
+          r.reps,
+          r.rpe,
+          r.loadKind,
+        ]),
+      );
       return { batchId, inserted, ignored: rows.length - inserted };
     });
   }
 
-  list(athleteId: string, o: { source?: string; to?: string } = {}): ObservedSet[] {
-    const rows = this.db
-      .prepare(
-        'SELECT * FROM observed_sets WHERE athlete_id = ? AND (? IS NULL OR source = ?) AND (? IS NULL OR date <= ?) ORDER BY date, session_key, id',
-      )
-      .all(athleteId, o.source ?? null, o.source ?? null, o.to ?? null, o.to ?? null) as ORaw[];
+  async list(athleteId: string, o: { source?: string; to?: string } = {}): Promise<ObservedSet[]> {
+    const rows = (await this.db.all(
+      'SELECT * FROM observed_sets WHERE athlete_id = ? AND (? IS NULL OR source = ?) AND (? IS NULL OR date <= ?) ORDER BY date, session_key, id',
+      athleteId,
+      o.source ?? null,
+      o.source ?? null,
+      o.to ?? null,
+      o.to ?? null,
+    )) as ORaw[];
     return rows.map((r) => ({
       id: r.id,
       source: r.source,
@@ -134,11 +133,12 @@ export class ObservedRepo {
     }));
   }
 
-  batches(athleteId: string): BatchInfo[] {
+  async batches(athleteId: string): Promise<BatchInfo[]> {
     return (
-      this.db
-        .prepare('SELECT * FROM import_batches WHERE athlete_id = ? ORDER BY created_at DESC')
-        .all(athleteId) as {
+      (await this.db.all(
+        'SELECT * FROM import_batches WHERE athlete_id = ? ORDER BY created_at DESC',
+        athleteId,
+      )) as {
         id: string;
         source: string;
         kind: BatchInfo['kind'];

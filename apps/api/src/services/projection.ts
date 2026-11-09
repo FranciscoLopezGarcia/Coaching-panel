@@ -15,9 +15,9 @@ export class ProjectionService {
     private today: () => string,
   ) {}
 
-  run(athleteId: string, q: PerformanceProjectionQuery): PerformanceProjection {
+  async run(athleteId: string, q: PerformanceProjectionQuery): Promise<PerformanceProjection> {
     const cutoff = q.cutoff ?? this.today();
-    const d = this.loader.load(athleteId, cutoff);
+    const d = await this.loader.load(athleteId, cutoff);
     let exercise = q.exercise;
     let variantKey = q.variantKey;
     if (q.exposureId) {
@@ -76,24 +76,22 @@ export class ProjectionService {
       view,
       liftConfigs: d.params.perLift,
       references: d.references,
-      availableOn: this.availability(athleteId),
+      availableOn: await this.availability(athleteId),
     });
   }
 
   /** Fecha en que cada registro quedó disponible, SOLO cuando existe (revisión de creación o lote de importación); si no, no se inventa. */
-  private availability(athleteId: string): Map<string, string> {
+  private async availability(athleteId: string): Promise<Map<string, string>> {
     const m = new Map<string, string>();
-    for (const r of this.db
-      .prepare(
-        "SELECT entity_key, MIN(at) AS at FROM record_revisions WHERE athlete_id = ? AND entity = 'actual_set' AND action = 'create' GROUP BY entity_key",
-      )
-      .all(athleteId) as { entity_key: string; at: string }[])
+    for (const r of (await this.db.all(
+      "SELECT entity_key, MIN(at) AS at FROM record_revisions WHERE athlete_id = ? AND entity = 'actual_set' AND action = 'create' GROUP BY entity_key",
+      athleteId,
+    )) as { entity_key: string; at: string }[])
       m.set(r.entity_key, r.at.slice(0, 10));
-    for (const r of this.db
-      .prepare(
-        'SELECT o.id AS id, b.created_at AS at FROM observed_sets o JOIN import_batches b ON b.id = o.batch_id WHERE o.athlete_id = ?',
-      )
-      .all(athleteId) as { id: string; at: string }[])
+    for (const r of (await this.db.all(
+      'SELECT o.id AS id, b.created_at AS at FROM observed_sets o JOIN import_batches b ON b.id = o.batch_id WHERE o.athlete_id = ?',
+      athleteId,
+    )) as { id: string; at: string }[])
       m.set(r.id, r.at.slice(0, 10));
     return m;
   }

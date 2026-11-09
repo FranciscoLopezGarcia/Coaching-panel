@@ -6,20 +6,26 @@ import type { Db } from '../db/connection.js';
 export class ProgrammingRepo {
   constructor(private db: Db) {}
 
-  createMacro(athleteId: string, m: Omit<MacroMeta, 'id'>): MacroMeta {
+  async createMacro(athleteId: string, m: Omit<MacroMeta, 'id'>): Promise<MacroMeta> {
     const id = randomUUID();
-    this.db
-      .prepare(
-        'INSERT INTO macros (id, athlete_id, name, start_date, end_date, objective, status) VALUES (?,?,?,?,?,?,?)',
-      )
-      .run(id, athleteId, m.name, m.startDate, m.endDate, m.objective, m.status);
+    await this.db.run(
+      'INSERT INTO macros (id, athlete_id, name, start_date, end_date, objective, status) VALUES (?,?,?,?,?,?,?)',
+      id,
+      athleteId,
+      m.name,
+      m.startDate,
+      m.endDate,
+      m.objective,
+      m.status,
+    );
     return { id, ...m };
   }
-  listMacros(athleteId: string): MacroMeta[] {
+  async listMacros(athleteId: string): Promise<MacroMeta[]> {
     return (
-      this.db
-        .prepare('SELECT * FROM macros WHERE athlete_id = ? ORDER BY start_date DESC')
-        .all(athleteId) as {
+      (await this.db.all(
+        'SELECT * FROM macros WHERE athlete_id = ? ORDER BY start_date DESC',
+        athleteId,
+      )) as {
         id: string;
         name: string;
         start_date: string;
@@ -36,20 +42,25 @@ export class ProgrammingRepo {
       status: r.status,
     }));
   }
-  getMacro(athleteId: string, id: string): MacroMeta | null {
-    return this.listMacros(athleteId).find((m) => m.id === id) ?? null;
+  async getMacro(athleteId: string, id: string): Promise<MacroMeta | null> {
+    return (await this.listMacros(athleteId)).find((m) => m.id === id) ?? null;
   }
-  upsertMeso(athleteId: string, m: MesoMeta): void {
-    this.db
-      .prepare(
-        `INSERT INTO mesos (athlete_id, block_key, macro_id, name, start_date, end_date, objective) VALUES (?,?,?,?,?,?,?)
+  async upsertMeso(athleteId: string, m: MesoMeta): Promise<void> {
+    await this.db.run(
+      `INSERT INTO mesos (athlete_id, block_key, macro_id, name, start_date, end_date, objective) VALUES (?,?,?,?,?,?,?)
       ON CONFLICT (athlete_id, block_key) DO UPDATE SET macro_id=excluded.macro_id, name=excluded.name, start_date=excluded.start_date, end_date=excluded.end_date, objective=excluded.objective`,
-      )
-      .run(athleteId, m.blockKey, m.macroId, m.name, m.startDate, m.endDate, m.objective);
+      athleteId,
+      m.blockKey,
+      m.macroId,
+      m.name,
+      m.startDate,
+      m.endDate,
+      m.objective,
+    );
   }
-  listMesos(athleteId: string): MesoMeta[] {
+  async listMesos(athleteId: string): Promise<MesoMeta[]> {
     return (
-      this.db.prepare('SELECT * FROM mesos WHERE athlete_id = ? ORDER BY block_key').all(athleteId) as {
+      (await this.db.all('SELECT * FROM mesos WHERE athlete_id = ? ORDER BY block_key', athleteId)) as {
         block_key: string;
         macro_id: string | null;
         name: string;
@@ -66,19 +77,23 @@ export class ProgrammingRepo {
       objective: r.objective,
     }));
   }
-  upsertMicro(athleteId: string, m: MicroMeta): void {
-    this.db
-      .prepare(
-        `INSERT INTO microcycles (athlete_id, block_key, week_no, start_date, end_date) VALUES (?,?,?,?,?)
+  async upsertMicro(athleteId: string, m: MicroMeta): Promise<void> {
+    await this.db.run(
+      `INSERT INTO microcycles (athlete_id, block_key, week_no, start_date, end_date) VALUES (?,?,?,?,?)
       ON CONFLICT (athlete_id, block_key, week_no) DO UPDATE SET start_date=excluded.start_date, end_date=excluded.end_date`,
-      )
-      .run(athleteId, m.blockKey, m.weekNo, m.startDate, m.endDate);
+      athleteId,
+      m.blockKey,
+      m.weekNo,
+      m.startDate,
+      m.endDate,
+    );
   }
-  listMicros(athleteId: string): MicroMeta[] {
+  async listMicros(athleteId: string): Promise<MicroMeta[]> {
     return (
-      this.db
-        .prepare('SELECT * FROM microcycles WHERE athlete_id = ? ORDER BY block_key, week_no')
-        .all(athleteId) as { block_key: string; week_no: number; start_date: string; end_date: string }[]
+      (await this.db.all(
+        'SELECT * FROM microcycles WHERE athlete_id = ? ORDER BY block_key, week_no',
+        athleteId,
+      )) as { block_key: string; week_no: number; start_date: string; end_date: string }[]
     ).map((r) => ({
       blockKey: r.block_key,
       weekNo: r.week_no,
@@ -87,51 +102,65 @@ export class ProgrammingRepo {
     }));
   }
 
-  saveTemplate(athleteId: string, t: PlanTemplate, nowIso: string): string {
+  async saveTemplate(athleteId: string, t: PlanTemplate, nowIso: string): Promise<string> {
     const id = randomUUID();
-    this.db
-      .prepare('INSERT INTO plan_templates (id, athlete_id, name, payload, created_at) VALUES (?,?,?,?,?)')
-      .run(id, athleteId, t.name, JSON.stringify(t), nowIso);
+    await this.db.run(
+      'INSERT INTO plan_templates (id, athlete_id, name, payload, created_at) VALUES (?,?,?,?,?)',
+      id,
+      athleteId,
+      t.name,
+      JSON.stringify(t),
+      nowIso,
+    );
     return id;
   }
-  getTemplate(athleteId: string, id: string): PlanTemplate | null {
-    const r = this.db
-      .prepare('SELECT payload FROM plan_templates WHERE athlete_id = ? AND id = ?')
-      .get(athleteId, id) as { payload: string } | undefined;
+  async getTemplate(athleteId: string, id: string): Promise<PlanTemplate | null> {
+    const r = (await this.db.get(
+      'SELECT payload FROM plan_templates WHERE athlete_id = ? AND id = ?',
+      athleteId,
+      id,
+    )) as { payload: string } | undefined;
     return r ? (JSON.parse(r.payload) as PlanTemplate) : null;
   }
-  listTemplates(athleteId: string): { id: string; name: string; createdAt: string }[] {
+  async listTemplates(athleteId: string): Promise<{ id: string; name: string; createdAt: string }[]> {
     return (
-      this.db
-        .prepare(
-          'SELECT id, name, created_at FROM plan_templates WHERE athlete_id = ? ORDER BY created_at DESC',
-        )
-        .all(athleteId) as { id: string; name: string; created_at: string }[]
+      (await this.db.all(
+        'SELECT id, name, created_at FROM plan_templates WHERE athlete_id = ? ORDER BY created_at DESC',
+        athleteId,
+      )) as { id: string; name: string; created_at: string }[]
     ).map((r) => ({ id: r.id, name: r.name, createdAt: r.created_at }));
   }
 
-  link(athleteId: string, from: string, to: string, on: string, note: string): void {
-    this.db
-      .prepare(
-        `INSERT INTO exposure_links (athlete_id, from_exposure_id, to_exposure_id, linked_on, note) VALUES (?,?,?,?,?)
+  async link(athleteId: string, from: string, to: string, on: string, note: string): Promise<void> {
+    await this.db.run(
+      `INSERT INTO exposure_links (athlete_id, from_exposure_id, to_exposure_id, linked_on, note) VALUES (?,?,?,?,?)
       ON CONFLICT (athlete_id, from_exposure_id) DO UPDATE SET to_exposure_id=excluded.to_exposure_id, linked_on=excluded.linked_on, note=excluded.note`,
-      )
-      .run(athleteId, from, to, on, note);
+      athleteId,
+      from,
+      to,
+      on,
+      note,
+    );
   }
-  unlink(athleteId: string, from: string): boolean {
+  async unlink(athleteId: string, from: string): Promise<boolean> {
     return (
       Number(
-        this.db
-          .prepare('DELETE FROM exposure_links WHERE athlete_id = ? AND from_exposure_id = ?')
-          .run(athleteId, from).changes,
+        (
+          await this.db.run(
+            'DELETE FROM exposure_links WHERE athlete_id = ? AND from_exposure_id = ?',
+            athleteId,
+            from,
+          )
+        ).changes,
       ) > 0
     );
   }
-  links(athleteId: string): { from: string; to: string; linkedOn: string; note: string }[] {
+  async links(athleteId: string): Promise<{ from: string; to: string; linkedOn: string; note: string }[]> {
     return (
-      this.db
-        .prepare('SELECT * FROM exposure_links WHERE athlete_id = ? ORDER BY from_exposure_id')
-        .all(athleteId) as {
+      (await this.db.all(
+        'SELECT * FROM exposure_links WHERE athlete_id = ? ORDER BY from_exposure_id',
+        athleteId,
+      )) as {
         from_exposure_id: string;
         to_exposure_id: string;
         linked_on: string;

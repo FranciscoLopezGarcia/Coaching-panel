@@ -17,7 +17,7 @@ const send = (method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', url: string, 
   app.inject({ method, url, payload: payload as object });
 
 beforeEach(async () => {
-  ctx = buildContext({ ...loadConfig({}), dbPath: ':memory:' }, openDb(':memory:'), () => TODAY);
+  ctx = await buildContext({ ...loadConfig({}), dbPath: ':memory:' }, await openDb(':memory:'), () => TODAY);
   app = await buildApp(ctx);
 });
 
@@ -153,7 +153,7 @@ describe('A · Programación de punta a punta', () => {
     expect(rpes.filter(([w]: number[]) => w === 1).every(([, r]: number[]) => r === 8)).toBe(true);
 
     // nada de resultados/cuestionarios/completado copiado
-    expect(ctx.records.listActual(id)).toHaveLength(0);
+    expect(await ctx.records.listActual(id)).toHaveLength(0);
     // historial conservado: versiones + eventos automáticos
     expect((await get(`/api/athletes/${id}/plan-versions`)).length).toBeGreaterThanOrEqual(4);
     expect((await get(`/api/athletes/${id}/history`)).events.length).toBeGreaterThanOrEqual(3);
@@ -286,8 +286,8 @@ describe('B · Registro, previsto vs realizado y ediciones con trazabilidad', ()
 
 describe('C · Análisis, D · Intervenciones, E · Historial (sobre la demo sintética)', () => {
   let ids: Record<string, string>;
-  beforeEach(() => {
-    ids = seedDemoData(ctx);
+  beforeEach(async () => {
+    ids = await seedDemoData(ctx);
   });
   const A = () => ids['DEMO A · progresa (sintético)'] as string;
   const C = () => ids['DEMO C · incompleto (sintético)'] as string;

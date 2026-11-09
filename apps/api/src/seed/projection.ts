@@ -9,13 +9,16 @@ export const PROJECTION_DEMO_NAME = 'DEMO H · serie larga (sintético)';
  * Crece con ruido determinista las primeras 18 semanas y luego se estabiliza; las primeras 6 semanas no tienen RPE real (el método por curva aparece después).
  * No es un resultado real ni un caso de validación: sirve para ver todos los estados del contrato.
  */
-export function seedProjectionDemo(ctx: AppContext, log: (m: string) => void = () => {}): string | null {
-  if (ctx.athletes.list().some((a) => a.name === PROJECTION_DEMO_NAME)) {
+export async function seedProjectionDemo(
+  ctx: AppContext,
+  log: (m: string) => void = () => {},
+): Promise<string | null> {
+  if ((await ctx.athletes.list()).some((a) => a.name === PROJECTION_DEMO_NAME)) {
     log(`= ya existe: ${PROJECTION_DEMO_NAME}`);
     return null;
   }
   const today = ctx.today();
-  const a = ctx.athletes.create(PROJECTION_DEMO_NAME, {
+  const a = await ctx.athletes.create(PROJECTION_DEMO_NAME, {
     SQ: 'Squat comp',
     BP: 'Bench comp',
     DL: 'Deadlift comp',
@@ -65,14 +68,14 @@ export function seedProjectionDemo(ctx: AppContext, log: (m: string) => void = (
       });
     }
   }
-  ctx.plans.importPlan(a.id, {
+  await ctx.plans.importPlan(a.id, {
     sets: planned.map((s) => ({ ...s })),
     status: 'aplicado',
     replace: true,
     label: 'Plan sintético largo',
   });
-  ctx.records.upsertActual(a.id, actual, `${today}T12:00:00.000Z`);
-  const macro = ctx.programmingRepo.createMacro(a.id, {
+  await ctx.records.upsertActual(a.id, actual, `${today}T12:00:00.000Z`);
+  const macro = await ctx.programmingRepo.createMacro(a.id, {
     name: 'Macro serie larga',
     startDate: addDays(today, -3 - 7 * (weeks - 1)),
     endDate: null,
@@ -83,7 +86,7 @@ export function seedProjectionDemo(ctx: AppContext, log: (m: string) => void = (
     ['LARGA-1', 0, 14],
     ['LARGA-2', 15, 29],
   ] as const)
-    ctx.programmingRepo.upsertMeso(a.id, {
+    await ctx.programmingRepo.upsertMeso(a.id, {
       blockKey: bk,
       macroId: macro.id,
       name: `Meso ${bk}`,
@@ -91,7 +94,7 @@ export function seedProjectionDemo(ctx: AppContext, log: (m: string) => void = (
       endDate: addDays(today, -3 - 7 * (weeks - 1 - to)),
       objective: null,
     });
-  ctx.evaluation.evaluate(a.id, today);
+  await ctx.evaluation.evaluate(a.id, today);
   log(`+ ${PROJECTION_DEMO_NAME} (${a.id})`);
   return a.id;
 }

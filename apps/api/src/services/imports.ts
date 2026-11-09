@@ -27,17 +27,17 @@ export class ImportService {
     private exerciseMap?: ExerciseMapRepo,
   ) {}
 
-  hevy(athleteId: string, input: HevyImportInput): ImportPreviewResponse {
+  async hevy(athleteId: string, input: HevyImportInput): Promise<ImportPreviewResponse> {
     const opts: HevyOptions = {
       timeZone: input.timeZone ?? this.timeZone,
       // mapeo guardado del atleta; lo enviado en la solicitud tiene prioridad
       exerciseMap: {
-        ...(this.exerciseMap?.list(athleteId) ?? {}),
+        ...((await this.exerciseMap?.list(athleteId)) ?? {}),
         ...(input.exerciseMap ?? {}),
       } as HevyOptions['exerciseMap'],
     };
     const parsed = parseHevyCsv(input.csv, opts);
-    const existing = this.observed.existingKeys(athleteId, 'hevy');
+    const existing = await this.observed.existingKeys(athleteId, 'hevy');
     const preview = previewHevy(parsed, existing, opts);
     if (input.mode === 'dry_run') return { mode: 'dry_run', preview, applied: null };
     if (preview.fatal.length)
@@ -49,7 +49,7 @@ export class ImportService {
       );
     }
     const fresh = parsed.rows.filter((r) => !existing.has(r.externalKey));
-    const applied = this.observed.insertBatch(
+    const applied = await this.observed.insertBatch(
       athleteId,
       {
         source: 'hevy',
@@ -66,16 +66,16 @@ export class ImportService {
   }
 
   /** Programación en el CSV canónico (plan-canonical-v1). La aplicación pasa por el versionado (una versión, un evento). */
-  planCsv(
+  async planCsv(
     athleteId: string,
     input: PlanCsvImportInput,
     stepKg?: number,
-  ): {
+  ): Promise<{
     mode: 'dry_run' | 'apply';
     parse: { ok: boolean; errors: unknown[]; warnings: string[]; summary: unknown; availability: unknown };
     token: string;
     applied: unknown;
-  } {
+  }> {
     const parsed = parseCanonicalPlan(input.csv, { stepKg });
     const sets: PlannedSet[] = parsed.sets;
     const token = fingerprintText(
@@ -101,7 +101,7 @@ export class ImportService {
         'Para aplicar hay que confirmar exactamente lo que se vio en la vista previa: falta o no coincide el confirmToken.',
         { expectedToken: token },
       );
-    const applied = this.plans.importPlan(
+    const applied = await this.plans.importPlan(
       athleteId,
       {
         sets: sets.map((s) => ({ ...s })),

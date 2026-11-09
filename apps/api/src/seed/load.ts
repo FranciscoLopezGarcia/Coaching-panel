@@ -5,28 +5,31 @@ import { addDays, buildDemoAthletes } from './demo.js';
  * Carga los atletas SINTÉTICOS de demostración usando los mismos servicios que la API (idempotente por nombre) y los evalúa al día de hoy.
  * Devuelve nombre → id de los atletas creados en esta corrida.
  */
-export function seedDemoData(ctx: AppContext, log: (m: string) => void = () => {}): Record<string, string> {
+export async function seedDemoData(
+  ctx: AppContext,
+  log: (m: string) => void = () => {},
+): Promise<Record<string, string>> {
   const today = ctx.today();
-  const existing = new Set(ctx.athletes.list().map((a) => a.name));
+  const existing = new Set((await ctx.athletes.list()).map((a) => a.name));
   const created: Record<string, string> = {};
   for (const d of buildDemoAthletes(today)) {
     if (existing.has(d.name)) {
       log(`= ya existe: ${d.name}`);
       continue;
     }
-    const a = ctx.athletes.create(d.name, { SQ: 'Squat comp', BP: 'Bench comp', DL: 'Deadlift comp' });
-    ctx.athletes.setParams(a.id, d.params);
+    const a = await ctx.athletes.create(d.name, { SQ: 'Squat comp', BP: 'Bench comp', DL: 'Deadlift comp' });
+    await ctx.athletes.setParams(a.id, d.params);
     // Versión 1 y, si cambia, versión 2: así el historial automático muestra un cambio real detectado.
-    ctx.plans.importPlan(a.id, {
+    await ctx.plans.importPlan(a.id, {
       sets: d.planBase.map((s) => ({ ...s })),
       status: 'aplicado',
       replace: true,
       label: 'Plan inicial',
     });
-    ctx.records.upsertActual(a.id, d.actual, new Date().toISOString());
+    await ctx.records.upsertActual(a.id, d.actual, new Date().toISOString());
     const changed = JSON.stringify(d.planBase) !== JSON.stringify(d.planned);
     if (changed)
-      ctx.plans.importPlan(a.id, {
+      await ctx.plans.importPlan(a.id, {
         sets: d.planned.map((s) => ({ ...s })),
         status: 'aplicado',
         replace: true,
@@ -34,7 +37,7 @@ export function seedDemoData(ctx: AppContext, log: (m: string) => void = () => {
       });
     // Macro → meso con fechas derivadas de las series previstas (sintético; solo para que el historial tenga estructura).
     const dates = d.planned.map((x) => x.plannedDate).sort();
-    const macro = ctx.programmingRepo.createMacro(a.id, {
+    const macro = await ctx.programmingRepo.createMacro(a.id, {
       name: `Macro de ${d.name.split(' · ')[0]}`,
       startDate: dates[0] as string,
       endDate: null,
@@ -46,7 +49,7 @@ export function seedDemoData(ctx: AppContext, log: (m: string) => void = () => {
         .filter((x) => x.blockKey === bk)
         .map((x) => x.plannedDate)
         .sort();
-      ctx.programmingRepo.upsertMeso(a.id, {
+      await ctx.programmingRepo.upsertMeso(a.id, {
         blockKey: bk as string,
         macroId: macro.id,
         name: `Meso ${bk}`,
@@ -55,13 +58,16 @@ export function seedDemoData(ctx: AppContext, log: (m: string) => void = () => {
         objective: null,
       });
     }
-    d.checkins.forEach((c) => ctx.records.upsertCheckIn(a.id, c));
-    d.feedback.forEach((f) => ctx.history.upsertFeedback(a.id, f));
-    d.reviews.forEach((r) => ctx.history.upsertReview(a.id, r));
-    d.competitions.forEach((c) =>
-      ctx.history.addCompetition(a.id, { name: c.name, date: addDays(today, c.daysAhead), phase: c.phase }),
-    );
-    ctx.evaluation.evaluate(a.id, today);
+    for (const c of d.checkins) await ctx.records.upsertCheckIn(a.id, c);
+    for (const f of d.feedback) await ctx.history.upsertFeedback(a.id, f);
+    for (const r of d.reviews) await ctx.history.upsertReview(a.id, r);
+    for (const c of d.competitions)
+      await ctx.history.addCompetition(a.id, {
+        name: c.name,
+        date: addDays(today, c.daysAhead),
+        phase: c.phase,
+      });
+    await ctx.evaluation.evaluate(a.id, today);
     created[d.name] = a.id;
     log(`+ ${d.name} (${a.id})${changed ? ' · 2 versiones de plan' : ''}`);
   }

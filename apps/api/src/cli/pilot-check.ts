@@ -13,20 +13,20 @@ if (!id) {
   process.exit(2);
 }
 const config = loadConfig();
-const ctx = buildContext(config);
-const a = ctx.athletes.get(id);
+const ctx = await buildContext(config);
+const a = await ctx.athletes.get(id);
 if (!a) {
   console.error(`No existe el atleta ${id}`);
   process.exit(2);
 }
 const cutoff = opts.get('cutoff') ?? ctx.today();
-const planned = ctx.records.listActivePlanned(id);
-const actual = ctx.records.listActual(id);
+const planned = await ctx.records.listActivePlanned(id);
+const actual = await ctx.records.listActual(id);
 const done = actual.filter((x) => x.status === 'done' && x.performedOn && x.performedOn <= cutoff);
-const checkins = ctx.records.listCheckIns(id).filter((c) => c.date <= cutoff);
-const refs = ctx.references.list(id);
-const state = ctx.queries.state(id);
-const versions = ctx.history.listVersions(id);
+const checkins = (await ctx.records.listCheckIns(id)).filter((c) => c.date <= cutoff);
+const refs = await ctx.references.list(id);
+const state = await ctx.queries.state(id);
+const versions = await ctx.history.listVersions(id);
 const rpeDone = done.filter((x) => x.rpe !== null).length;
 const gaps: string[] = [];
 if (!planned.length) gaps.push('No hay programación cargada.');
@@ -47,7 +47,7 @@ else if (
   new Date(Date.parse(`${cutoff}T00:00:00Z`) - 14 * 86_400_000).toISOString().slice(0, 10)
 )
   gaps.push(`Último cuestionario: ${checkins.at(-1)!.date} (más de 14 días antes del corte).`);
-if (!ctx.programmingRepo.listMacros(id).length)
+if (!(await ctx.programmingRepo.listMacros(id)).length)
   gaps.push('No hay macro/meso cargados (la vista por período sigue funcionando).');
 const exercises = [...new Set(planned.map((s) => `${s.exerciseName} [${s.variantKey}] → ${s.exposureId}`))];
 console.log(

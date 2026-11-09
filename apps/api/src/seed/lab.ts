@@ -460,14 +460,14 @@ const caseF: LabCase = {
   },
   checkins: (w) => ({ sleep: 8, energy: w >= 10 ? 9 : 8, motivation: 8, stress: 3, pain: 2 }),
   fatigue: (_w, tag) => (tag === 'sq' || tag === 'bp' ? 4 : null),
-  extra: (ctx, id, d) => {
-    ctx.history.upsertReview(id, {
+  extra: async (ctx, id, d) => {
+    await ctx.history.upsertReview(id, {
       lift: 'BP',
       date: d(11, 3),
       verdict: 'valida',
       note: 'técnica comparable (ficticio)',
     });
-    ctx.history.addCompetition(id, { name: 'Competencia ficticia', date: d(16, 6), phase: 'Pico' });
+    await ctx.history.addCompetition(id, { name: 'Competencia ficticia', date: d(16, 6), phase: 'Pico' });
   },
 };
 
@@ -488,19 +488,19 @@ export interface LabCreated {
 }
 
 /** Crea los casos con un reloj controlado (fechas de publicación coherentes con la historia). Requiere una BD NUEVA. */
-export function createLab(
+export async function createLab(
   ctx: AppContext,
   clock: { value: string },
   start: string,
   log: (m: string) => void = () => {},
   only?: string[],
-): LabCreated[] {
+): Promise<LabCreated[]> {
   const out: LabCreated[] = [];
   const dateOf = (week: number, day: number) => addDays(start, (week - 1) * 7 + (day - 1));
   for (const c of LAB_CASES) {
     if (only && !only.includes(c.key)) continue;
-    const a = ctx.athletes.create(c.name, { SQ: 'Squat comp', BP: 'Bench comp', DL: 'Deadlift comp' });
-    ctx.athletes.setParams(a.id, c.params);
+    const a = await ctx.athletes.create(c.name, { SQ: 'Squat comp', BP: 'Bench comp', DL: 'Deadlift comp' });
+    await ctx.athletes.setParams(a.id, c.params);
     const blockOf = (w: number) => c.blocks.find((b) => w >= b.from && w <= b.to)!;
     const blockKey = (w: number) => `${c.key}-M${c.blocks.indexOf(blockOf(w)) + 1}`;
     const planned: PlannedSet[] = [];
@@ -539,19 +539,19 @@ export function createLab(
       });
     }
     // programación publicada por bloques, cada una con su fecha de publicación (el viernes anterior)
-    c.publishAtWeek.forEach((w, i) => {
+    for (const [i, w] of c.publishAtWeek.entries()) {
       clock.value = addDays(dateOf(w, 1), -3);
       const known = planned.filter((p) => p.plannedDate < dateOf(c.publishAtWeek[i + 1] ?? c.weeks + 1, 1));
-      ctx.plans.importPlan(a.id, {
+      await ctx.plans.importPlan(a.id, {
         sets: known.map((s) => ({ ...s })),
         status: 'aplicado',
         replace: true,
         label: `Publicación semana ${w}`,
       });
-    });
+    }
     // referencias fechadas
     for (const r of c.refs)
-      ctx.references.add(a.id, {
+      await ctx.references.add(a.id, {
         exerciseName: r.exerciseName,
         kg: r.kg,
         source: r.source,
@@ -559,25 +559,24 @@ export function createLab(
         note: r.note,
       });
     // programación estructural
-    const macro = ctx.programmingRepo.createMacro(a.id, {
+    const macro = await ctx.programmingRepo.createMacro(a.id, {
       name: `Macro ${c.key}`,
       startDate: dateOf(1, 1),
       endDate: dateOf(c.weeks, 7),
       objective: c.objective,
       status: 'activo',
     });
-    c.blocks.forEach((b, i) =>
-      ctx.programmingRepo.upsertMeso(a.id, {
+    for (const [i, b] of c.blocks.entries())
+      await ctx.programmingRepo.upsertMeso(a.id, {
         blockKey: `${c.key}-M${i + 1}`,
         macroId: macro.id,
         name: `Meso ${i + 1} (${b.objective})`,
         startDate: dateOf(b.from, 1),
         endDate: dateOf(b.to, 7),
         objective: b.objective,
-      }),
-    );
+      });
     // ejecución (con el id leído del plan guardado, que ya trae las cargas derivadas de protocolos)
-    const stored = new Map(ctx.records.listActivePlanned(a.id).map((s) => [s.id, s]));
+    const stored = new Map((await ctx.records.listActivePlanned(a.id)).map((s) => [s.id, s]));
     const actual: ActualSet[] = [];
     for (const s of c.sessions) {
       s.sets.forEach((_set, k) => {
@@ -597,7 +596,7 @@ export function createLab(
         });
       });
     }
-    ctx.records.upsertActual(
+    await ctx.records.upsertActual(
       a.id,
       actual,
       `${addDays(start, c.executedWeeks * 7)}T12:00:00.000Z`,
@@ -606,7 +605,7 @@ export function createLab(
     // cuestionarios
     for (let w = 1; w <= c.executedWeeks; w++) {
       const q = c.checkins(w);
-      if (q) ctx.records.upsertCheckIn(a.id, { date: dateOf(w, 7), ...q });
+      if (q) await ctx.records.upsertCheckIn(a.id, { date: dateOf(w, 7), ...q });
       for (const s of c.sessions.filter((x) => x.week === w)) {
         const fat = c.fatigue(w, s.tag);
         if (
@@ -616,17 +615,17 @@ export function createLab(
               x.plannedSetId.startsWith(`${c.key.toLowerCase()}-w${w}-d${s.day}-`) && x.status === 'done',
           )
         )
-          ctx.history.upsertFeedback(a.id, {
+          await ctx.history.upsertFeedback(a.id, {
             sessionKey: `${c.key.toLowerCase()}-w${w}-d${s.day}-${slug(s.exercise)}`,
             endFatigue: fat,
           } as SessionFeedback);
       }
     }
-    c.extra?.(ctx, a.id, dateOf);
+    await c.extra?.(ctx, a.id, dateOf);
     // evaluación inicial en el primer corte sugerido con ejecución posterior (la última foto queda visible en el tablero)
     const mid = c.cutoffs[Math.min(1, c.cutoffs.length - 1)]!;
     const cutoffs = c.cutoffs.map((x) => ({ date: dateOf(x.weekEnd, 7), note: x.note }));
-    ctx.evaluation.evaluate(a.id, dateOf(mid.weekEnd, 7));
+    await ctx.evaluation.evaluate(a.id, dateOf(mid.weekEnd, 7));
     log(`+ ${c.name} (${a.id}) · cortes sugeridos: ${cutoffs.map((x) => x.date).join(', ')}`);
     out.push({ key: c.key, name: c.name, id: a.id, cutoffs });
   }

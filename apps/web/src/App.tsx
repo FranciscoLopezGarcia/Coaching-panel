@@ -7,6 +7,10 @@ import { useEffect, useState } from 'react';
 import { AthletePage } from './pages/AthletePage';
 import { Dashboard } from './pages/Dashboard';
 import { AthleteApp } from './athlete/AthleteApp';
+import { CoachLogin } from './coach/CoachLogin';
+import { coachLogout, installCoachAuth, loadCoachSession, type CoachSession } from './coach/auth';
+
+installCoachAuth();
 function useHashRoute() {
   const [hash, setHash] = useState(window.location.hash);
   useEffect(() => {
@@ -16,7 +20,35 @@ function useHashRoute() {
   }, []);
   return hash;
 }
+function useCoachSession() {
+  const [s, setS] = useState<CoachSession | null>(null);
+  const [error, setError] = useState('');
+  const refresh = () =>
+    loadCoachSession()
+      .then((x) => {
+        setS(x);
+        setError('');
+      })
+      .catch((e: Error) => setError(e.message));
+  useEffect(() => {
+    void refresh();
+    window.addEventListener('coach-auth', refresh);
+    return () => window.removeEventListener('coach-auth', refresh);
+  }, []);
+  return { s, error, refresh };
+}
 export function App() {
+  const hash0 = useHashRoute();
+  const coach = useCoachSession();
+  if (!hash0.startsWith('#/atleta')) {
+    if (coach.error) return <p className="error">{coach.error}</p>;
+    if (!coach.s) return <p className="muted">Cargando…</p>;
+    if (coach.s.authRequired && !coach.s.authenticated)
+      return <CoachLogin onDone={() => void coach.refresh()} />;
+  }
+  return <Panel auth={coach.s} />;
+}
+function Panel({ auth }: { auth: CoachSession | null }) {
   const instance = useLoad(async () => {
     const data = await request<InstanceData>('/api/instance');
     configureInstance(data);
@@ -57,13 +89,19 @@ export function App() {
           </a>
         </nav>
         <div className="sidebar-foot">
-          <span className="local-dot" /> Entorno local
+          <span className="local-dot" /> {auth?.authRequired ? 'En línea' : 'Entorno local'}
           <p>
             El motor informa.
             <br />
             Vos decidís.
           </p>
-          <small>Sin autenticación ni roles</small>
+          {auth?.authRequired ? (
+            <button type="button" onClick={() => void coachLogout()}>
+              Salir ({auth.email})
+            </button>
+          ) : (
+            <small>Sin autenticación (local)</small>
+          )}
         </div>
       </aside>
       <div className="workspace">

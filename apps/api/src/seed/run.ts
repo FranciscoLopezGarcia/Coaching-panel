@@ -3,5 +3,5 @@ import { loadConfig } from '../config.js';
 import { seedDemoData } from './load.js';
 
 const config = loadConfig();
-seedDemoData(buildContext(config), console.log);
+await seedDemoData(await buildContext(config), console.log);
 console.log(`Listo (${config.dbPath}).`);

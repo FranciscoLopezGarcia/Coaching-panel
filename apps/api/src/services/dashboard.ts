@@ -23,8 +23,8 @@ export class DashboardService {
     private history: HistoryRepo,
   ) {}
 
-  build(today: string): DashboardData {
-    const list = this.athletes.list();
+  async build(today: string): Promise<DashboardData> {
+    const list = await this.athletes.list();
     const name = new Map(list.map((a) => [a.id, a.name]));
     const data: DashboardData = {
       today,
@@ -35,8 +35,8 @@ export class DashboardService {
       recent: [],
     };
     for (const a of list) {
-      const ev = this.decisions.latestEvaluation(a.id);
-      const rows = this.decisions.list(a.id, 'vigente').filter((r) => r.isPrincipal);
+      const ev = await this.decisions.latestEvaluation(a.id);
+      const rows = (await this.decisions.list(a.id, 'vigente')).filter((r) => r.isPrincipal);
       let review = false;
       for (const r of rows) {
         const base = {
@@ -56,13 +56,12 @@ export class DashboardService {
       data.cards.blocksEnding += (ev?.blocks ?? []).filter(
         (b) => !b.closed && daysBetween(b.endDate, today) >= 0 && daysBetween(b.endDate, today) <= 14,
       ).length;
-      const last = this.records
-        .listCheckIns(a.id)
+      const last = (await this.records.listCheckIns(a.id))
         .map((c) => c.date)
         .sort()
         .pop();
       if (!last || daysBetween(today, last) > 7) data.cards.pendingCheckins++;
-      const lastDone = this.records.lastRecordDate(a.id);
+      const lastDone = await this.records.lastRecordDate(a.id);
       if (lastDone)
         data.recent.push({
           date: lastDone,
@@ -71,7 +70,7 @@ export class DashboardService {
           kind: 'sesion',
           text: 'Última sesión registrada',
         });
-      for (const e of this.history.listEvents(a.id).slice(-2))
+      for (const e of (await this.history.listEvents(a.id)).slice(-2))
         data.recent.push({
           date: e.detectedOn,
           athleteId: a.id,
@@ -88,7 +87,7 @@ export class DashboardService {
           text: 'Evaluación del motor',
         });
     }
-    for (const c of this.history.listCompetitions()) {
+    for (const c of await this.history.listCompetitions()) {
       const daysLeft = daysBetween(c.date, today);
       if (daysLeft >= 0)
         data.competitions.push({
