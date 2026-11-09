@@ -7,6 +7,6 @@ coverage
 *.sqlite-wal
 *.sqlite-shm
 .env
-data/
+/apps/api/data/
 # Datos personales: nunca versionar exports de Hevy ni CSV de entrenamientos
 *.csv
