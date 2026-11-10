@@ -74,7 +74,12 @@ export function registerPortalRoutes(app: FastifyInstance, ctx: AppContext): Por
     }
     return payload;
   });
-  app.get('/api/me/rev', async (req) => ({ rev: await live.rev(await me(req)) }));
+  app.get('/api/me/rev', async (req) => {
+    const t = bearer(req);
+    const rev = t ? await ctx.accounts.revOfToken(t, new Date()) : null;
+    if (rev === null) throw Object.assign(new Error('Iniciá sesión para continuar.'), { statusCode: 401 });
+    return { rev };
+  });
   app.get('/api/me/events', async (req, reply) => stream(req, reply, await me(req)));
   app.get('/api/athletes/:id/rev', async (req) => ({
     rev: await live.rev(parse(idParam, req.params).id),

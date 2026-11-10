@@ -13,7 +13,14 @@ if (!src || !dst) {
   process.exit(2);
 }
 const replace = process.argv.includes('--replace');
-const SKIP = new Set(['schema_migrations', 'athlete_tokens', 'coaches', 'coach_tokens', 'athlete_rev']);
+const SKIP = new Set([
+  'schema_migrations',
+  'athlete_tokens',
+  'athlete_accounts',
+  'coaches',
+  'coach_tokens',
+  'athlete_rev',
+]);
 
 const from = await openDb(src, { migrate: false });
 const to = await openDb(dst, { authToken: process.env.TURSO_AUTH_TOKEN });

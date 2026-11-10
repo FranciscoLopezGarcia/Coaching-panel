@@ -87,6 +87,16 @@ export class AccountsRepo {
     }
     return r.athlete_id;
   }
+  /** Revisión en vivo de quien es dueño del token, en UNA sola consulta (el sondeo del atleta la usa cada pocos segundos). */
+  async revOfToken(token: string, now: Date): Promise<number | null> {
+    const r = await this.db.get<{ rev: number | null }>(
+      `SELECT r.rev AS rev FROM athlete_tokens t LEFT JOIN athlete_rev r ON r.athlete_id = t.athlete_id
+       WHERE t.token_hash = ? AND t.expires_at >= ?`,
+      sha(token),
+      now.toISOString(),
+    );
+    return r ? Number(r.rev ?? 0) : null;
+  }
   async revoke(token: string): Promise<void> {
     await this.db.run('DELETE FROM athlete_tokens WHERE token_hash = ?', sha(token));
   }
