@@ -17,6 +17,7 @@ import { Registration } from '../workspace/Registration';
 import { FollowUp, EvidenceDialog } from '../workspace/FollowUp';
 import { Settings } from '../workspace/Settings';
 import { AthleteAccess } from '../workspace/AthleteAccess';
+import { DeleteAthleteDialog, EditAthleteDialog } from '../workspace/AthleteAdmin';
 import { RecoveryTab } from './athlete/RecoveryTab';
 import { SessionsTab } from './athlete/SessionsTab';
 import { Empty, Message, readSearch, updateSearch, today, shift, number, dateLabel } from '../workspace/ui';
@@ -29,6 +30,7 @@ const tabs = [
   ['config', 'Configuración'],
 ] as const;
 export function AthletePage({ id }: { id: string }) {
+  const [dialog, setDialog] = useState<'' | 'edit' | 'delete'>('');
   const [search, setSearch] = useState(readSearch);
   useEffect(() => {
     const on = () => setSearch(readSearch());
@@ -123,6 +125,26 @@ export function AthletePage({ id }: { id: string }) {
     <Async state={data}>
       {(athlete) => (
         <section className={`athlete-page ${tab === 'registro' ? 'recording' : ''}`}>
+          {dialog === 'edit' && (
+            <EditAthleteDialog
+              id={id}
+              name={athlete.name}
+              competition={athlete.competitionExercises}
+              onClose={() => setDialog('')}
+              onSaved={refresh}
+            />
+          )}
+          {dialog === 'delete' && (
+            <DeleteAthleteDialog
+              id={id}
+              name={athlete.name}
+              onClose={() => setDialog('')}
+              onDeleted={() => {
+                setDialog('');
+                window.location.hash = '#/?focus=plantel';
+              }}
+            />
+          )}
           <div className="row between">
             <a className="back-link" href="#/">
               ← Volver al plantel
@@ -148,6 +170,14 @@ export function AthletePage({ id }: { id: string }) {
                     ? `Evaluado al ${athlete.evaluation.cutoff} · ${athlete.evaluation.rulesVersion}`
                     : 'Sin evaluación disponible'}
                 </p>
+                <div className="row">
+                  <button type="button" onClick={() => setDialog('edit')}>
+                    Editar perfil
+                  </button>
+                  <button type="button" className="danger" onClick={() => setDialog('delete')}>
+                    Eliminar atleta
+                  </button>
+                </div>
               </div>
             </div>
             <div className="row">

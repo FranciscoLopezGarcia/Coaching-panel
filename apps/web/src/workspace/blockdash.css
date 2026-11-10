@@ -1270,3 +1270,18 @@
   color: #a9d0f7;
   font-size: 11px;
 }
+
+button.danger {
+  background: #4a1d1d;
+  border-color: #8a3a3a;
+  color: #ffd9d9;
+}
+button.danger:disabled {
+  opacity: 0.45;
+}
+label.check {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 10px 0;
+}

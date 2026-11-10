@@ -16,6 +16,8 @@ import { AccountsRepo } from './repositories/accounts.js';
 import { CoachesRepo } from './repositories/coaches.js';
 import { LiveBus } from './services/live.js';
 import { registerPortalRoutes } from './routes/portal.js';
+import { registerAdminRoutes } from './routes/admin.js';
+import { BlockAdmin } from './services/blocks.js';
 import { registerAthleteRoutes } from './routes/athletes.js';
 import { registerConsolidationRoutes } from './routes/consolidation.js';
 import { registerErrorHandler } from './routes/http.js';
@@ -60,6 +62,7 @@ export interface AppContext {
   projection: ProjectionService;
   loader: DataLoader;
   coaches: CoachesRepo;
+  blocks: BlockAdmin;
   live: LiveBus;
   today: () => string;
 }
@@ -106,6 +109,7 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
     references,
     accounts,
     coaches,
+    blocks: new BlockAdmin(db, records, programmingRepo, plans),
     live,
     interventionsRepo,
     programmingRepo,
@@ -148,6 +152,7 @@ export async function buildApp(ctx0?: AppContext, opts: { logger?: boolean } = {
   registerConsolidationRoutes(app, ctx);
   registerTableRoutes(app);
   registerPortalRoutes(app, ctx);
+  registerAdminRoutes(app, ctx);
   if (ctx.config.coachEmail && ctx.config.coachPassword)
     await ctx.coaches.ensure(ctx.config.coachEmail, ctx.config.coachPassword, new Date().toISOString());
   return app;

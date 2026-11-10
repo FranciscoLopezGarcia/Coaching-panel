@@ -1,6 +1,8 @@
 import type { SessionRow } from '@coaching/contracts';
 import { dateLabel, today } from './ui';
 import type { Meso } from './api';
+import { useState } from 'react';
+import { DeleteBlockDialog } from './AthleteAdmin';
 
 type Sel = (v: Record<string, string | null>) => void;
 const done = (s: SessionRow) => {
@@ -13,12 +15,16 @@ const done = (s: SessionRow) => {
  * como tarjetas debajo. No cambia datos: solo mueve la selección del contexto.
  */
 export function BlockNavigator({
+  id,
+  onDeleted,
   sessions,
   mesos,
   block,
   week,
   onSelect,
 }: {
+  id: string;
+  onDeleted: () => void;
   sessions: SessionRow[];
   mesos: Meso[];
   block: string;
@@ -26,6 +32,7 @@ export function BlockNavigator({
   onSelect: Sel;
 }) {
   const t = today();
+  const [removing, setRemoving] = useState(false);
   const blocks = [...new Set(sessions.map((s) => s.blockKey))]
     .map((key) => {
       const ss = sessions.filter((s) => s.blockKey === key);
@@ -63,8 +70,28 @@ export function BlockNavigator({
           >
             Bloque siguiente →
           </button>
+          <button
+            type="button"
+            className="danger"
+            disabled={!block || idx < 0}
+            title={block ? 'Eliminar el bloque seleccionado' : 'Elegí un bloque para poder eliminarlo'}
+            onClick={() => setRemoving(true)}
+          >
+            Eliminar bloque
+          </button>
         </div>
       </div>
+      {removing && block && (
+        <DeleteBlockDialog
+          id={id}
+          blockKey={block}
+          onClose={() => setRemoving(false)}
+          onDeleted={() => {
+            setRemoving(false);
+            onDeleted();
+          }}
+        />
+      )}
       <div className="block-strip" role="tablist">
         {blocks.map((b) => (
           <button

@@ -143,6 +143,11 @@ export function Programming({
           <>
             {!!d.sessions.length && (
               <BlockNavigator
+                id={id}
+                onDeleted={() => {
+                  onSelect({ block: null, week: null, session: null });
+                  refresh();
+                }}
                 sessions={d.sessions}
                 mesos={d.mesos}
                 block={block}

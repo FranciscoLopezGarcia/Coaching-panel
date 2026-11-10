@@ -63,6 +63,8 @@ export function registerPortalRoutes(app: FastifyInstance, ctx: AppContext): Por
   app.addHook('onSend', async (req, reply, payload) => {
     if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS' || reply.statusCode >= 400)
       return payload;
+    // al eliminar un atleta no se vuelve a crear su revisión en vivo
+    if (req.method === 'DELETE' && /^\/api\/athletes\/[^/?]+(\?.*)?$/.test(req.url)) return payload;
     const m = /^\/api\/athletes\/([^/?]+)/.exec(req.url);
     if (m) await live.bump(decodeURIComponent(m[1] as string));
     else {

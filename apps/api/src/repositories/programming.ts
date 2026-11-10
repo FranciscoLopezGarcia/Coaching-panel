@@ -77,6 +77,11 @@ export class ProgrammingRepo {
       objective: r.objective,
     }));
   }
+  /** Quita la ficha del bloque (meso) y de sus microciclos. Las series del bloque se tratan aparte (ver BlockAdmin). */
+  async deleteBlockMeta(athleteId: string, blockKey: string): Promise<void> {
+    await this.db.run('DELETE FROM microcycles WHERE athlete_id = ? AND block_key = ?', athleteId, blockKey);
+    await this.db.run('DELETE FROM mesos WHERE athlete_id = ? AND block_key = ?', athleteId, blockKey);
+  }
   async upsertMicro(athleteId: string, m: MicroMeta): Promise<void> {
     await this.db.run(
       `INSERT INTO microcycles (athlete_id, block_key, week_no, start_date, end_date) VALUES (?,?,?,?,?)

@@ -22,7 +22,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "npm run test -ws --if-present",
-    "e2e": "node e2e/athlete.e2e.mjs",
+    "e2e": "node e2e/athlete.e2e.mjs && node e2e/coach.e2e.mjs",
     "ci": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build"
   },
   "devDependencies": {
