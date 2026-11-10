@@ -19,6 +19,11 @@ export function checkPassword(pw: string, stored: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+/** Modo efectivo a partir de los ajustes ya leídos: sesión, si no el del movimiento, si no el del atleta ('*'), si no «completo». */
+export function modeFrom(s: Record<string, ViewMode>, sessionKey: string, lift?: string | null): ViewMode {
+  return s[sessionKey] ?? (lift ? s[`*lift:${lift}`] : undefined) ?? s['*'] ?? 'completo';
+}
+
 /** Cuentas de atleta (email + contraseña con hash scrypt), sesiones de acceso (token aleatorio, se guarda solo su hash) y ajustes de vista. */
 export class AccountsRepo {
   constructor(private db: Db) {}
@@ -172,7 +177,6 @@ export class AccountsRepo {
   }
   /** Modo efectivo de una sesión: su ajuste, si no el del atleta ('*'), si no «completo». */
   async modeFor(athleteId: string, sessionKey: string, lift?: string | null): Promise<ViewMode> {
-    const s = await this.viewSettings(athleteId);
-    return s[sessionKey] ?? (lift ? s[`*lift:${lift}`] : undefined) ?? s['*'] ?? 'completo';
+    return modeFrom(await this.viewSettings(athleteId), sessionKey, lift);
   }
 }

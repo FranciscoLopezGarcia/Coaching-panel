@@ -129,6 +129,20 @@ export async function buildApp(ctx0?: AppContext, opts: { logger?: boolean } = {
   const app = Fastify({ logger: opts.logger ?? false, bodyLimit: 25 * 1024 * 1024 });
   await app.register(cors, { origin: ctx.config.webOrigin });
   registerErrorHandler(app);
+  // Diagnóstico de rendimiento: tiempo total del servidor y consultas a la base por pedido (visible en las herramientas del navegador).
+  app.addHook('onRequest', async (req) => {
+    (req as unknown as { t0: number; q0: number }).t0 = performance.now();
+    (req as unknown as { t0: number; q0: number }).q0 = ctx.db.queries;
+  });
+  app.addHook('onSend', async (req, reply, payload) => {
+    const r = req as unknown as { t0?: number; q0?: number };
+    if (r.t0 !== undefined)
+      reply.header(
+        'server-timing',
+        `app;dur=${Math.round(performance.now() - r.t0)}, db;desc="${ctx.db.queries - (r.q0 ?? 0)} consultas"`,
+      );
+    return payload;
+  });
   registerAthleteRoutes(app, ctx);
   registerHistoryRoutes(app, ctx);
   registerConsolidationRoutes(app, ctx);

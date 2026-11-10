@@ -25,6 +25,8 @@ export interface Db {
   exec(script: string): Promise<void>;
   transaction<T>(fn: () => Promise<T>): Promise<T>;
   close(): Promise<void>;
+  /** Cantidad de consultas enviadas al motor desde que arrancó (para medir cuántas hace cada pedido). */
+  queries: number;
 }
 
 type DatabaseSyncCtor = typeof import('node:sqlite').DatabaseSync;
@@ -33,6 +35,7 @@ const loadSqlite = (): DatabaseSyncCtor =>
   (createRequire(import.meta.url)('node:sqlite') as typeof import('node:sqlite')).DatabaseSync;
 
 class SqliteDb implements Db {
+  queries = 0;
   private readonly in = new AsyncLocalStorage<true>();
   private active: Promise<void> | null = null;
   constructor(private readonly db: InstanceType<DatabaseSyncCtor>) {}
@@ -43,14 +46,17 @@ class SqliteDb implements Db {
   }
   async all<T>(sql: string, ...p: Param[]): Promise<T[]> {
     await this.gate();
+    this.queries++;
     return this.db.prepare(sql).all(...p) as T[];
   }
   async get<T>(sql: string, ...p: Param[]): Promise<T | undefined> {
     await this.gate();
+    this.queries++;
     return this.db.prepare(sql).get(...p) as T | undefined;
   }
   async run(sql: string, ...p: Param[]) {
     await this.gate();
+    this.queries++;
     return { changes: Number(this.db.prepare(sql).run(...p).changes) };
   }
   async runMany(sql: string, rows: Param[][]) {
@@ -94,12 +100,14 @@ const plain = (columns: string[], rows: ArrayLike<unknown>[]): Row[] =>
   rows.map((r) => Object.fromEntries(columns.map((c, i) => [c, r[i]])));
 
 class LibsqlDb implements Db {
+  queries = 0;
   private readonly tx = new AsyncLocalStorage<Transaction>();
   constructor(private readonly client: Client) {}
   private exe() {
     return this.tx.getStore() ?? this.client;
   }
   private async query(sql: string, p: Param[]) {
+    this.queries++;
     const r = await this.exe().execute({ sql, args: p as never });
     return { rows: plain(r.columns, r.rows as ArrayLike<unknown>[]), changes: r.rowsAffected };
   }

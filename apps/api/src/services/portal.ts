@@ -1,5 +1,5 @@
 import { suggestProgression, type ActualSet, type PlannedSet, type ProgSuggestion } from '@coaching/engine';
-import type { AccountsRepo, ViewMode } from '../repositories/accounts.js';
+import { modeFrom, type AccountsRepo, type ViewMode } from '../repositories/accounts.js';
 import type { AthletesRepo } from '../repositories/athletes.js';
 import type { HistoryRepo } from '../repositories/history.js';
 import type { ProgrammingRepo } from '../repositories/programming.js';
@@ -87,6 +87,11 @@ const repsMaxOf = (p: PlannedSet): number | null => {
 };
 
 /** Lo que el atleta ve y hace: sus sesiones, su próximo entreno, el registro de series y el TRAC. Todo se filtra por atleta y por modo de vista. */
+type Loaded = {
+  planned: PlannedSet[];
+  actual: Map<string, ActualSet>;
+  bySession: Map<string, PlannedSet[]>;
+};
 export class PortalService {
   constructor(
     private athletes: AthletesRepo,
@@ -99,8 +104,12 @@ export class PortalService {
   ) {}
 
   private async load(athleteId: string) {
-    const planned = await this.records.listActivePlanned(athleteId);
-    const actual = new Map((await this.records.listActual(athleteId)).map((a) => [a.plannedSetId, a]));
+    // las dos lecturas son independientes: van juntas (cada ida a la base en la nube cuesta)
+    const [planned, actualRows] = await Promise.all([
+      this.records.listActivePlanned(athleteId),
+      this.records.listActual(athleteId),
+    ]);
+    const actual = new Map(actualRows.map((a) => [a.plannedSetId, a]));
     const bySession = new Map<string, PlannedSet[]>();
     for (const p of planned) bySession.set(p.sessionKey, [...(bySession.get(p.sessionKey) ?? []), p]);
     return { planned, actual, bySession };
@@ -109,8 +118,9 @@ export class PortalService {
   async progression(
     athleteId: string,
     key: string,
+    loaded?: Loaded,
   ): Promise<{ exposureId: string; exerciseName: string; suggestion: ProgSuggestion }[]> {
-    const { planned, actual, bySession } = await this.load(athleteId);
+    const { planned, actual, bySession } = loaded ?? (await this.load(athleteId));
     const sets = bySession.get(key);
     if (!sets?.length) throw new NotFoundError('Esa sesión no existe');
     const date = (sets[0] as PlannedSet).plannedDate;
@@ -173,14 +183,24 @@ export class PortalService {
     };
   }
   private async allMeta(athleteId: string): Promise<SessionMeta[]> {
-    const { bySession, actual } = await this.load(athleteId);
+    return this.metas(await this.load(athleteId));
+  }
+  private metas({ bySession, actual }: Loaded): SessionMeta[] {
     return [...bySession.entries()]
       .map(([k, s]) => this.meta(k, s, actual))
       .sort((a, b) => a.date.localeCompare(b.date) || a.dayNo - b.dayNo);
   }
-  private async block(athleteId: string, blockKey: string, currentWeek: number | null): Promise<BlockInfo> {
-    const m = (await this.programming.listMesos(athleteId)).find((x) => x.blockKey === blockKey);
-    const sets = (await this.records.listActivePlanned(athleteId)).filter((p) => p.blockKey === blockKey);
+  private async block(
+    athleteId: string,
+    blockKey: string,
+    currentWeek: number | null,
+    ctx?: { planned: PlannedSet[]; mesos: Awaited<ReturnType<ProgrammingRepo['listMesos']>> },
+  ): Promise<BlockInfo> {
+    const mesos = ctx?.mesos ?? (await this.programming.listMesos(athleteId));
+    const m = mesos.find((x) => x.blockKey === blockKey);
+    const sets = (ctx?.planned ?? (await this.records.listActivePlanned(athleteId))).filter(
+      (p) => p.blockKey === blockKey,
+    );
     const dates = sets.map((s) => s.plannedDate).sort();
     return {
       key: blockKey,
@@ -200,15 +220,19 @@ export class PortalService {
   }
 
   async home(athleteId: string) {
-    const a = await this.athletes.get(athleteId);
+    const [a, loaded, checks, mesos] = await Promise.all([
+      this.athletes.get(athleteId),
+      this.load(athleteId),
+      this.records.listCheckIns(athleteId),
+      this.programming.listMesos(athleteId),
+    ]);
     if (!a) throw new NotFoundError('Atleta inexistente');
-    const all = await this.allMeta(athleteId);
+    const all = this.metas(loaded);
     const t = this.today();
     const todays = all.filter((s) => s.date === t);
     const session = todays.find((s) => s.status !== 'done') ?? todays[0] ?? null;
     const next = this.nextOf(all);
     const focus = session ?? next;
-    const checks = await this.records.listCheckIns(athleteId);
     const todayCheck = checks.find((c) => c.date === t) ?? null;
     return {
       athlete: { id: a.id, name: a.name },
@@ -216,12 +240,16 @@ export class PortalService {
       session,
       todaysCount: todays.length,
       next,
-      block: focus ? await this.block(athleteId, focus.blockKey, focus.weekNo) : null,
+      block: focus
+        ? await this.block(athleteId, focus.blockKey, focus.weekNo, { planned: loaded.planned, mesos })
+        : null,
       trac: { doneToday: !!todayCheck, today: todayCheck, recent: checks.slice(-14) },
     };
   }
   async plan(athleteId: string) {
-    const all = await this.allMeta(athleteId);
+    const loaded = await this.load(athleteId);
+    const all = this.metas(loaded);
+    const mesos = await this.programming.listMesos(athleteId);
     const keys = [...new Set(all.map((s) => s.blockKey))];
     const blocks = (
       await Promise.all(
@@ -229,7 +257,7 @@ export class PortalService {
           const ss = all.filter((s) => s.blockKey === k);
           const weeks = [...new Set(ss.map((s) => s.weekNo))].sort((x, y) => x - y);
           return {
-            ...(await this.block(athleteId, k, null)),
+            ...(await this.block(athleteId, k, null, { planned: loaded.planned, mesos })),
             weeksList: weeks.map((w) => ({ weekNo: w, sessions: ss.filter((s) => s.weekNo === w) })),
             first: ss[0]?.date ?? '',
           };
@@ -245,16 +273,26 @@ export class PortalService {
     return !!(await this.load(athleteId)).bySession.get(key)?.length;
   }
   async session(athleteId: string, key: string) {
-    const { actual, bySession } = await this.load(athleteId);
+    // una sola lectura del plan y de lo hecho; el resto (independiente) se pide en paralelo
+    const loaded = await this.load(athleteId);
+    const { actual, bySession } = loaded;
     const sets = bySession.get(key);
     if (!sets?.length) throw new NotFoundError('Esa sesión no existe');
-    const mode: ViewMode = await this.accounts.modeFor(athleteId, key);
+    const [settings, notes, mesos, feedback] = await Promise.all([
+      this.accounts.viewSettings(athleteId),
+      this.accounts.notes(athleteId, key),
+      this.programming.listMesos(athleteId),
+      this.history.listFeedback(athleteId),
+    ]);
+    const mode: ViewMode = modeFrom(settings, key);
     const meta = this.meta(key, sets, actual);
-    const past = (await this.records.listActivePlanned(athleteId)).filter((p) => p.plannedDate < meta.date);
-    const myNotes = new Map((await this.accounts.notes(athleteId, key)).map((n) => [n.exerciseName, n.note]));
+    const past = loaded.planned.filter((p) => p.plannedDate < meta.date);
+    const myNotes = new Map(notes.map((n) => [n.exerciseName, n.note]));
     const groups = new Map<string, PlannedSet[]>();
     for (const s of sets) groups.set(s.exposureId, [...(groups.get(s.exposureId) ?? []), s]);
-    const prog = new Map((await this.progression(athleteId, key)).map((x) => [x.exposureId, x.suggestion]));
+    const prog = new Map(
+      (await this.progression(athleteId, key, loaded)).map((x) => [x.exposureId, x.suggestion]),
+    );
     const exercises: ExerciseView[] = await Promise.all(
       [...groups.values()].map(async (g) => {
         const first = g[0] as PlannedSet;
@@ -263,7 +301,7 @@ export class PortalService {
         const goalSets = sg && sg.action !== 'sin_datos' ? sg.sets : null;
         const exMode: ViewMode =
           (g.map((s) => s.protocol?.athleteView).find((m) => !!m) as ViewMode | undefined) ??
-          (await this.accounts.modeFor(athleteId, key, first.lift));
+          modeFrom(settings, key, first.lift);
         const prevSets = past
           .filter((p) => p.exerciseName === first.exerciseName && actual.get(p.id)?.status === 'done')
           .sort((x, y) => y.plannedDate.localeCompare(x.plannedDate) || x.setNo - y.setNo);
@@ -316,11 +354,11 @@ export class PortalService {
         };
       }),
     );
-    const fb = (await this.history.listFeedback(athleteId)).find((f) => f.sessionKey === key);
+    const fb = feedback.find((f) => f.sessionKey === key);
     return {
       ...meta,
       mode,
-      block: await this.block(athleteId, meta.blockKey, meta.weekNo),
+      block: await this.block(athleteId, meta.blockKey, meta.weekNo, { planned: loaded.planned, mesos }),
       exercises,
       endFatigue: fb?.endFatigue ?? null,
     };
