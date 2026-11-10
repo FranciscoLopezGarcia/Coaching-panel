@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp, buildContext, type AppContext } from '../src/app.js';
@@ -425,24 +426,26 @@ describe('Macro activo y meso vacío', () => {
   });
 });
 
+// La plantilla CSV vive solo en la máquina del coach (los CSV no se versionan): sin el archivo, esta prueba no aplica.
+const PLANTILLA = new URL('../../../docs/piloto-real/plantilla-plan.csv', import.meta.url);
 describe('Piloto real · plantilla y comandos de solo lectura', () => {
-  it('la plantilla de programación pasa el dry-run y no escribe nada', async () => {
-    const { readFileSync } = await import('node:fs');
-    const csv = readFileSync(
-      new URL('../../../docs/piloto-real/plantilla-plan.csv', import.meta.url),
-      'utf8',
-    );
-    const id = ids['A']!.id;
-    const before = (await ctx.records.listActivePlanned(id)).length;
-    const r = (await send('POST', `/api/athletes/${id}/imports/plan-csv`, { csv, mode: 'dry_run' })).json();
-    expect(r.parse.ok).toBe(true);
-    expect(r.applied).toBeNull();
-    expect((await ctx.records.listActivePlanned(id)).length).toBe(before);
-    // aplicar sin token coincidente se rechaza
-    expect(
-      (await send('POST', `/api/athletes/${id}/imports/plan-csv`, { csv, mode: 'apply' })).statusCode,
-    ).toBe(422);
-  });
+  it.skipIf(!existsSync(PLANTILLA))(
+    'la plantilla de programación pasa el dry-run y no escribe nada',
+    async () => {
+      const { readFileSync } = await import('node:fs');
+      const csv = readFileSync(PLANTILLA, 'utf8');
+      const id = ids['A']!.id;
+      const before = (await ctx.records.listActivePlanned(id)).length;
+      const r = (await send('POST', `/api/athletes/${id}/imports/plan-csv`, { csv, mode: 'dry_run' })).json();
+      expect(r.parse.ok).toBe(true);
+      expect(r.applied).toBeNull();
+      expect((await ctx.records.listActivePlanned(id)).length).toBe(before);
+      // aplicar sin token coincidente se rechaza
+      expect(
+        (await send('POST', `/api/athletes/${id}/imports/plan-csv`, { csv, mode: 'apply' })).statusCode,
+      ).toBe(422);
+    },
+  );
 });
 
 describe('Identificación de instancia y vigencia de la evaluación', () => {
