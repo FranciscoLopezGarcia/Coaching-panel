@@ -17,7 +17,25 @@ const getApp = () =>
     throw e;
   }));
 
+function fail(res: ServerResponse, code: number, error: string) {
+  res.statusCode = code;
+  res.setHeader('content-type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify({ error }));
+}
+
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
-  const app = await getApp();
+  if (!process.env.TURSO_DATABASE_URL)
+    return fail(
+      res,
+      503,
+      'Falta configurar la base de datos (TURSO_DATABASE_URL y TURSO_AUTH_TOKEN en Vercel).',
+    );
+  let app: FastifyInstance;
+  try {
+    app = await getApp();
+  } catch (e) {
+    console.error('Arranque de la API falló:', e);
+    return fail(res, 500, `La API no pudo arrancar: ${(e as Error).message}`);
+  }
   app.server.emit('request', req, res);
 }
