@@ -248,11 +248,23 @@ export class PortalService {
       (pool[pool.length - 1] as SessionMeta);
     return { blockKey: pick.blockKey, weekNo: pick.weekNo, key: pick.key };
   }
+  /** Lunes y domingo (YYYY-MM-DD) de la semana calendario de `t`. */
+  private weekBounds(t: string): { mon: string; sun: string } {
+    const d = new Date(`${t}T00:00:00Z`);
+    const back = (d.getUTCDay() + 6) % 7; // lunes = 0
+    const at = (n: number) => new Date(d.getTime() + n * 86400000).toISOString().slice(0, 10);
+    return { mon: at(-back), sun: at(6 - back) };
+  }
+  /**
+   * Qué le toca al atleta: la primera sesión SIN completar de la semana actual (lunes a domingo), aunque su día ya haya pasado.
+   * Si esa semana no tiene pendientes: la próxima por fecha; y si no hay futuras, la pendiente más reciente.
+   */
   private nextOf(all: SessionMeta[]): SessionMeta | null {
     const t = this.today();
-    // Sin nada por delante: la pendiente MÁS RECIENTE (no la más vieja, que mostraba un bloque de hace meses).
+    const { mon, sun } = this.weekBounds(t);
     return (
-      all.find((s) => s.status !== 'done' && s.date >= t) ??
+      all.find((s) => s.status !== 'done' && s.date >= mon && s.date <= sun) ??
+      all.find((s) => s.status !== 'done' && s.date > sun) ??
       [...all].reverse().find((s) => s.status !== 'done') ??
       null
     );
