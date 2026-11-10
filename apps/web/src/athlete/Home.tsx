@@ -160,6 +160,7 @@ export function HomeScreen({ go }: { go: (hash: string) => void }) {
   if (error) return <p className="ath-error">{error}</p>;
   if (!home) return <p className="muted">Cargando…</p>;
   const b = home.block;
+  const main = home.next ?? home.session;
   const open = (k: string) => go(`#/atleta/entreno/${encodeURIComponent(k)}`);
   return (
     <div className="ath-stack">
@@ -167,22 +168,30 @@ export function HomeScreen({ go }: { go: (hash: string) => void }) {
         <p className="muted">{fmtDate(home.today)}</p>
         <h1>Hola, {home.athlete.name.split(' ')[0]}</h1>
       </header>
-      {home.session ? (
+      {main ? (
         <SessionCard
-          s={home.session}
-          label={home.todaysCount > 1 ? `HOY · ${home.todaysCount} sesiones` : 'ENTRENAMIENTO DE HOY'}
+          s={main}
+          label={
+            main.date === home.today
+              ? home.todaysCount > 1
+                ? `HOY · ${home.todaysCount} sesiones`
+                : 'ENTRENAMIENTO DE HOY'
+              : main.date < home.today
+                ? 'PENDIENTE DE ESTA SEMANA'
+                : 'PRÓXIMO ENTRENAMIENTO'
+          }
           cta="Empezar"
           go={open}
         />
       ) : (
         <section className="ath-card">
           <span className="ath-tag">HOY</span>
-          <h2>Hoy no tenés entrenamiento</h2>
-          <p className="muted">Descansá. Si querés adelantar, elegí uno abajo.</p>
+          <h2>No tenés entrenamientos pendientes</h2>
+          <p className="muted">Si querés adelantar, elegí uno abajo.</p>
         </section>
       )}
-      {home.next && home.next.key !== home.session?.key && (
-        <SessionCard s={home.next} label="SIGUIENTE ENTRENAMIENTO" cta="Ver" go={open} />
+      {home.session && home.session.key !== main?.key && (
+        <SessionCard s={home.session} label="ENTRENAMIENTO DE HOY" cta="Ver" go={open} />
       )}
       {b && (
         <section className="ath-card">
