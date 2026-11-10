@@ -250,8 +250,11 @@ export class PortalService {
   }
   private nextOf(all: SessionMeta[]): SessionMeta | null {
     const t = this.today();
+    // Sin nada por delante: la pendiente MÁS RECIENTE (no la más vieja, que mostraba un bloque de hace meses).
     return (
-      all.find((s) => s.status !== 'done' && s.date >= t) ?? all.find((s) => s.status !== 'done') ?? null
+      all.find((s) => s.status !== 'done' && s.date >= t) ??
+      [...all].reverse().find((s) => s.status !== 'done') ??
+      null
     );
   }
 
