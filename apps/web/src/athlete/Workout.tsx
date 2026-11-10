@@ -39,6 +39,10 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
   const [vals, setVals] = useState<Vals>({});
   const [error, setError] = useState('');
   const [finish, setFinish] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [finishError, setFinishError] = useState('');
+  const finishRef = useRef<HTMLElement | null>(null);
   const [fatigue, setFatigue] = useState(6);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState('');
@@ -61,6 +65,7 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
           return fresh;
         });
         if (first && d.endFatigue) setFatigue(d.endFatigue);
+        if (first && d.endNote) setNote(d.endNote);
         setError('');
       })
       .catch((e: Error) => {
@@ -320,13 +325,46 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
           </button>
         </div>
       )}
-      {!finish ? (
-        <button className="ath-primary big" onClick={() => setFinish(true)}>
-          Finalizar entrenamiento
-        </button>
+      {saved ? (
+        <section className="ath-card ath-done" role="status">
+          <div className="ath-done-mark">✓</div>
+          <h2>¡Entreno guardado!</h2>
+          <p>
+            {done} de {all.length} series · {mm}:{ss} · fatiga {fatigue}/10
+          </p>
+          <p className="muted">Tu coach ya lo ve en su panel.</p>
+          <button className="ath-primary" onClick={() => go('#/atleta')}>
+            Volver al inicio
+          </button>
+        </section>
+      ) : !finish ? (
+        <>
+          {data.finished && (
+            <p className="ath-sync ok" role="status">
+              Ya cerraste este entreno ✓ (fatiga {data.endFatigue ?? '—'}/10). Podés corregir el cierre.
+            </p>
+          )}
+          <button
+            className="ath-primary big"
+            onClick={() => {
+              setFinish(true);
+              // la tarjeta de cierre aparece más abajo: se lleva la vista hasta ahí para que se note
+              setTimeout(
+                () => finishRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+                50,
+              );
+            }}
+          >
+            {data.finished ? 'Corregir el cierre' : 'Finalizar entrenamiento'}
+          </button>
+        </>
       ) : (
-        <section className="ath-card">
+        <section className="ath-card" ref={finishRef}>
           <h2>¿Cómo terminaste?</h2>
+          <p className={done < all.length ? 'ath-sync warn' : 'muted'}>
+            Marcaste {done} de {all.length} series
+            {done < all.length ? ': las que quedaron sin marcar cuentan como no hechas.' : '.'}
+          </p>
           <label className="ath-slider">
             <span>
               Fatiga al terminar <b>{fatigue}</b>/10
@@ -347,18 +385,30 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
             Comentario para tu coach (opcional)
             <textarea rows={3} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
           </label>
+          {finishError && (
+            <p className="ath-error" role="alert">
+              No se pudo guardar: {finishError}. Reintentá.
+            </p>
+          )}
           <button
             className="ath-primary"
+            disabled={closing}
             onClick={async () => {
+              setClosing(true);
+              setFinishError('');
               try {
+                // si quedaron series con datos escritos sin ✓ o cambios sin enviar, se mandan primero
+                await flushOutbox();
                 await api.finish(data.key, fatigue, note);
-                go('#/atleta');
+                setSaved(true);
               } catch (e) {
-                setError((e as Error).message);
+                setFinishError((e as Error).message);
+              } finally {
+                setClosing(false);
               }
             }}
           >
-            Guardar y terminar
+            {closing ? 'Guardando…' : 'Guardar y terminar'}
           </button>
         </section>
       )}

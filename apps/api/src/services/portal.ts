@@ -49,6 +49,8 @@ export interface SessionMeta {
   title: string;
   exercises: string[];
   status: 'done' | 'part' | 'none';
+  /** El atleta apretó «Finalizar entrenamiento» (dejó su cierre). */
+  finished: boolean;
   doneSets: number;
   totalSets: number;
 }
@@ -91,6 +93,7 @@ type Loaded = {
   planned: PlannedSet[];
   actual: Map<string, ActualSet>;
   bySession: Map<string, PlannedSet[]>;
+  finished: Map<string, { sessionKey: string; endFatigue: number | null; note: string }>;
 };
 export class PortalService {
   constructor(
@@ -105,14 +108,16 @@ export class PortalService {
 
   private async load(athleteId: string) {
     // las dos lecturas son independientes: van juntas (cada ida a la base en la nube cuesta)
-    const [planned, actualRows] = await Promise.all([
+    const [planned, actualRows, finishes] = await Promise.all([
       this.records.listActivePlanned(athleteId),
       this.records.listActual(athleteId),
+      this.history.listFinishes(athleteId),
     ]);
     const actual = new Map(actualRows.map((a) => [a.plannedSetId, a]));
+    const finished = new Map(finishes.map((f) => [f.sessionKey, f]));
     const bySession = new Map<string, PlannedSet[]>();
     for (const p of planned) bySession.set(p.sessionKey, [...(bySession.get(p.sessionKey) ?? []), p]);
-    return { planned, actual, bySession };
+    return { planned, actual, bySession, finished };
   }
   /** Progresión sugerida de cada ejercicio de una sesión (por exposición), a partir del último entreno realizado del mismo ejercicio. */
   async progression(
@@ -160,7 +165,12 @@ export class PortalService {
     }
     return out;
   }
-  private meta(key: string, sets: PlannedSet[], actual: Map<string, ActualSet>): SessionMeta {
+  private meta(
+    key: string,
+    sets: PlannedSet[],
+    actual: Map<string, ActualSet>,
+    finished: Loaded['finished'],
+  ): SessionMeta {
     const first = sets[0] as PlannedSet;
     const work = sets.filter((s) => !s.isWarmup);
     const base = work.length ? work : sets;
@@ -178,6 +188,7 @@ export class PortalService {
       title: main?.exerciseName ?? names[0] ?? 'Entrenamiento',
       exercises: names,
       status: done === 0 ? 'none' : done >= base.length ? 'done' : 'part',
+      finished: finished.has(key),
       doneSets: done,
       totalSets: base.length,
     };
@@ -185,9 +196,9 @@ export class PortalService {
   private async allMeta(athleteId: string): Promise<SessionMeta[]> {
     return this.metas(await this.load(athleteId));
   }
-  private metas({ bySession, actual }: Loaded): SessionMeta[] {
+  private metas({ bySession, actual, finished }: Loaded): SessionMeta[] {
     return [...bySession.entries()]
-      .map(([k, s]) => this.meta(k, s, actual))
+      .map(([k, s]) => this.meta(k, s, actual, finished))
       .sort((a, b) => a.date.localeCompare(b.date) || a.dayNo - b.dayNo);
   }
   private async block(
@@ -212,6 +223,31 @@ export class PortalService {
       currentWeek,
     };
   }
+  /**
+   * Dónde está el atleta HOY según la fecha (no según lo pendiente): la sesión de hoy; si no hay, la próxima por fecha; si ya pasó
+   * todo, la última. Si hoy cae dentro del rango de un bloque, manda ese bloque. Devuelve el bloque y la semana vigentes.
+   */
+  private currentOf(
+    all: SessionMeta[],
+    mesos: { blockKey: string; startDate: string | null; endDate: string | null }[],
+  ): { blockKey: string; weekNo: number; key: string } | null {
+    if (!all.length) return null;
+    const t = this.today();
+    const inRange = mesos.find(
+      (m) =>
+        m.startDate &&
+        m.endDate &&
+        m.startDate <= t &&
+        t <= m.endDate &&
+        all.some((s) => s.blockKey === m.blockKey),
+    );
+    const pool = inRange ? all.filter((s) => s.blockKey === inRange.blockKey) : all;
+    const pick =
+      pool.find((s) => s.date === t) ??
+      pool.find((s) => s.date > t) ??
+      (pool[pool.length - 1] as SessionMeta);
+    return { blockKey: pick.blockKey, weekNo: pick.weekNo, key: pick.key };
+  }
   private nextOf(all: SessionMeta[]): SessionMeta | null {
     const t = this.today();
     return (
@@ -232,7 +268,7 @@ export class PortalService {
     const todays = all.filter((s) => s.date === t);
     const session = todays.find((s) => s.status !== 'done') ?? todays[0] ?? null;
     const next = this.nextOf(all);
-    const focus = session ?? next;
+    const current = this.currentOf(all, mesos);
     const todayCheck = checks.find((c) => c.date === t) ?? null;
     return {
       athlete: { id: a.id, name: a.name },
@@ -240,8 +276,8 @@ export class PortalService {
       session,
       todaysCount: todays.length,
       next,
-      block: focus
-        ? await this.block(athleteId, focus.blockKey, focus.weekNo, { planned: loaded.planned, mesos })
+      block: current
+        ? await this.block(athleteId, current.blockKey, current.weekNo, { planned: loaded.planned, mesos })
         : null,
       trac: { doneToday: !!todayCheck, today: todayCheck, recent: checks.slice(-14) },
     };
@@ -264,7 +300,7 @@ export class PortalService {
         }),
       )
     ).sort((x, y) => x.first.localeCompare(y.first));
-    return { today: this.today(), next: this.nextOf(all), blocks };
+    return { today: this.today(), next: this.nextOf(all), current: this.currentOf(all, mesos), blocks };
   }
   async next(athleteId: string) {
     return { next: this.nextOf(await this.allMeta(athleteId)) };
@@ -278,14 +314,13 @@ export class PortalService {
     const { actual, bySession } = loaded;
     const sets = bySession.get(key);
     if (!sets?.length) throw new NotFoundError('Esa sesión no existe');
-    const [settings, notes, mesos, feedback] = await Promise.all([
+    const [settings, notes, mesos] = await Promise.all([
       this.accounts.viewSettings(athleteId),
       this.accounts.notes(athleteId, key),
       this.programming.listMesos(athleteId),
-      this.history.listFeedback(athleteId),
     ]);
     const mode: ViewMode = modeFrom(settings, key);
-    const meta = this.meta(key, sets, actual);
+    const meta = this.meta(key, sets, actual, loaded.finished);
     const past = loaded.planned.filter((p) => p.plannedDate < meta.date);
     const myNotes = new Map(notes.map((n) => [n.exerciseName, n.note]));
     const groups = new Map<string, PlannedSet[]>();
@@ -354,13 +389,14 @@ export class PortalService {
         };
       }),
     );
-    const fb = feedback.find((f) => f.sessionKey === key);
+    const fb = loaded.finished.get(key);
     return {
       ...meta,
       mode,
       block: await this.block(athleteId, meta.blockKey, meta.weekNo, { planned: loaded.planned, mesos }),
       exercises,
       endFatigue: fb?.endFatigue ?? null,
+      endNote: fb?.note ?? '',
     };
   }
   private view(
@@ -423,6 +459,7 @@ export class PortalService {
     );
     return { ok: true };
   }
+  /** Cierre del entreno: el atleta deja fatiga y comentario. Se puede volver a cerrar (corrige el cierre anterior). */
   async finish(athleteId: string, key: string, endFatigue: number | null, note?: string) {
     if (!(await this.load(athleteId)).bySession.has(key)) throw new NotFoundError('Esa sesión no existe');
     await this.history.upsertFeedback(athleteId, { sessionKey: key, endFatigue, note });

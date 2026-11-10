@@ -66,6 +66,11 @@ export function SessionCards({
               <span>
                 {weekday(s.date)} {dateLabel(s.date)}
               </span>
+              {s.endFatigue != null && (
+                <small className="sc-done" title="El atleta cerró este entreno">
+                  ✓ fatiga {s.endFatigue}/10
+                </small>
+              )}
             </header>
             <ul className="sc-body">
               {groups.map((g) => (

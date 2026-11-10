@@ -63,14 +63,21 @@ export function useAthleteLive(id: string, onChange: () => void) {
 export function ProgressionPanel({ id, sessionKey }: { id: string; sessionKey: string }) {
   const [items, setItems] = useState<Item[] | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [finish, setFinish] = useState<{ endFatigue: number | null; note: string } | null>(null);
   const [open, setOpen] = useState<string>('');
   const load = useCallback(() => {
     const q = encodeURIComponent(sessionKey);
     get<{ items: Item[] }>(id, `progression?sessionKey=${q}`)
       .then((r) => setItems(r.items))
       .catch(() => setItems([]));
-    get<{ notes: Note[] }>(id, `notes?sessionKey=${q}`)
-      .then((r) => setNotes(r.notes))
+    get<{ notes: Note[]; finish: { endFatigue: number | null; note: string } | null }>(
+      id,
+      `notes?sessionKey=${q}`,
+    )
+      .then((r) => {
+        setNotes(r.notes);
+        setFinish(r.finish);
+      })
       .catch(() => undefined);
   }, [id, sessionKey]);
   useEffect(load, [load]);
@@ -132,6 +139,17 @@ export function ProgressionPanel({ id, sessionKey }: { id: string; sessionKey: s
           })}
         </tbody>
       </table>
+      <div className="prog-notes">
+        <h4>Cierre del entreno</h4>
+        {finish ? (
+          <p>
+            <b>✓ El atleta terminó el entreno.</b> Fatiga {finish.endFatigue ?? '—'}/10
+            {finish.note && finish.note !== 'SIMULADO' ? ` · «${finish.note}»` : ''}
+          </p>
+        ) : (
+          <p className="muted">El atleta todavía no cerró este entreno.</p>
+        )}
+      </div>
       {notes.length > 0 && (
         <div className="prog-notes">
           <h4>Notas del atleta</h4>

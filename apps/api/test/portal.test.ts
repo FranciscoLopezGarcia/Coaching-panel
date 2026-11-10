@@ -413,3 +413,28 @@ describe('notas y progresión sugerida', () => {
 afterAll(async () => {
   await app.close();
 });
+
+describe('bloque actual en el Home: manda la fecha, no lo pendiente', () => {
+  it('con una sesión vieja sin hacer en el bloque anterior, el Home muestra el bloque de HOY', async () => {
+    const mkA = (id: string, session: string, date: string, block: string, week: number) =>
+      set(id, session, 'Remo', 1, date, { blockKey: block, weekNo: week });
+    const cami = (await j(call('POST', '/api/athletes', { name: 'Cami' }))).id;
+    await call('PUT', `/api/athletes/${cami}/account`, { email: 'cami@mail.com', password: 'clavecami1' });
+    await call('POST', `/api/athletes/${cami}/plan`, {
+      sets: [
+        mkA('v-old', 's-viejo', '2026-10-01', 'b-viejo', 1), // atrasada, nunca se hizo
+        mkA('b2-1', 's-b2-1', '2026-11-12', 'b-nuevo', 2),
+        mkA('b2-2', 's-b2-2', '2026-11-19', 'b-nuevo', 3),
+      ],
+      status: 'aplicado',
+    });
+    const t = (await j(call('POST', '/api/auth/login', { email: 'cami@mail.com', password: 'clavecami1' })))
+      .token;
+    const home = await j(call('GET', '/api/me/home', undefined, t));
+    expect(home, JSON.stringify(home)).toHaveProperty('block.key', 'b-nuevo');
+    expect(home.block.key).toBe('b-nuevo'); // hoy = 2026-11-10: lo próximo por fecha es el bloque nuevo
+    expect(home.block.currentWeek).toBe(2);
+    const plan = await j(call('GET', '/api/me/plan', undefined, t));
+    expect(plan.current).toMatchObject({ blockKey: 'b-nuevo', weekNo: 2, key: 's-b2-1' });
+  });
+});

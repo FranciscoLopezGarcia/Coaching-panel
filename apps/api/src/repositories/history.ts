@@ -159,6 +159,18 @@ export class HistoryRepo {
     ).map((r) => ({ sessionKey: r.session_key, endFatigue: r.end_fatigue }));
   }
 
+  /** Cierre de cada entreno que dejó el atleta (fatiga y comentario). */
+  async listFinishes(
+    athleteId: string,
+  ): Promise<{ sessionKey: string; endFatigue: number | null; note: string }[]> {
+    return (
+      (await this.db.all(
+        'SELECT session_key, end_fatigue, note FROM session_feedback WHERE athlete_id = ?',
+        athleteId,
+      )) as { session_key: string; end_fatigue: number | null; note: string | null }[]
+    ).map((r) => ({ sessionKey: r.session_key, endFatigue: r.end_fatigue, note: r.note ?? '' }));
+  }
+
   async upsertReview(athleteId: string, r: CoachReview): Promise<void> {
     await this.db.run(
       `INSERT INTO coach_reviews (athlete_id, lift, date, verdict, note) VALUES (?,?,?,?,?)

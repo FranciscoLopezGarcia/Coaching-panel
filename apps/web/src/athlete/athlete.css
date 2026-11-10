@@ -572,3 +572,24 @@
   color: var(--muted);
   min-height: 1em;
 }
+
+.ath-tag.ok {
+  background: #0f2f52;
+  color: #bcdcff;
+  margin-left: 6px;
+}
+.ath-done {
+  text-align: center;
+  padding: 28px 16px;
+}
+.ath-done-mark {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  background: #14406b;
+  color: #d4e9ff;
+}

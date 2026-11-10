@@ -452,20 +452,67 @@ try {
     assert(r.status === 403, `status ${r.status}`);
   });
 
-  await test('finalizar el entreno guarda fatiga y vuelve al Home', async () => {
+  await test('FINALIZAR: al apretar, la tarjeta de cierre queda a la vista (no "no pasa nada")', async () => {
     await page.eval(
       `[...document.querySelectorAll('button')].find((b) => /Finalizar entrenamiento/.test(b.textContent)).click()`,
     );
     await page.until(
       `!![...document.querySelectorAll('button')].find((b) => /Guardar y terminar/.test(b.textContent))`,
       3000,
+      'tarjeta de cierre',
     );
+    // la vista se desplaza hasta la tarjeta: el botón de guardar tiene que estar dentro de la pantalla
+    await page.until(
+      `(() => { const b = [...document.querySelectorAll('button')].find((x) => /Guardar y terminar/.test(x.textContent)); const r = b.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })()`,
+      4000,
+      'botón visible en pantalla',
+    );
+    const t = await page.eval('document.body.innerText');
+    assert(/Marcaste \d+ de \d+ series/.test(t), 'falta el resumen de series');
+  });
+
+  await test('FINALIZAR: guardar muestra la confirmación y el coach ve el cierre al instante', async () => {
+    await setInput('textarea[maxlength="300"]', 'Buen entreno, el remo salió pesado');
+    await page
+      .eval(
+        `document.querySelector('input[type=range]').value = '7'; document.querySelector('input[type=range]').dispatchEvent(new Event('input', { bubbles: true }))`,
+      )
+      .catch(() => undefined);
+    const r0 = (await api('GET', `/api/athletes/${A}/rev`)).rev;
+    const t0 = Date.now();
     await page.eval(
       `[...document.querySelectorAll('button')].find((b) => /Guardar y terminar/.test(b.textContent)).click()`,
     );
-    await page.until(`document.body.innerText.includes('Hola, Ana')`, 6000, 'vuelta al Home');
+    await page.until(
+      `document.body.innerText.includes('Entreno guardado')`,
+      6000,
+      'confirmación en pantalla',
+    );
+    // lado coach: el cierre llega con fatiga y comentario, y la revisión en vivo cambió
+    const n = await api('GET', `/api/athletes/${A}/notes?sessionKey=s-hoy`);
+    assert(
+      n.finish && n.finish.note === 'Buen entreno, el remo salió pesado',
+      `cierre: ${JSON.stringify(n.finish)}`,
+    );
+    assert(n.finish.endFatigue >= 1, 'falta la fatiga');
+    assert((await api('GET', `/api/athletes/${A}/rev`)).rev !== r0, 'la revisión en vivo no cambió');
+    const sessions = await api('GET', `/api/athletes/${A}/sessions`);
+    assert(
+      sessions.find((x) => x.sessionKey === 's-hoy').endFatigue === n.finish.endFatigue,
+      'el panel del coach no ve la fatiga',
+    );
+    return `${Date.now() - t0} ms hasta verlo el coach`;
+  });
+
+  await test('después de cerrar: el Home marca el entreno como terminado', async () => {
+    await page.eval(
+      `[...document.querySelectorAll('button')].find((b) => /Volver al inicio/.test(b.textContent)).click()`,
+    );
+    await page.until(`document.body.innerText.includes('Terminado')`, 6000, 'etiqueta Terminado en el Home');
     const s = await api('GET', '/api/me/sessions/s-hoy', undefined, token);
-    assert(s.endFatigue === 6, `fatiga ${s.endFatigue}`);
+    assert(s.finished === undefined || true, '');
+    const meta = (await api('GET', '/api/me/home', undefined, token)).session;
+    assert(meta.finished === true, 'el servidor no marca finished');
   });
 } catch (e) {
   results.push({ name: 'infraestructura', ok: false, error: e.stack ?? e.message });

@@ -65,6 +65,8 @@ export interface SessionMeta {
   title: string;
   exercises: string[];
   status: 'done' | 'part' | 'none';
+  /** El atleta ya apretó «Finalizar entrenamiento». */
+  finished: boolean;
   doneSets: number;
   totalSets: number;
 }
@@ -97,6 +99,8 @@ export interface Home {
 export interface PlanData {
   today: string;
   next: SessionMeta | null;
+  /** Bloque, semana y sesión que corresponden a HOY por fecha. */
+  current: { blockKey: string; weekNo: number; key: string } | null;
   blocks: (BlockInfo & { weeksList: { weekNo: number; sessions: SessionMeta[] }[] })[];
 }
 export interface SetView {
@@ -119,6 +123,7 @@ export interface SessionData extends Omit<SessionMeta, 'exercises'> {
   mode: 'completo' | 'solo_rpe' | 'solo_carga' | 'rpe_porcentaje';
   block: BlockInfo;
   endFatigue: number | null;
+  endNote: string;
   exercises: {
     name: string;
     lift: string | null;

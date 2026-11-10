@@ -243,7 +243,11 @@ export function registerPortalRoutes(app: FastifyInstance, ctx: AppContext): Por
   app.get('/api/athletes/:id/notes', async (req) => {
     const { id } = parse(idParam, req.params);
     const q = parse(z.object({ sessionKey: z.string().optional() }), req.query);
-    return { notes: await ctx.accounts.notes(id, q.sessionKey) };
+    // además: el cierre que dejó el atleta al terminar el entreno (fatiga y comentario)
+    const finish = q.sessionKey
+      ? ((await ctx.history.listFinishes(id)).find((f) => f.sessionKey === q.sessionKey) ?? null)
+      : null;
+    return { notes: await ctx.accounts.notes(id, q.sessionKey), finish };
   });
   app.post('/api/me/checkins', async (req) => {
     const id = await me(req);

@@ -32,6 +32,7 @@ function SessionCard({
   return (
     <section className="ath-card ath-session">
       <span className="ath-tag">{label}</span>
+      {s.finished && <span className="ath-tag ok"> ✓ Terminado</span>}
       <h2>{s.title}</h2>
       <p className="muted">
         {fmtDate(s.date)} · Semana {s.weekNo} · {s.exercises.length} ejercicios

@@ -6,7 +6,7 @@ const short = (d: string) =>
   new Intl.DateTimeFormat('es-AR', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' })
     .format(new Date(d + 'T12:00:00Z'))
     .replace('.', '');
-const dot = (s: SessionMeta) => (s.status === 'done' ? '✓' : s.status === 'part' ? '◐' : '○');
+const dot = (s: SessionMeta) => (s.finished || s.status === 'done' ? '✓' : s.status === 'part' ? '◐' : '○');
 
 /** Bloque → semana → sesión con menús desplegables, un botón «siguiente entrenamiento» y atajos dentro de la misma semana. */
 export function Picker({ go }: { go: (hash: string) => void }) {
@@ -20,11 +20,12 @@ export function Picker({ go }: { go: (hash: string) => void }) {
       .plan()
       .then((p) => {
         setPlan(p);
-        const n = p.next ?? p.blocks[0]?.weeksList[0]?.sessions[0] ?? null;
+        // lo que se ve al abrir: el bloque, la semana y la sesión de HOY por fecha (no la primera pendiente de un bloque viejo)
+        const n = p.current ?? p.next ?? p.blocks[0]?.weeksList[0]?.sessions[0] ?? null;
         if (n) {
-          setBlock(n.blockKey);
+          setBlock('blockKey' in n ? n.blockKey : '');
           setWeek(n.weekNo);
-          setSession(n.key);
+          setSession('key' in n ? n.key : '');
         }
       })
       .catch((e: Error) => setError(e.message));
