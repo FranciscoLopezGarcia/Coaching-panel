@@ -49,6 +49,7 @@ interface Week {
 }
 interface Session {
   sessionKey: string;
+  blockKey?: string | null;
   date: string;
   totals: Totals;
   exercises: {
@@ -589,7 +590,7 @@ function SessionList({ sessions, colorAt }: { sessions: Session[]; colorAt: (d: 
                   {dayName(s.date)} {dateLabel(s.date)}
                 </td>
                 <td>
-                  <i style={{ background: colorAt(s.date) }} /> {blockOf(s.sessionKey)} ·{' '}
+                  <i style={{ background: colorAt(s.date) }} /> {s.blockKey ?? blockOf(s.sessionKey)} ·{' '}
                   {(/-(s\d+)$/.exec(s.sessionKey)?.[1] ?? '').toUpperCase()}
                 </td>
                 <td className="bd-ex">
@@ -2369,7 +2370,7 @@ export function BlockDashboard({ id, classic }: { id: string; classic?: ReactNod
     if (!plan) return [];
     const m = new Map<string, { from: string; to: string }>();
     for (const s of plan.sessions) {
-      const k = blockOf(s.sessionKey);
+      const k = s.blockKey ?? blockOf(s.sessionKey);
       const cur = m.get(k);
       if (!cur) m.set(k, { from: s.date, to: s.date });
       else {

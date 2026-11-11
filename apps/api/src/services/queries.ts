@@ -100,6 +100,7 @@ export class QueryService {
             refAsOf: null,
           }))
       : d.observed;
+    const blockByKey = new Map(d.planned.map((p) => [p.sessionKey, p.blockKey]));
     const r = computeCore({
       obs,
       cutoff: q.cutoff,
@@ -115,7 +116,11 @@ export class QueryService {
     });
     return {
       ...r,
-      sessions: q.view === 'weeks' ? [] : r.sessions,
+      // cada sesión lleva su bloque real (las sesiones nuevas tienen claves «session-<uuid>» de las que no se puede deducir)
+      sessions:
+        q.view === 'weeks'
+          ? []
+          : r.sessions.map((x) => ({ ...x, blockKey: blockByKey.get(x.sessionKey) ?? null })),
       weeks: q.view === 'sessions' ? [] : r.weeks,
       view: q.view,
       basis: previsto ? 'previsto' : 'realizado',
