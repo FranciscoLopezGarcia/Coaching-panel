@@ -35,7 +35,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     app = await getApp();
   } catch (e) {
     console.error('Arranque de la API falló:', e);
-    return fail(res, 500, `La API no pudo arrancar: ${(e as Error).message}`);
+    // nunca devolver valores de variables de entorno (p. ej. el token) en un mensaje público
+    let msg = (e as Error).message;
+    for (const v of [process.env.COACHING_DB_TOKEN, process.env.TURSO_AUTH_TOKEN, process.env.COACH_PASSWORD])
+      if (v) msg = msg.split(v).join('***');
+    msg = msg.replace(/Bearer\s+\S+/g, 'Bearer ***').replace(/eyJ[\w.-]{20,}/g, '***');
+    return fail(res, 500, `La API no pudo arrancar: ${msg.slice(0, 300)}`);
   }
   app.server.emit('request', req, res);
 }
