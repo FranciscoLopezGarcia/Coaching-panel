@@ -22,7 +22,7 @@ const SKIP = new Set([
   'athlete_rev',
 ]);
 
-const from = await openDb(src, { migrate: false });
+const from = await openDb(src, { migrate: false, authToken: process.env.SOURCE_TOKEN });
 const to = await openDb(dst, { authToken: process.env.TURSO_AUTH_TOKEN });
 
 const tables = (
