@@ -18,10 +18,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     port: Number(env.PORT ?? 3001),
     host: env.HOST ?? '127.0.0.1',
-    dbPath: env.TURSO_DATABASE_URL ?? env.DB_PATH ?? './data/coaching.sqlite',
+    dbPath: env.COACHING_DB_URL ?? env.TURSO_DATABASE_URL ?? env.DB_PATH ?? './data/coaching.sqlite',
     webOrigin: env.WEB_ORIGIN ?? 'http://localhost:5173',
     timeZone: env.TZ_APP ?? 'America/Argentina/Mendoza',
-    tursoToken: env.TURSO_AUTH_TOKEN,
+    tursoToken: env.COACHING_DB_URL ? env.COACHING_DB_TOKEN : env.TURSO_AUTH_TOKEN,
     coachAuth: env.COACH_AUTH === 'on',
     coachEmail: env.COACH_EMAIL?.trim().toLowerCase() || undefined,
     coachPassword: env.COACH_PASSWORD || undefined,

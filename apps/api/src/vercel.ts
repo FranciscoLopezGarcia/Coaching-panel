@@ -24,11 +24,11 @@ function fail(res: ServerResponse, code: number, error: string) {
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
-  if (!process.env.TURSO_DATABASE_URL)
+  if (!process.env.COACHING_DB_URL && !process.env.TURSO_DATABASE_URL)
     return fail(
       res,
       503,
-      'Falta configurar la base de datos (TURSO_DATABASE_URL y TURSO_AUTH_TOKEN en Vercel).',
+      'Falta configurar la base de datos (COACHING_DB_URL y COACHING_DB_TOKEN en Vercel).',
     );
   let app: FastifyInstance;
   try {
