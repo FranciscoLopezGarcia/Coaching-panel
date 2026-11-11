@@ -136,6 +136,11 @@ export function registerAthleteRoutes(app: FastifyInstance, ctx: AppContext): vo
 
   app.get('/api/health', async () => ({
     ok: true,
+    // DIAGNÓSTICO TEMPORAL: a qué base está conectada esta instancia (solo el nombre, sin credenciales).
+    db: {
+      host: (config.dbPath.replace(/^[a-z+]+:\/\//, '').split('/')[0] ?? '').slice(0, 48),
+      athletes: (await ctx.athletes.list()).length,
+    },
     timeZone: config.timeZone,
     instance: {
       mode: ctx.instance.mode,
