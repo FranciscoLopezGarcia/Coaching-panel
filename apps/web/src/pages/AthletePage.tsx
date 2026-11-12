@@ -14,21 +14,55 @@ import { WeekOverview } from '../workspace/WeekOverview';
 import { Programming } from '../workspace/Programming';
 import { Analysis } from '../workspace/Analysis';
 import { Registration } from '../workspace/Registration';
-import { FollowUp, EvidenceDialog } from '../workspace/FollowUp';
+import { EvidenceDialog } from '../workspace/FollowUp';
 import { Settings } from '../workspace/Settings';
 import { AthleteAccess } from '../workspace/AthleteAccess';
 import { DeleteAthleteDialog, EditAthleteDialog } from '../workspace/AthleteAdmin';
 import { RecoveryTab } from './athlete/RecoveryTab';
 import { SessionsTab } from './athlete/SessionsTab';
 import { Empty, Message, readSearch, updateSearch, today, shift, number, dateLabel } from '../workspace/ui';
+/** Programar y Analizar viven arriba (tarjetas de acción); acá solo lo que no está duplicado. */
 const tabs = [
   ['resumen', 'Resumen'],
-  ['plan', 'Programación'],
-  ['analisis', 'Análisis'],
-  ['seguimiento', 'Seguimiento'],
-  ['acceso', 'Acceso del atleta'],
   ['config', 'Configuración'],
 ] as const;
+const DAY = 86_400_000;
+const addDays = (iso: string, n: number) => new Date(Date.parse(iso) + n * DAY).toISOString().slice(0, 10);
+
+/** Atajos del período: bloques del macro (por fecha) o ventana reciente. Se pueden mezclar bloques cercanos para ver una transición. */
+function periodPresets(
+  mesos: { name: string; startDate: string | null; endDate: string | null }[],
+  cutoff: string,
+): { id: string; label: string; from: string; to: string }[] {
+  const dated = mesos
+    .filter((m): m is { name: string; startDate: string; endDate: string } => !!m.startDate && !!m.endDate)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const started = dated.filter((m) => m.startDate <= cutoff);
+  const out: { id: string; label: string; from: string; to: string }[] = [];
+  const last = started.at(-1);
+  if (last)
+    out.push({ id: 'b1', label: `Bloque actual · ${last.name}`, from: last.startDate, to: last.endDate });
+  const two = started.slice(-2);
+  if (two.length === 2)
+    out.push({
+      id: 'b2',
+      label: `Últimos 2 bloques · ${two[0]!.name} + ${two[1]!.name}`,
+      from: two[0]!.startDate,
+      to: two[1]!.endDate,
+    });
+  const three = started.slice(-3);
+  if (three.length === 3)
+    out.push({ id: 'b3', label: 'Últimos 3 bloques', from: three[0]!.startDate, to: three[2]!.endDate });
+  if (dated.length > 1)
+    out.push({
+      id: 'all',
+      label: 'Macro completo',
+      from: dated[0]!.startDate,
+      to: dated.at(-1)!.endDate,
+    });
+  out.push({ id: '8w', label: 'Últimas 8 semanas', from: addDays(cutoff, -55), to: cutoff });
+  return out;
+}
 export function AthletePage({ id }: { id: string }) {
   const [dialog, setDialog] = useState<'' | 'edit' | 'delete'>('');
   const [search, setSearch] = useState(readSearch);
@@ -218,31 +252,12 @@ export function AthletePage({ id }: { id: string }) {
           <div className="athlete-actions" aria-label="Acciones del atleta">
             {[
               ['plan', 'PROGRAMAR', 'Distribución y protocolos'],
-              ['registro', 'REGISTRAR', 'Sesión y recuperación'],
               ['analisis', 'ANALIZAR', 'Evolución y evidencia'],
             ].map(([key, label, hint]) => (
               <button
                 key={key}
                 className={tab === key ? 'selected' : ''}
-                onClick={() =>
-                  select({
-                    tab: key ?? 'resumen',
-                    ...(key === 'registro' && !session
-                      ? {
-                          session:
-                            context.data?.sessions.find(
-                              (s) =>
-                                s.blockKey === block &&
-                                s.weekNo === week &&
-                                !s.sets.every((x) => x.actual?.status === 'done'),
-                            )?.sessionKey ??
-                            context.data?.sessions.find((s) => s.blockKey === block && s.weekNo === week)
-                              ?.sessionKey ??
-                            null,
-                        }
-                      : {}),
-                  })
-                }
+                onClick={() => select({ tab: key ?? 'resumen' })}
               >
                 <span>{label}</span>
                 <small>{hint}</small>
@@ -251,35 +266,63 @@ export function AthletePage({ id }: { id: string }) {
             ))}
           </div>
           <div className="context-strip">
-            <div>
-              <small>ATLETA</small>
-              <strong>{athlete.name}</strong>
-            </div>
             <button
+              title="Historial de macros"
               onClick={() => select({ tab: 'plan', block: null, week: null, session: null, context: '1' })}
             >
-              <small>MACRO</small>
+              <small>MACRO ↗</small>
               <strong>{effectiveMacro}</strong>
             </button>
             <button onClick={() => select({ tab: 'plan', week: null, session: null, context: '1' })}>
-              <small>MESO</small>
+              <small>MESO ↗</small>
               <strong>{meso?.name ?? (block || 'Sin meso')}</strong>
             </button>
             <button onClick={() => select({ tab: 'plan', session: null })}>
-              <small>SEMANA</small>
-              <strong>{week ? `S${week}` : 'Sin selección'} →</strong>
+              <small>SEMANA ↗</small>
+              <strong>{week ? `S${week}` : 'Sin selección'}</strong>
             </button>
-            <div>
+            <div className="period-picker">
               <small>PERÍODO DE ANÁLISIS</small>
-              <strong>
-                {from} → {to}
-              </strong>
+              <div className="row">
+                <input
+                  type="date"
+                  aria-label="Período desde"
+                  value={from}
+                  max={to}
+                  onChange={(e) => e.target.value && select({ from: e.target.value })}
+                />
+                <span aria-hidden>→</span>
+                <input
+                  type="date"
+                  aria-label="Período hasta"
+                  value={to}
+                  min={from}
+                  onChange={(e) => e.target.value && select({ to: e.target.value })}
+                />
+                <select
+                  aria-label="Atajos de período"
+                  value=""
+                  onChange={(e) => {
+                    const p = periodPresets(context.data?.mesos ?? [], cutoff).find(
+                      (x) => x.id === e.target.value,
+                    );
+                    if (p) select({ from: p.from, to: p.to });
+                  }}
+                >
+                  <option value="">Atajos…</option>
+                  {periodPresets(context.data?.mesos ?? [], cutoff).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
           {!!context.data?.active?.otherActiveMacros?.length && (
             <Message>
               Hay varios macros activos. La API seleccionó «{context.data.active.name}». Podés elegir otro
-              desde Historial de macros.
+              desde el macro (arriba).
             </Message>
           )}
           {context.error && (
@@ -326,30 +369,6 @@ export function AthletePage({ id }: { id: string }) {
                   {label}
                 </button>
               ))}
-              <button
-                className="current-training"
-                onClick={() => {
-                  const s =
-                    context.data?.sessions
-                      .filter((s) => s.date <= cutoff)
-                      .sort((a, b) => b.date.localeCompare(a.date))[0] ?? context.data?.sessions.at(-1);
-                  select({
-                    tab: 'plan',
-                    block: s?.blockKey ?? null,
-                    week: s ? String(s.weekNo) : null,
-                    session: s?.sessionKey ?? null,
-                  });
-                }}
-              >
-                Semana actual ↗
-              </button>
-              <button
-                onClick={() =>
-                  select({ tab: 'plan', macro: null, block: null, week: null, session: null, context: '1' })
-                }
-              >
-                Historial de macros ↗
-              </button>
             </nav>
           )}
           {tab === 'resumen' && (
@@ -373,7 +392,6 @@ export function AthletePage({ id }: { id: string }) {
                     <h2>Qué está pasando</h2>
                     <p className="small muted">Rendimiento y próximas decisiones</p>
                   </div>
-                  <button onClick={() => select({ tab: 'seguimiento' })}>Revisar propuestas →</button>
                 </div>
                 {!athlete.evaluation && (
                   <Empty title="Todavía no hay conclusiones">
@@ -523,9 +541,15 @@ export function AthletePage({ id }: { id: string }) {
               onPeriod={(f, t) => select({ from: f, to: t })}
             />
           )}
-          {tab === 'seguimiento' && <FollowUp id={id} athlete={athlete} onChanged={refresh} />}
-          {tab === 'acceso' && <AthleteAccess id={id} />}
-          {tab === 'config' && <Settings id={id} athlete={athlete} onChanged={refresh} />}
+          {tab === 'config' && (
+            <>
+              <Settings id={id} athlete={athlete} onChanged={refresh} />
+              <section className="card" id="acceso-atleta">
+                <h2>Acceso del atleta</h2>
+                <AthleteAccess id={id} />
+              </section>
+            </>
+          )}
           {tab === 'registro' && (
             <Registration id={id} session={session} onSelect={select} onChanged={refresh} />
           )}

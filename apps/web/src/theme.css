@@ -598,10 +598,6 @@ main {
   content: '🗓';
 }
 .athlete-actions button:nth-child(2)::before {
-  content: '✍';
-  background: var(--ok-bg);
-}
-.athlete-actions button:nth-child(3)::before {
   content: '📈';
   background: var(--warn-bg);
 }
@@ -661,6 +657,16 @@ main {
 }
 .context-strip strong {
   font-size: 15px;
+}
+.context-strip .period-picker input[type='date'],
+.context-strip .period-picker select {
+  font-size: 13px;
+  padding: 3px 6px;
+  min-height: 0;
+}
+.context-strip .period-picker .row {
+  gap: 6px;
+  align-items: center;
 }
 .athlete-tabs {
   display: flex;
@@ -1135,4 +1141,14 @@ dialog .data-sheet .table-wrap {
   background: var(--accent);
   color: #fff;
   border-color: transparent;
+}
+.micro-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 900px) {
+  .micro-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

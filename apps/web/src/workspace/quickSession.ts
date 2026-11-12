@@ -1,3 +1,4 @@
+import type { MuscleGroupId } from '@coaching/contracts';
 /**
  * Carga rápida de una sesión por TEXTO (como «Crear con texto» de PRG): una línea por ejercicio.
  *   Squat comp 3x5@4-5-6            3 series de 5, RPE 4, 5 y 6 (una por serie)
@@ -12,7 +13,8 @@
 export interface QuickSegment {
   exerciseName: string;
   variant: string;
-  lift: 'SQ' | 'BP' | 'DL' | '';
+  /** Movimiento: 'SQ' | 'BP' | 'DL' | 'acc:<grupo muscular>' (accesorio) | '' (sin elegir). */
+  lift: string;
   count: string;
   reps: string;
   repsMax: string;
@@ -49,18 +51,88 @@ export interface QuickResult {
   errors: { line: number; message: string }[];
 }
 
-/** Sugerencia de movimiento por nombre (se puede cambiar después en la planilla). */
-export function suggestLift(name: string): QuickSegment['lift'] {
+/** Grupos musculares que se pueden elegir para un accesorio (ids = grupos del motor). */
+export const MOVEMENT_GROUPS: { value: string; label: string }[] = [
+  { value: 'cuadriceps', label: 'Cuádriceps' },
+  { value: 'isquiotibiales', label: 'Isquios' },
+  { value: 'gluteos', label: 'Glúteos' },
+  { value: 'pantorrillas', label: 'Gemelos' },
+  { value: 'pectoral', label: 'Pecho' },
+  { value: 'hombros', label: 'Hombro' },
+  { value: 'dorsales', label: 'Dorsales' },
+  { value: 'espalda_alta', label: 'Espalda alta' },
+  { value: 'espalda_baja', label: 'Espalda baja' },
+  { value: 'trapecio', label: 'Trapecio' },
+  { value: 'biceps', label: 'Bíceps' },
+  { value: 'triceps', label: 'Tríceps' },
+  { value: 'antebrazos', label: 'Antebrazo' },
+  { value: 'core', label: 'Core' },
+];
+export type MuscleId = MuscleGroupId;
+export const MOVEMENT_OTHER = 'acc:otro';
+
+/** Valor de movimiento (una sola casilla) → campos que se guardan: lift de competición o grupo muscular del accesorio. */
+export function movementFields(m: string): { lift: 'SQ' | 'BP' | 'DL' | null; muscleGroup: MuscleId | null } {
+  if (m === 'SQ' || m === 'BP' || m === 'DL') return { lift: m, muscleGroup: null };
+  const g = m.startsWith('acc:') ? m.slice(4) : '';
+  return { lift: null, muscleGroup: g && g !== 'otro' ? (g as MuscleId) : null };
+}
+/** Campos guardados → valor de la casilla. */
+export const movementValue = (lift: string | null | undefined, muscleGroup?: string | null): string =>
+  lift ? lift : muscleGroup ? `acc:${muscleGroup}` : MOVEMENT_OTHER;
+
+const ACCESSORY_RULES: [RegExp, string][] = [
+  [
+    /prensa|leg press|extensi[oó]n de cu|leg extension|hack|b[uú]lgar|zancada|lunge|split squat|sissy|goblet|belt squat|step.?up|cu[aá]dr/,
+    'cuadriceps',
+  ],
+  [
+    /curl (femoral|de isquio|n[oó]rdico)|leg curl|hamstring|n[oó]rdic|nordic|buenos d[ií]as|good morning|isquio/,
+    'isquiotibiales',
+  ],
+  [/hip thrust|puente de gl|glute|gl[uú]teo|patada/, 'gluteos'],
+  [/gemelo|pantorrilla|calf/, 'pantorrillas'],
+  [/jal[oó]n|lat pull|pulldown|dominada|pull.?up|chin.?up/, 'dorsales'],
+  [/face pull|remo|\brow\b|pullover/, 'espalda_alta'],
+  [/hiperextens|lumbar|back extension/, 'espalda_baja'],
+  [/encogimiento|shrug|trapecio/, 'trapecio'],
+  [/apertura|\bfly\b|flyes|pec deck|cruce|fondos|\bdips?\b|flexi[oó]n|push.?up|pecho/, 'pectoral'],
+  [/elevaci[oó]n lateral|lateral raise|vuelos|hombro|delt|raise/, 'hombros'],
+  [/martillo|hammer|predicador|preacher|b[ií]ceps|bicep|curl/, 'biceps'],
+  [/tr[ií]ceps|tricep|pushdown|jm press|franc[eé]s|skull|copa|extensi[oó]n.*polea/, 'triceps'],
+  [/antebrazo|mu[nñ]eca|wrist|farmer/, 'antebrazos'],
+  [/abdominal|plancha|plank|crunch|\bcore\b|ab wheel|rueda|pallof/, 'core'],
+];
+
+/**
+ * Sugerencia de movimiento por nombre (se puede cambiar después en la planilla). Las variantes pertenecen al patrón de su competitiva
+ * (p. ej. press militar o banca inclinado → BP; sentadilla frontal → SQ; peso muerto rumano → DL). Lo que no se reconoce queda sin elegir.
+ */
+export function suggestLift(name: string): string {
   const n = name.toLowerCase().trim();
-  if (/^(squat|sentadilla|sq)\b/.test(n))
-    return /belt squat|hack|prensa|bulgar|goblet|split|zercher|cossac|cosack|pistol|sissy/.test(n)
-      ? ''
-      : 'SQ';
-  if (/^(deadlift|deadlit|peso muerto|dl)\b/.test(n))
-    return /rumano|rdl|stiff|zercher|jefferson/.test(n) ? '' : 'DL';
-  if (/^(bench ?press|bench|bp|press banca|banca|spoto)\b/.test(n))
-    return /inclin|declin|unilateral|mnc|mancuerna|dumbbell|smith|low incline/.test(n) ? '' : 'BP';
-  return '';
+  if (/hack|prensa|b[uú]lgar|goblet|split|cossac|cosack|pistol|sissy|belt squat/.test(n))
+    return 'acc:cuadriceps';
+  if (
+    /^(squat|sentadilla|sq)\b|\b(front|frontal|pausa|pause|box|safety|low bar|high bar|tempo|anderson) squat|sentadilla (frontal|pausa|con pausa|box|safety)/.test(
+      n,
+    )
+  )
+    return 'SQ';
+  if (
+    /^(deadlift|deadlit|peso muerto|dl)\b|rumano|\brdl\b|stiff|sumo|d[eé]ficit|deficit|rack pull|trap bar|jefferson/.test(
+      n,
+    )
+  )
+    return 'DL';
+  if (
+    /^(bench ?press|bench|bp|press banca|banca|spoto)\b|floor press|close.?grip|agarre cerrado|incline|inclin|declin|press militar|militar|overhead press|\bohp\b|push press|shoulder press|press (de )?hombros?/.test(
+      n,
+    ) ||
+    /(mancuerna|dumbbell|mnc).*(banca|bench|press)/.test(n)
+  )
+    return 'BP';
+  const hit = ACCESSORY_RULES.find(([re]) => re.test(n));
+  return hit ? `acc:${hit[1]}` : '';
 }
 
 const NUM = '\\d+(?:[.,]\\d+)?';
@@ -254,7 +326,7 @@ export function parseQuickSession(text: string): QuickResult {
     if (!prio && continued) prio = lastPrio;
     const lift = suggestLift(name);
     const explicit = !!prio;
-    if (!prio) prio = lift ? '2' : '3';
+    if (!prio) prio = lift && !lift.startsWith('acc:') ? '2' : '3';
     const base = {
       exerciseName: name,
       variant: '',

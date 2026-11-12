@@ -198,6 +198,21 @@ export function musclesFor(exerciseId: string, exerciseName?: string): MuscleCon
   return hit ? toList(hit.v) : null;
 }
 
+/**
+ * Aportes de una serie. Si el coach eligió el grupo muscular al programar, ese grupo manda: entra como DIRECTO (peso 1) y se conservan los
+ * demás aportes que la convención por nombre le asigna (si los tiene). Sin elección → solo la convención por nombre.
+ */
+export function musclesForSet(s: {
+  exerciseId: string;
+  exerciseName: string;
+  muscleGroup?: MuscleGroup | null;
+}): MuscleContribution[] | null {
+  const byName = musclesFor(s.exerciseId, s.exerciseName);
+  if (!s.muscleGroup) return byName;
+  const rest = (byName ?? []).filter((m) => m.group !== s.muscleGroup);
+  return [{ group: s.muscleGroup, kind: 'directo', weight: DIRECT_WEIGHT }, ...rest];
+}
+
 /** Cuántas reglas y grupos tiene la convención (para mostrar cobertura). */
 export const MUSCLE_RULE_COUNT = RULES.length;
 

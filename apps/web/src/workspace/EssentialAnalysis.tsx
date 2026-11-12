@@ -27,10 +27,23 @@ type RecordRow = {
   isRealPR: boolean;
 };
 const key = (name: string, variant: string) => JSON.stringify([name, variant]);
-const metricValue = (row: Weekly, metric: 'nl' | 'tonnage' | 'siTotal', actual: boolean) =>
-  actual
-    ? (row.actual[metric === 'siTotal' ? 'si_rts_total' : metric]?.value ?? null)
-    : (row.planned?.[metric] ?? null);
+type DoseMetric = 'nl' | 'tonnage' | 'siTotal' | 'intensity';
+const ACTUAL_ID = {
+  nl: 'nl',
+  tonnage: 'tonnage',
+  siTotal: 'si_rts_total',
+  intensity: 'intensity_rel',
+} as const;
+const metricValue = (row: Weekly, metric: DoseMetric, actual: boolean) =>
+  actual ? (row.actual[ACTUAL_ID[metric]]?.value ?? null) : (row.planned?.[metric] ?? null);
+const metricUnit = (m: DoseMetric) =>
+  m === 'siTotal'
+    ? 'SI · rts-aprox-v1'
+    : m === 'tonnage'
+      ? 'kg'
+      : m === 'intensity'
+        ? '% de la referencia'
+        : 'repeticiones';
 function DoseChart({
   rows,
   metric,
@@ -86,7 +99,7 @@ function DetailedAnalysis({ id, from, to, cutoff, onPeriod }: EssentialProps) {
     return () => window.removeEventListener('hashchange', sync);
   }, []);
   const [selected, setSelected] = useState(readSearch().get('movement') ?? '');
-  const [metric, setMetric] = useState<'nl' | 'tonnage' | 'siTotal'>('nl');
+  const [metric, setMetric] = useState<DoseMetric>('nl');
   const [method, setMethod] = useState('table-rpe');
   const [strength, setStrength] = useState('estimated');
   const [evidence, setEvidence] = useState<unknown>(null);
@@ -193,7 +206,13 @@ function DetailedAnalysis({ id, from, to, cutoff, onPeriod }: EssentialProps) {
       : exposures.map((e, i) => ({
           label: dateLabel(e.date) + ' · S' + (i + 1),
           planned: null,
-          actual: (metric === 'siTotal' ? e.metrics.si.rts.total : e.metrics[metric]).value,
+          actual:
+            (metric === 'siTotal'
+              ? e.metrics.si.rts.total
+              : metric === 'intensity'
+                ? e.metrics.intensity?.simple
+                : e.metrics[metric]
+            )?.value ?? null,
         }));
   const changeScale = (v: string) => {
     setScale(v);
@@ -262,7 +281,15 @@ function DetailedAnalysis({ id, from, to, cutoff, onPeriod }: EssentialProps) {
                 <button
                   className="help-button"
                   aria-label="Qué significan SI, NL y tonelaje"
-                  onClick={() => setHelp(metric === 'siTotal' ? 'si_rts_total' : metric)}
+                  onClick={() =>
+                    setHelp(
+                      metric === 'siTotal'
+                        ? 'si_rts_total'
+                        : metric === 'intensity'
+                          ? 'intensity_rel'
+                          : metric,
+                    )
+                  }
                 >
                   ?
                 </button>
@@ -273,6 +300,7 @@ function DetailedAnalysis({ id, from, to, cutoff, onPeriod }: EssentialProps) {
                     ['siTotal', 'SI', 'rts-aprox-v1'],
                     ['nl', 'NL', 'repeticiones'],
                     ['tonnage', 'Tonelaje', 'kg'],
+                    ['intensity', 'Intensidad media', '% de la referencia'],
                   ] as const
                 ).map(([id, label, unit]) => (
                   <button key={id} className={metric === id ? 'selected' : ''} onClick={() => setMetric(id)}>
@@ -282,12 +310,7 @@ function DetailedAnalysis({ id, from, to, cutoff, onPeriod }: EssentialProps) {
                 ))}
               </div>
               {scale === 'week' ? (
-                <DoseChart
-                  rows={doseRows}
-                  metric={
-                    metric === 'siTotal' ? 'SI · rts-aprox-v1' : metric === 'tonnage' ? 'kg' : 'repeticiones'
-                  }
-                />
+                <DoseChart rows={doseRows} metric={metricUnit(metric)} />
               ) : (
                 <Async state={core}>
                   {() => (
@@ -296,16 +319,7 @@ function DetailedAnalysis({ id, from, to, cutoff, onPeriod }: EssentialProps) {
                         Valores realizados por sesión y variante. Consultá las series debajo para comparar con
                         la prescripción.
                       </p>
-                      <DoseChart
-                        rows={doseRows}
-                        metric={
-                          metric === 'siTotal'
-                            ? 'SI · rts-aprox-v1'
-                            : metric === 'tonnage'
-                              ? 'kg'
-                              : 'repeticiones'
-                        }
-                      />
+                      <DoseChart rows={doseRows} metric={metricUnit(metric)} />
                     </>
                   )}
                 </Async>
@@ -318,6 +332,7 @@ function DetailedAnalysis({ id, from, to, cutoff, onPeriod }: EssentialProps) {
                       <th>SI</th>
                       <th>NL</th>
                       <th>Tonelaje · kg</th>
+                      <th>Intensidad media · %</th>
                       <th>Series</th>
                       <th>
                         <span className="sr-only">Detalle</span>
@@ -342,6 +357,9 @@ function DetailedAnalysis({ id, from, to, cutoff, onPeriod }: EssentialProps) {
                               {number(r.planned?.tonnage)} / {number(r.actual.tonnage?.value)}
                             </td>
                             <td>
+                              {number(r.planned?.intensity)} / {number(r.actual.intensity_rel?.value)}
+                            </td>
+                            <td>
                               {number(r.planned?.sets, 0)} / {number(r.actual.sets?.value, 0)}
                             </td>
                             <td>
@@ -363,14 +381,18 @@ function DetailedAnalysis({ id, from, to, cutoff, onPeriod }: EssentialProps) {
                                 · S{i + 1}
                               </small>
                             </td>
-                            {[r.metrics.si.rts.total, r.metrics.nl, r.metrics.tonnage, r.metrics.sets].map(
-                              (m, i) => (
-                                <td key={i}>
-                                  {number(m.value)}
-                                  {m.status === 'partial' ? ' · parcial' : ''}
-                                </td>
-                              ),
-                            )}
+                            {[
+                              r.metrics.si.rts.total,
+                              r.metrics.nl,
+                              r.metrics.tonnage,
+                              r.metrics.intensity?.simple,
+                              r.metrics.sets,
+                            ].map((m, i) => (
+                              <td key={i}>
+                                {number(m?.value)}
+                                {m?.status === 'partial' ? ' · parcial' : ''}
+                              </td>
+                            ))}
                             <td>
                               <button onClick={() => setEvidence(r)}>Ver datos</button>
                             </td>

@@ -74,6 +74,7 @@ export function normalizePlan(
                 repsMax: s.protocol.repsMax ?? null,
                 athleteView: s.protocol.athleteView ?? null,
                 athleteProgression: s.protocol.athleteProgression ?? null,
+                muscleGroup: s.protocol.muscleGroup ?? null,
               }
             : null,
       isWarmup: s.isWarmup ?? false,

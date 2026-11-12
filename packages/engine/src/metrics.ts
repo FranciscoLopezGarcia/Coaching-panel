@@ -18,6 +18,10 @@ export interface WeekMetrics {
   meanKg: number | null;
   /** Intensidad relativa media (kg / referencia fechada); null si falta referencia o kg en alguna serie. */
   meanPct: number | null;
+  /** Igual que meanPct pero ponderada por repeticiones. */
+  meanPctByReps: number | null;
+  /** Series sin referencia (no entran en meanPct). */
+  pctMissing: number;
   meanRpe: number | null;
   /** SI solo si TODAS las series tienen reps y RPE; si no, null (nunca se completa con supuestos). */
   si: Stress | null;
@@ -33,6 +37,13 @@ export function weekMetrics(views: SetView[], weekNo: number): WeekMetrics {
   const kgs = v.map((x) => x.kg);
   const allKg = v.length > 0 && kgs.every((k) => k !== null);
   const pcts = v.map((x) => (x.kg !== null && x.refKg ? x.kg / x.refKg : null));
+  const withPct = v
+    .map((x, i) => ({ p: pcts[i] as number | null, reps: x.reps }))
+    .filter((x) => x.p !== null) as {
+    p: number;
+    reps: number;
+  }[];
+  const repsPct = withPct.reduce((a, x) => a + x.reps, 0);
   const rpes = v.map((x) => x.rpe).filter((r): r is number => r !== null);
   const withRpe = v.filter((x) => x.rpe !== null);
   let si: Stress | null = null;
@@ -47,10 +58,10 @@ export function weekMetrics(views: SetView[], weekNo: number): WeekMetrics {
     days,
     nlByDay,
     meanKg: allKg ? (kgs as number[]).reduce((a, b) => a + b, 0) / v.length : null,
-    meanPct:
-      v.length && pcts.every((p) => p !== null)
-        ? (pcts as number[]).reduce((a, b) => a + b, 0) / v.length
-        : null,
+    // Series sin referencia no anulan la semana: se promedia lo que tiene referencia y se informa cuántas faltan (pctMissing).
+    meanPct: withPct.length ? withPct.reduce((a, x) => a + x.p, 0) / withPct.length : null,
+    meanPctByReps: repsPct ? withPct.reduce((a, x) => a + x.p * x.reps, 0) / repsPct : null,
+    pctMissing: v.length - withPct.length,
     meanRpe: rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null,
     si,
     siMissing: v.length - withRpe.length,
@@ -68,6 +79,7 @@ export interface BlockMetrics {
     frequency: number;
     meanKg: number | null;
     meanPct: number | null;
+    meanPctByReps: number | null;
     meanRpe: number | null;
     si: Stress | null;
     nlByDay: Record<number, number>;
@@ -82,6 +94,13 @@ export interface BlockMetrics {
 
 const meanOrNull = (xs: (number | null)[]): number | null =>
   xs.length && xs.every((x) => x !== null) ? (xs as number[]).reduce((a, b) => a + b, 0) / xs.length : null;
+
+const poolPct = (v: SetView[], byReps: boolean): number | null => {
+  const xs = v.filter((x) => x.kg !== null && x.refKg);
+  const w = (x: SetView) => (byReps ? x.reps : 1);
+  const d = xs.reduce((a, x) => a + w(x), 0);
+  return d ? xs.reduce((a, x) => a + ((x.kg as number) / (x.refKg as number)) * w(x), 0) / d : null;
+};
 
 /** Métricas de un bloque para un lift, en un universo ya filtrado. `weeks` opcional recorta a "las primeras N semanas compartidas". */
 export function blockMetrics(
@@ -113,7 +132,9 @@ export function blockMetrics(
       nl: avg((w) => w.nl),
       frequency: avg((w) => w.frequency),
       meanKg: meanOrNull(weekly.map((w) => w.meanKg)),
-      meanPct: meanOrNull(weekly.map((w) => w.meanPct)),
+      // Pool de todas las series del bloque (no media de medias semanales): semanas con distinto número de series no distorsionan.
+      meanPct: poolPct(v, false),
+      meanPctByReps: poolPct(v, true),
       meanRpe: meanOrNull(weekly.map((w) => w.meanRpe)),
       si: siComplete
         ? {

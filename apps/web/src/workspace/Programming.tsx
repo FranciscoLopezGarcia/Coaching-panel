@@ -4,7 +4,7 @@ import { SessionCards } from './SessionCards';
 import { SessionTextEditor } from './SessionTextEditor';
 import { WeekCopyDialog } from './WeekCopyDialog';
 import { QuickEntry } from './QuickEntry';
-import { segmentsToText } from './quickSession';
+import { MOVEMENT_GROUPS, MOVEMENT_OTHER, movementFields, segmentsToText } from './quickSession';
 import { BlockNavigator } from './BlockNavigator';
 import { PriorityFilter, usePrio } from './PriorityFilter';
 import { validateRepsRange } from './prescription';
@@ -522,7 +522,8 @@ export function Programming({
 interface Segment {
   exerciseName: string;
   variant: string;
-  lift: 'SQ' | 'BP' | 'DL' | '';
+  /** SQ/BP/DL, 'acc:<grupo muscular>' o '' (sin elegir: no deja guardar). */
+  lift: string;
   count: string;
   reps: string;
   repsMax: string;
@@ -545,7 +546,7 @@ interface Segment {
 const newSegment = (): Segment => ({
   exerciseName: '',
   variant: '',
-  lift: 'SQ',
+  lift: '',
   count: '3',
   reps: '5',
   repsMax: '',
@@ -584,10 +585,12 @@ const segmentColumns: SheetColumn[] = [
     label: 'Movimiento',
     type: 'select',
     options: [
-      { value: 'SQ', label: 'SQ' },
-      { value: 'BP', label: 'BP' },
-      { value: 'DL', label: 'DL' },
-      { value: '', label: 'Accesorio' },
+      { value: '', label: 'Elegir…' },
+      { value: 'SQ', label: 'Sentadilla' },
+      { value: 'BP', label: 'Banca' },
+      { value: 'DL', label: 'Peso muerto' },
+      ...MOVEMENT_GROUPS.map((g) => ({ value: `acc:${g.value}`, label: `Accesorio · ${g.label}` })),
+      { value: MOVEMENT_OTHER, label: 'Accesorio · otro' },
     ],
   },
   {
@@ -666,6 +669,11 @@ export function CreateDialog({
   const [day, setDay] = useState(1);
   usePending(name !== defaultName || segments.some((s) => !!s.exerciseName));
   const build = () => {
+    const sinMovimiento = segments.find((s) => s.exerciseName && !s.lift);
+    if (sinMovimiento)
+      throw new Error(
+        `Elegí el movimiento de «${sinMovimiento.exerciseName}» (Sentadilla, Banca, Peso muerto o el grupo muscular del accesorio).`,
+      );
     const sessionKey = 'session-' + crypto.randomUUID();
     let setNo = 0;
     return segments.flatMap((s, index) =>
@@ -676,7 +684,7 @@ export function CreateDialog({
         exposureId: `${key}:d${day}:${s.exerciseName}:${s.variant}`,
         variantKey: s.variant || s.exerciseName,
         exerciseName: s.exerciseName,
-        lift: s.lift || null,
+        lift: movementFields(s.lift).lift,
         plannedDate: start,
         blockKey: key,
         weekNo,
@@ -692,6 +700,7 @@ export function CreateDialog({
         protocol: {
           repsMax: s.repsMax ? Number(s.repsMax.replace(',', '.')) : null,
           loadMode: s.mode,
+          muscleGroup: movementFields(s.lift).muscleGroup,
           segment: s.segment,
           pct: s.pct ? Number(s.pct.replace(',', '.')) : null,
           capKg: s.cap ? Number(s.cap.replace(',', '.')) : null,
@@ -1101,17 +1110,23 @@ export function CreateDialog({
                           value={s.lift}
                           onChange={(e) => {
                             setSegments(
-                              segments.map((x, j) =>
-                                j === i ? { ...x, lift: e.target.value as Segment['lift'] } : x,
-                              ),
+                              segments.map((x, j) => (j === i ? { ...x, lift: e.target.value } : x)),
                             );
                             setReview(null);
                           }}
                         >
+                          <option value="">Elegir…</option>
                           <option value="SQ">Sentadilla</option>
                           <option value="BP">Banca</option>
                           <option value="DL">Peso muerto</option>
-                          <option value="">Accesorio / sin lift</option>
+                          <optgroup label="Accesorio (grupo muscular)">
+                            {MOVEMENT_GROUPS.map((g) => (
+                              <option key={g.value} value={`acc:${g.value}`}>
+                                {g.label}
+                              </option>
+                            ))}
+                            <option value={MOVEMENT_OTHER}>Otro</option>
+                          </optgroup>
                         </select>
                       </label>
                       <label>

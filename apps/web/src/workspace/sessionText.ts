@@ -1,6 +1,6 @@
 import type { SessionRow } from '@coaching/contracts';
 import type { QuickSegment } from './quickSession';
-import { suggestLift } from './quickSession';
+import { movementFields, movementValue, suggestLift } from './quickSession';
 import { repsMaxOf as protocolRepsMax } from './prescription';
 
 /**
@@ -18,7 +18,8 @@ const VIEW_SHORT: Record<string, string> = {
 export type SetRow = SessionRow['sets'][number];
 export interface ExGroup {
   name: string;
-  lift: SetRow['lift'];
+  /** Movimiento: SQ/BP/DL, 'acc:<grupo>' o 'acc:otro'. */
+  lift: string;
   priority: number | null;
   exposureId: string;
   sets: SetRow[];
@@ -35,7 +36,7 @@ export function groupByExercise(sets: SetRow[]): ExGroup[] {
   for (const s of sets.filter((x) => !x.retired)) {
     const g = map.get(s.exerciseName) ?? {
       name: s.exerciseName,
-      lift: s.lift,
+      lift: movementValue(s.lift, s.protocol?.muscleGroup),
       priority: s.priority,
       exposureId: s.exposureId,
       sets: [],
@@ -157,7 +158,7 @@ const num = (s: string) => (s ? Number(s.replace(',', '.')) : null);
 /** Expande los segmentos del texto a una lista de series por ejercicio, en el orden escrito. */
 export function specsByExercise(segs: QuickSegment[]): {
   name: string;
-  lift: QuickSegment['lift'];
+  lift: string;
   priority: number;
   prioExplicit: boolean;
   sets: SetSpec[];
@@ -167,7 +168,7 @@ export function specsByExercise(segs: QuickSegment[]): {
     string,
     {
       name: string;
-      lift: QuickSegment['lift'];
+      lift: string;
       priority: number;
       prioExplicit: boolean;
       sets: SetSpec[];
@@ -235,7 +236,7 @@ const loadMode = (kg: number | null, rpe: number | null, old?: SetRow) =>
 /** Construye series nuevas (como la creación de sesión) para un ejercicio. */
 export function buildSets(
   ctx: SessionCtx,
-  g: { name: string; lift: QuickSegment['lift']; priority: number; sets: SetSpec[]; ref: number | null },
+  g: { name: string; lift: string; priority: number; sets: SetSpec[]; ref: number | null },
   slotIndex: number,
   exposureId?: string,
   refKg?: number | null,
@@ -247,7 +248,7 @@ export function buildSets(
     exposureId: exposureId ?? `${ctx.blockKey}:d${ctx.dayNo}:${g.name}:`,
     variantKey: g.name,
     exerciseName: g.name,
-    lift: g.lift || null,
+    lift: movementFields(g.lift).lift,
     plannedDate: ctx.date,
     blockKey: ctx.blockKey,
     weekNo: ctx.weekNo,
@@ -271,6 +272,7 @@ export function buildSets(
       instructions: s.note || null,
       athleteView: s.view || null,
       athleteProgression: s.prog || null,
+      muscleGroup: movementFields(g.lift).muscleGroup,
     },
   }));
 }

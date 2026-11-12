@@ -14,6 +14,7 @@ export interface Bundle {
   tonnage: CoreValue;
   si: { rts: { total: CoreValue; model: string } };
   e1rm: { curve: CoreValue; prg: CoreValue };
+  intensity?: { simple: CoreValue; byReps: CoreValue };
 }
 export interface PatternVolume {
   convention: { version: string };

@@ -8,7 +8,7 @@ import {
   INDIRECT_WEIGHT,
   MUSCLE_CONVENTION_VERSION,
   PATTERN_CONVENTION_VERSION,
-  musclesFor,
+  musclesForSet,
   patternFor,
   type MovementPattern,
   type MuscleGroup,
@@ -49,6 +49,8 @@ export interface CoreBundle {
     efort: CoreValue & { model: string };
   };
   e1rm: { curve: CoreValue; prg: CoreValue };
+  /** Intensidad relativa media (% de la referencia fechada): simple (cada serie pesa igual) y ponderada por repeticiones. */
+  intensity: { simple: CoreValue; byReps: CoreValue };
 }
 
 export interface MuscleVolumeRow {
@@ -86,7 +88,7 @@ export function muscleVolume(sets: ObservedSet[]): MuscleVolume {
   const unmapped = new Set<string>();
   for (const s of sets) {
     if (!isWorkSet(s)) continue;
-    const c = musclesFor(s.exerciseId, s.exerciseName);
+    const c = musclesForSet(s);
     if (!c) {
       unmapped.add(s.exerciseName);
       continue;
@@ -364,6 +366,7 @@ function bundle(inp: CoreInput, obs: ObservedSet[], from: string, to: string, li
       efort: { ...cv(m.si_efort_xl), model: 'efort-xl-v1' },
     },
     e1rm: { curve: cv(m.e1rm_table_rpe), prg: cv(m.e1rm_prg_formulas) },
+    intensity: { simple: cv(m.intensity_rel), byReps: cv(m.intensity_rel_reps) },
   };
 }
 

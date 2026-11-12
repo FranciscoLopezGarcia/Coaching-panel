@@ -27,7 +27,7 @@ describe('carga rápida por texto', () => {
       repsMax: '12',
       rpe: '8',
       note: 'saltos fijos',
-      lift: '',
+      lift: 'acc:espalda_alta',
     });
   });
   it('cargas por serie y varios bloques', () => {
@@ -74,7 +74,14 @@ describe('carga rápida por texto', () => {
     const r = p('1° Squat comp 3x5x100@7');
     expect(segmentsToText(r.segments)).toBe('1° Squat comp 3x5x100@7');
     expect(suggestLift('DL 3"pausa rodilla')).toBe('DL');
-    expect(suggestLift('Bench mancuerna')).toBe('');
+    // las variantes pertenecen al patrón de su competitiva; los accesorios sugieren grupo muscular
+    expect(suggestLift('Bench mancuerna')).toBe('BP');
+    expect(suggestLift('Press militar')).toBe('BP');
+    expect(suggestLift('Sentadilla frontal')).toBe('SQ');
+    expect(suggestLift('Peso muerto rumano')).toBe('DL');
+    expect(suggestLift('Hip thrust')).toBe('acc:gluteos');
+    expect(suggestLift('Curl bíceps')).toBe('acc:biceps');
+    expect(suggestLift('Algo raro')).toBe('');
   });
 
   it('«#» y «"…"» son comentarios del coach: no cambian la prescripción y quedan como nota', () => {

@@ -1,4 +1,5 @@
 /** Tipos del dominio. El motor no conoce HTTP, SQL ni UI. */
+import type { MuscleGroup } from './muscles.js';
 export type Lift = 'SQ' | 'BP' | 'DL';
 export const LIFTS: readonly Lift[] = ['SQ', 'BP', 'DL'];
 
@@ -19,6 +20,8 @@ export interface Protocol {
   athleteView?: 'completo' | 'solo_rpe' | 'solo_carga' | 'rpe_porcentaje' | null;
   /** Tope del rango de repeticiones (p. ej. 8–10 ⇒ reps = 8, repsMax = 10). null/ausente = repeticiones fijas. Estructurado: no se interpreta texto libre. */
   repsMax?: number | null;
+  /** Accesorio: grupo muscular que trabaja (lo elige el coach al programar). Los movimientos SQ/BP/DL no lo necesitan. */
+  muscleGroup?: MuscleGroup | null;
 }
 
 /** Serie PREVISTA (prescripción). Separada siempre de la ejecución. */

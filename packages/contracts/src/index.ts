@@ -112,7 +112,33 @@ export const protocolSchema = z.object({
   athleteView: z.enum(['completo', 'solo_rpe', 'solo_carga', 'rpe_porcentaje']).nullable().optional(),
   /** Tope del rango de repeticiones (reps = mínimo, repsMax = máximo). Ausente/null = repeticiones fijas. */
   repsMax: z.number().int().positive().nullable().optional(),
+  /** Accesorio: grupo muscular que trabaja (elegido por el coach al programar). */
+  muscleGroup: z
+    .enum([
+      'cuadriceps',
+      'gluteos',
+      'isquiotibiales',
+      'pantorrillas',
+      'aductores',
+      'abductores',
+      'espalda_baja',
+      'dorsales',
+      'espalda_alta',
+      'trapecio',
+      'pectoral',
+      'hombros',
+      'biceps',
+      'triceps',
+      'antebrazos',
+      'core',
+      'oblicuos',
+    ])
+    .nullable()
+    .optional(),
 });
+
+/** Grupos musculares elegibles para un accesorio. */
+export type MuscleGroupId = NonNullable<z.infer<typeof protocolSchema>['muscleGroup']>;
 
 export const plannedSetSchema = z.object({
   id: z.string().min(1),
@@ -373,6 +399,7 @@ export interface SessionRow {
       instructions: string | null;
       athleteProgression?: 'reps' | 'reps_kg' | null;
       athleteView?: 'completo' | 'solo_rpe' | 'solo_carga' | 'rpe_porcentaje' | null;
+      muscleGroup?: z.infer<typeof protocolSchema>['muscleGroup'];
     } | null;
     setNo: number;
     planned: { reps: number; targetRpe: number | null; kg: number | null };

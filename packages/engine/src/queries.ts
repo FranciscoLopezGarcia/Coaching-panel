@@ -7,7 +7,7 @@ import {
   DIRECT_WEIGHT,
   INDIRECT_WEIGHT,
   MUSCLE_CONVENTION_VERSION,
-  musclesFor,
+  musclesForSet,
   type MuscleGroup,
 } from './muscles.js';
 import { isWorkSet, type ObservedSet } from './observed.js';
@@ -96,6 +96,9 @@ export interface PlannedCell {
   tonnage: number | null;
   frequency: number;
   siTotal: number | null;
+  /** Intensidad relativa media planificada (% de la referencia); null si falta referencia. */
+  intensity: number | null;
+  intensityByReps: number | null;
   /** Series sin RPE objetivo: el SI planificado no se completa con supuestos. */
   siMissing: number;
 }
@@ -171,6 +174,8 @@ export function weeklyByMovement(inp: WeeklyInput): WeeklyMovementRow[] {
           tonnage: wm.tonnage,
           frequency: new Set(pset.map((s) => s.plannedDate)).size,
           siTotal: wm.si?.total ?? null,
+          intensity: wm.meanPct !== null ? 100 * wm.meanPct : null,
+          intensityByReps: wm.meanPctByReps !== null ? 100 * wm.meanPctByReps : null,
           siMissing: wm.siMissing,
         };
       }
@@ -194,7 +199,10 @@ export function weeklyByMovement(inp: WeeklyInput): WeeklyMovementRow[] {
             'e1rm_table_rpe',
             'e1rm_prg_formulas',
             'si_rts_total',
+            'si_rts_central',
+            'si_rts_peripheral',
             'intensity_rel',
+            'intensity_rel_reps',
           ].includes(k),
         ),
       );
@@ -232,7 +240,7 @@ export function weeklyByMuscle(obs: ObservedSet[], from: string, to: string, cut
     const acc = new Map<MuscleGroup, { d: number; i: number; ex: Set<string> }>();
     for (const o of obs) {
       if (!isWorkSet(o) || !inRange(o.date, w)) continue;
-      const c = musclesFor(o.exerciseId, o.exerciseName);
+      const c = musclesForSet(o);
       if (!c) {
         unmapped.add(o.exerciseName);
         continue;

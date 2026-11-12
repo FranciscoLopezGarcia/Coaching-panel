@@ -140,6 +140,31 @@ export const METRIC_CATALOG: MetricDefinition[] = [
     ],
   }),
   m({
+    id: 'intensity_rel_reps',
+    name: 'Intensidad relativa (ponderada por repeticiones)',
+    definition:
+      'Intensidad relativa media donde cada serie pesa según sus repeticiones: un single al 95 % no pesa igual que una serie de 8 al 75 %.',
+    unit: '% de la referencia',
+    method: 'Σ(100 × kg / referencia × reps) / Σ reps.',
+    provenance: 'documentado',
+    reference: REF.hist,
+    inputs: ['kg', 'referencia de fuerza (fuente, fecha, ejercicio)'],
+    domain: 'referencia > 0',
+    exclusions: ['series sin referencia vigente'],
+    aggregation: ['serie', 'sesión', 'semana', 'bloque'],
+    interpretation: {
+      up: 'Cargas más cercanas a la referencia.',
+      down: 'Cargas más livianas respecto de la referencia.',
+    },
+    doesNotConclude: [
+      'Esfuerzo real (no usa RPE).',
+      'Que dos períodos con distinta referencia sean comparables.',
+    ],
+    limitations: [
+      'Cambiar la referencia cambia el porcentaje sin cambiar los kg: se distingue un recálculo retrospectivo del cálculo original.',
+    ],
+  }),
+  m({
     id: 'frequency',
     name: 'Frecuencia',
     definition: 'Días distintos con exposición a un lift en el período; también por semana.',
@@ -621,6 +646,14 @@ export const AVAILABILITY_MATRIX: AvailabilityEntry[] = [
   },
   {
     id: 'intensity_rel',
+    kind: 'metrica',
+    requires: ['kg', 'referencia de fuerza fechada'],
+    alternative: 'RPE real, si existe; carga absoluta.',
+    abstention:
+      'Sin referencia vigente a la fecha no hay intensidad relativa (no se usa una referencia futura).',
+  },
+  {
+    id: 'intensity_rel_reps',
     kind: 'metrica',
     requires: ['kg', 'referencia de fuerza fechada'],
     alternative: 'RPE real, si existe; carga absoluta.',

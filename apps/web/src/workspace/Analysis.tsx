@@ -5,6 +5,7 @@ import type { MetricDefinition, MetricResult, PeriodComparison } from '@coaching
 import { workspaceApi as w, get, query } from './api';
 import { useLoad } from '../hooks';
 import { Async } from '../components/Async';
+import { MicrocycleEvolution } from './MicrocycleEvolution';
 import { PerformanceCurve } from '../performance/PerformanceCurve';
 import { CompareTab } from '../pages/athlete/CompareTab';
 import { LoadTab } from '../pages/athlete/LoadTab';
@@ -178,26 +179,28 @@ function AdvancedAnalysis({
           <h2>{compact ? 'Evolución del período' : 'Análisis'}</h2>
           <p className="muted small">Dosis, esfuerzo y rendimiento; cada uno en su contexto.</p>
         </div>
-        <div className="row period-controls">
-          <label>
-            Desde
-            <input
-              type="date"
-              value={from}
-              max={to}
-              onChange={(e) => e.target.value && onPeriod(e.target.value, to)}
-            />
-          </label>
-          <label>
-            Hasta
-            <input
-              type="date"
-              min={from}
-              value={to}
-              onChange={(e) => e.target.value && onPeriod(from, e.target.value)}
-            />
-          </label>
-        </div>
+        {compact && (
+          <div className="row period-controls">
+            <label>
+              Desde
+              <input
+                type="date"
+                value={from}
+                max={to}
+                onChange={(e) => e.target.value && onPeriod(e.target.value, to)}
+              />
+            </label>
+            <label>
+              Hasta
+              <input
+                type="date"
+                min={from}
+                value={to}
+                onChange={(e) => e.target.value && onPeriod(from, e.target.value)}
+              />
+            </label>
+          </div>
+        )}
       </div>
       {!compact && (
         <div className="row tabs">
@@ -239,6 +242,9 @@ function AdvancedAnalysis({
                 )}
                 <span className="small muted">Período compartido por todos los gráficos</span>
               </div>
+              {group === 'movement' && (
+                <MicrocycleEvolution rows={rows} period={{ from, to }} movement={selected} />
+              )}
               <div className="analysis-grid">
                 <article className="chart-panel">
                   <div className="row between">

@@ -1,3 +1,4 @@
+import type { MuscleGroup } from './muscles.js';
 import type { ActualSet, Lift, PlannedSet } from './types.js';
 
 /**
@@ -35,6 +36,8 @@ export interface ObservedSet {
   refKg: number | null;
   refSource: string | null;
   refAsOf: string | null;
+  /** Accesorio: grupo muscular elegido por el coach al programar (null/ausente = sin elegir; se usa la convención por nombre). */
+  muscleGroup?: MuscleGroup | null;
 }
 
 export const isWorkSet = (o: ObservedSet): boolean => o.setType !== 'warmup';
@@ -68,6 +71,7 @@ export function observedFromPlan(planned: PlannedSet[], actual: ActualSet[], cut
       refKg: s.refKg,
       refSource: s.refKg ? 'plan' : null,
       refAsOf: null,
+      muscleGroup: s.protocol?.muscleGroup ?? null,
     });
   }
   return out;

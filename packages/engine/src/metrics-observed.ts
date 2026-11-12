@@ -213,6 +213,32 @@ export function computeObservedMetrics(inp: ObservedMetricsInput): Record<string
           : []),
       ],
     });
+    // Misma base que intensity_rel, ponderada por repeticiones: Σ(%·reps) / Σ reps. La media simple da el mismo peso a un single y a una serie de 8.
+    const okReps = ok.filter((x) => (x.s.reps as number) > 0);
+    const repsSum = okReps.reduce((a, x) => a + (x.s.reps as number), 0);
+    out.intensity_rel_reps = metricResult({
+      metricId: 'intensity_rel_reps',
+      unit: '% de la referencia',
+      method: { id: 'kg-over-reference-reps-weighted', version: refVersion },
+      ...base,
+      value: repsSum
+        ? okReps.reduce((a, x) => a + ((100 * (x.s.kg as number)) / x.ref) * (x.s.reps as number), 0) /
+          repsSum
+        : null,
+      status: !repsSum ? 'unavailable' : bad.length ? 'partial' : 'available',
+      usedRecords: used(okReps.map((x) => x.s)).refs,
+      excluded: [...warmupExcl, ...exclusions(bad)],
+      missing: repsSum ? [] : ['referencia de fuerza fechada'],
+      reference: sameRef,
+      warnings: [
+        ...refWarn,
+        ...(infos.length > 1
+          ? [
+              'Se usaron varias referencias (cambió la referencia en el período): la media mezcla bases distintas.',
+            ]
+          : []),
+      ],
+    });
     const inol = ok
       .filter((x) => (x.s.reps as number) > 0)
       .map((x) => ({ x, v: inolPrg(x.s.reps as number, x.s.kg as number, x.ref) }));

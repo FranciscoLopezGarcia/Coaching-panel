@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react';
-import { applyMeta, parseQuickSession, type ExMeta, type QuickSegment } from './quickSession';
+import {
+  applyMeta,
+  MOVEMENT_GROUPS,
+  parseQuickSession,
+  type ExMeta,
+  type QuickSegment,
+} from './quickSession';
 import { VIEW_LABEL } from './AthleteAccess';
 
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300];
@@ -10,7 +16,9 @@ const EXAMPLES = [
   { n: 'Rango y RIR', t: 'Remo barra 3x10-12 RIR2' },
   { n: 'Cargas por serie', t: 'Deadlift comp 3x3x180-190-200' },
 ];
-const LIFT: Record<string, string> = { SQ: 'Sentadilla', BP: 'Banca', DL: 'Peso muerto', '': 'Accesorio' };
+const movementLabel = (m: string) =>
+  ({ SQ: 'Sentadilla', BP: 'Banca', DL: 'Peso muerto', '': 'Elegir…' })[m] ??
+  `Accesorio · ${MOVEMENT_GROUPS.find((g) => `acc:${g.value}` === m)?.label ?? 'otro'}`;
 
 /**
  * Entrada rápida por texto: una línea por ejercicio. Mientras escribís se interpreta y se muestra qué se entendió.
@@ -127,7 +135,7 @@ export function QuickEntry({
                       {l.summary}
                       {l.warnings.length > 0 && <small> · {l.warnings.join(' · ')}</small>}
                     </td>
-                    <td>{LIFT[seg?.lift ?? '']}</td>
+                    <td>{movementLabel(seg?.lift ?? '')}</td>
                     <td>{seg?.priority ? `${seg.priority}°` : '—'}</td>
                     <td className="qe-rest">
                       <input

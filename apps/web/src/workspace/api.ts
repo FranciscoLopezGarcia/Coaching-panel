@@ -32,6 +32,8 @@ export interface Weekly {
     tonnage: number | null;
     frequency: number;
     siTotal: number | null;
+    intensity?: number | null;
+    intensityByReps?: number | null;
   } | null;
   actual: Record<string, MetricResult>;
 }

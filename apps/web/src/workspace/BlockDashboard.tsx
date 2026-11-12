@@ -19,6 +19,7 @@ interface Totals {
   tonnage: Val;
   si: { rts: { total: Val; central: Val; peripheral: Val } };
   e1rm: { curve: Val };
+  intensity?: { simple: Val; byReps: Val };
 }
 interface PatternRows {
   rows: {
@@ -2435,7 +2436,29 @@ export function BlockDashboard({ id, classic }: { id: string; classic?: ReactNod
   const sumOf = (ws: Week[], f: (x: Totals) => number | null) =>
     asVal(ws.reduce((s, w) => s + (f(w.totals) ?? 0), 0));
   const kpiWeeks = hasReal ? realIn : planToDate;
+  // Intensidad media del período: media de las semanas ponderada por sus series (simple) o por su NL (ponderada por reps).
+  const wMean = (f: (x: Totals) => number | null, w: (x: Totals) => number | null): Val | undefined => {
+    let num = 0;
+    let den = 0;
+    for (const k of kpiWeeks) {
+      const val = f(k.totals);
+      const wt = w(k.totals);
+      if (val !== null && wt) {
+        num += val * wt;
+        den += wt;
+      }
+    }
+    return den ? asVal(num / den) : undefined;
+  };
   const T = {
+    intensity: wMean(
+      (x) => x.intensity?.simple.value ?? null,
+      (x) => x.sets.value,
+    ),
+    intensityByReps: wMean(
+      (x) => x.intensity?.byReps.value ?? null,
+      (x) => x.nl.value,
+    ),
     nl: sumOf(kpiWeeks, (x) => x.nl.value),
     sets: sumOf(kpiWeeks, (x) => x.sets.value),
     tonnage: sumOf(kpiWeeks, (x) => x.tonnage.value),
@@ -2569,6 +2592,18 @@ export function BlockDashboard({ id, classic }: { id: string; classic?: ReactNod
               plan={planOf(sumP((x) => x.si.rts.total.value))}
               unit="RTS aprox."
               hint="Stress Index RTS (aproximado)"
+            />
+            <Kpi
+              name="Intensidad media"
+              real={T?.intensity}
+              unit="% de la referencia"
+              hint="100 × kg / referencia fechada, promedio simple por serie"
+            />
+            <Kpi
+              name="Intensidad media (por reps)"
+              real={T?.intensityByReps}
+              unit="% de la referencia"
+              hint="Igual, pero cada serie pesa según sus repeticiones"
             />
             <Kpi name="SI central" real={T?.si.rts.central} unit="" />
             <Kpi name="SI periférico" real={T?.si.rts.peripheral} unit="" />
