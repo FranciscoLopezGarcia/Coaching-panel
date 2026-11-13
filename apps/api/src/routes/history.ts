@@ -53,6 +53,31 @@ export function registerHistoryRoutes(app: FastifyInstance, ctx: AppContext): vo
     await must(id);
     return await hs.blocks(id, cut(req.query));
   });
+  // Analizador integral de bloques (solo lectura, determinista por corte): ventana actual + 3 previos.
+  app.get('/api/athletes/:id/block-analysis', async (req) => {
+    const { id } = parse(idParam, req.params);
+    await must(id);
+    const q = parse(
+      z.object({
+        asOf: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        block: z.string().min(1).optional(),
+        source: z.enum(['planned', 'actual']).default('actual'),
+        lift: z.enum(['SQ', 'BP', 'DL', 'ALL']).default('ALL'),
+      }),
+      req.query,
+    );
+    const out = await ctx.blockAnalysis.build(id, {
+      asOf: q.asOf ?? ctx.today(),
+      block: q.block,
+      source: q.source,
+      lift: q.lift,
+    });
+    if (!out) throw new NotFoundError('No hay bloques para analizar (o el bloque pedido no existe)');
+    return out;
+  });
   app.get('/api/athletes/:id/compare', async (req) => {
     const { id } = parse(idParam, req.params);
     await must(id);

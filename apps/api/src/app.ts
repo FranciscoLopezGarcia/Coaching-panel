@@ -18,6 +18,7 @@ import { LiveBus } from './services/live.js';
 import { registerPortalRoutes } from './routes/portal.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { BlockAdmin } from './services/blocks.js';
+import { BlockAnalysisService } from './services/block-analysis.js';
 import { registerAthleteRoutes } from './routes/athletes.js';
 import { registerConsolidationRoutes } from './routes/consolidation.js';
 import { registerErrorHandler } from './routes/http.js';
@@ -63,6 +64,7 @@ export interface AppContext {
   loader: DataLoader;
   coaches: CoachesRepo;
   blocks: BlockAdmin;
+  blockAnalysis: BlockAnalysisService;
   live: LiveBus;
   today: () => string;
 }
@@ -110,6 +112,7 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
     accounts,
     coaches,
     blocks: new BlockAdmin(db, records, programmingRepo, plans),
+    blockAnalysis: new BlockAnalysisService(loader, history),
     live,
     interventionsRepo,
     programmingRepo,

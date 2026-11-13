@@ -10,3 +10,4 @@ coverage
 /apps/api/data/
 # Datos personales: nunca versionar exports de Hevy ni CSV de entrenamientos
 *.csv
+/apps/api/backups/

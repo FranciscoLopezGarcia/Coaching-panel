@@ -16,6 +16,7 @@
     "pilot:check": "tsx --env-file-if-exists=../../.env src/cli/pilot-check.ts",
     "import:hevy": "tsx --env-file-if-exists=../../.env src/cli/import-hevy.ts",
     "replay": "tsx --env-file-if-exists=../../.env src/cli/replay.ts",
+    "db:backup": "tsx --env-file-if-exists=../../.env scripts/backup-db.ts",
     "db:copy": "tsx --env-file-if-exists=../../.env scripts/copy-db.ts",
     "db:embed": "node scripts/embed-migrations.mjs",
     "prebuild": "node scripts/embed-migrations.mjs",

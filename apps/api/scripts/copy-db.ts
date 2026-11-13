@@ -5,6 +5,7 @@
  * No copia sesiones de acceso (tokens) ni cuentas de coach: esas se crean en el destino.
  */
 import { openDb } from '../src/db/connection.js';
+import { refuseOnRemote } from '../src/db/guard.js';
 
 const src = process.env.SOURCE_DB;
 const dst = process.env.TURSO_DATABASE_URL;
@@ -13,6 +14,7 @@ if (!src || !dst) {
   process.exit(2);
 }
 const replace = process.argv.includes('--replace');
+if (replace) refuseOnRemote(dst, 'db:copy --replace (vacía las tablas del destino)');
 const SKIP = new Set([
   'schema_migrations',
   'athlete_tokens',

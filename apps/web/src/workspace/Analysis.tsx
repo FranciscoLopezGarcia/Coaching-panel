@@ -1,5 +1,6 @@
 import { EssentialAnalysis } from './EssentialAnalysis';
 import { BlockDashboard } from './BlockDashboard';
+import { BlockAnalysisPanel } from './BlockAnalysisPanel';
 import { useState } from 'react';
 import type { MetricDefinition, MetricResult, PeriodComparison } from '@coaching/contracts';
 import { workspaceApi as w, get, query } from './api';
@@ -709,6 +710,7 @@ export function Analysis(props: Parameters<typeof AdvancedAnalysis>[0]) {
   const [advanced, setAdvanced] = useState(false);
   return (
     <>
+      <BlockAnalysisPanel id={props.id} cutoff={props.cutoff} />
       <BlockDashboard
         id={props.id}
         classic={

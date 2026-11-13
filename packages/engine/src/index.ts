@@ -79,3 +79,5 @@ export * from './tables/index.js';
 export * from './core.js';
 export * from './fatigue.js';
 export * from './progression.js';
+
+export * from './block-analysis/index.js';
