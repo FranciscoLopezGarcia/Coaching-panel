@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ProgramError,
+  applyBlockTemplate,
   applyTemplate,
   changeProtocol,
   duplicateSession,
@@ -10,6 +11,7 @@ import {
   repeatStructure,
   repeatWeek,
   resolvePlannedKg,
+  saveBlockTemplate,
   saveTemplate,
   selectSets,
   withDerivedLoads,
@@ -262,7 +264,67 @@ describe('Plantillas', () => {
   });
 });
 
+describe('Plantillas de bloque completo', () => {
+  /** Bloque de 2 semanas: la semana 2 es la 1 desplazada 7 días. */
+  function twoWeeks(): PlannedSet[] {
+    const w1 = plan();
+    const w2 = repeatWeek(w1, { blockKey: 'B1', sourceWeek: 1, targetWeek: 2, shiftDays: 7 }).added;
+    return [...w1, ...w2];
+  }
+  it('guarda todas las semanas sin fechas ni ids y se aplica a otro bloque con fecha propia', () => {
+    const p = twoWeeks();
+    const t = saveBlockTemplate(p, { name: 'Bloque 2 sem', blockKey: 'B1' });
+    expect(t.weeks).toBe(2);
+    expect(t.sessions.map((s) => [s.weekNo, s.offsetDays])).toEqual([
+      [1, 0],
+      [1, 2],
+      [2, 7],
+      [2, 9],
+    ]);
+    expect(JSON.stringify(t)).not.toMatch(/2026-03/);
+    const r = applyBlockTemplate(p, t, { blockKey: 'B2', startDate: '2026-05-04' });
+    expect(r.added).toHaveLength(p.length);
+    expect([...new Set(r.added.map((s) => s.plannedDate))].sort()).toEqual([
+      '2026-05-04',
+      '2026-05-06',
+      '2026-05-11',
+      '2026-05-13',
+    ]);
+    expect(new Set(r.added.map((s) => s.weekNo))).toEqual(new Set([1, 2]));
+    expect(new Set(r.added.map((s) => s.id)).size).toBe(r.added.length);
+    expect(r.added.every((s) => s.blockKey === 'B2' && s.copiedFrom === null)).toBe(true);
+    expect(() =>
+      applyBlockTemplate([...p, ...r.added], t, { blockKey: 'B2', startDate: '2026-05-04' }),
+    ).toThrow(/no se sobrescribe/);
+  });
+  it('un bloque sin series no se puede guardar', () => {
+    expect(() => saveBlockTemplate(plan(), { name: 'x', blockKey: 'NOPE' })).toThrow(ProgramError);
+  });
+});
+
 describe('Cambiar protocolos en un conjunto explícito de destinos', () => {
+  it('cambia rol y prioridad solo de lo seleccionado (el resto queda igual)', () => {
+    const p = plan();
+    const r = changeProtocol(p, { sessionKeys: ['B1-w1-d1'] }, { exposureRole: 'secundaria', priority: 2 });
+    expect(
+      r.sets
+        .filter((s) => s.sessionKey === 'B1-w1-d1')
+        .every((s) => s.exposureRole === 'secundaria' && s.priority === 2),
+    ).toBe(true);
+    expect(JSON.stringify(r.sets.filter((s) => s.sessionKey === 'B1-w1-d3'))).toBe(
+      JSON.stringify(p.filter((s) => s.sessionKey === 'B1-w1-d3')),
+    );
+    const cleared = changeProtocol(
+      r.sets,
+      { sessionKeys: ['B1-w1-d1'] },
+      { exposureRole: null, priority: null },
+    );
+    expect(
+      cleared.sets
+        .filter((s) => s.sessionKey === 'B1-w1-d1')
+        .every((s) => s.exposureRole === null && s.priority === null),
+    ).toBe(true);
+  });
   it('modifica solo las series seleccionadas', () => {
     const p = plan();
     const r = changeProtocol(p, { sessionKeys: ['B1-w1-d1'] }, { reps: 3, targetRpe: 7, plannedKg: 160 });

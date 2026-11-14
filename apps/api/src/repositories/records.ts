@@ -132,6 +132,90 @@ export class RecordsRepo {
       )) as PRaw[]
     ).map(mapPlanned);
   }
+  /** Solo los ids del plan vigente (liviano: evita releer todas las series). */
+  async listActivePlannedIds(athleteId: string): Promise<string[]> {
+    return (
+      (await this.db.all('SELECT id FROM planned_sets WHERE athlete_id = ? AND retired = 0', athleteId)) as {
+        id: string;
+      }[]
+    ).map((r) => r.id);
+  }
+  /** Plan vigente de un solo bloque (liviano: para guardar plantillas sin leer todo el plan). */
+  async listActivePlannedByBlock(athleteId: string, blockKey: string): Promise<PlannedSet[]> {
+    return (
+      (await this.db.all(
+        'SELECT * FROM planned_sets WHERE athlete_id = ? AND retired = 0 AND block_key = ? ORDER BY planned_date, session_key, set_no',
+        athleteId,
+        blockKey,
+      )) as PRaw[]
+    ).map(mapPlanned);
+  }
+  /** Plan vigente de un rango de fechas (liviano: para el panel «hoy / semana»). */
+  async listActivePlannedBetween(athleteId: string, from: string, to: string): Promise<PlannedSet[]> {
+    return (
+      (await this.db.all(
+        'SELECT * FROM planned_sets WHERE athlete_id = ? AND retired = 0 AND planned_date >= ? AND planned_date <= ? ORDER BY planned_date, session_key, set_no',
+        athleteId,
+        from,
+        to,
+      )) as PRaw[]
+    ).map(mapPlanned);
+  }
+  /** Ejecución de las series previstas en un rango de fechas. */
+  async listActualBetween(athleteId: string, from: string, to: string): Promise<ActualSet[]> {
+    return (
+      (await this.db.all(
+        `SELECT a.* FROM actual_sets a JOIN planned_sets p ON p.athlete_id = a.athlete_id AND p.id = a.planned_set_id
+         WHERE a.athlete_id = ? AND p.retired = 0 AND p.planned_date >= ? AND p.planned_date <= ?`,
+        athleteId,
+        from,
+        to,
+      )) as ARaw[]
+    ).map((r) => ({
+      plannedSetId: r.planned_set_id,
+      status: r.status,
+      kg: r.kg,
+      reps: r.reps,
+      rpe: r.rpe,
+      performedOn: r.performed_on,
+      pain: r.pain,
+    }));
+  }
+  /** Series de trabajo hechas con carga de los movimientos de competencia (para marcas de entrenamiento). */
+  async listDoneLiftSets(athleteId: string): Promise<
+    {
+      exerciseName: string;
+      lift: 'SQ' | 'BP' | 'DL';
+      kg: number;
+      reps: number;
+      rpe: number | null;
+      date: string;
+    }[]
+  > {
+    return (
+      (await this.db.all(
+        `SELECT p.exercise_name, p.lift, a.kg, a.reps, a.rpe, a.performed_on FROM actual_sets a
+         JOIN planned_sets p ON p.athlete_id = a.athlete_id AND p.id = a.planned_set_id
+         WHERE a.athlete_id = ? AND a.status = 'done' AND a.kg IS NOT NULL AND a.reps IS NOT NULL
+           AND a.performed_on IS NOT NULL AND p.lift IS NOT NULL AND p.is_warmup = 0`,
+        athleteId,
+      )) as {
+        exercise_name: string;
+        lift: 'SQ' | 'BP' | 'DL';
+        kg: number;
+        reps: number;
+        rpe: number | null;
+        performed_on: string;
+      }[]
+    ).map((r) => ({
+      exerciseName: r.exercise_name,
+      lift: r.lift,
+      kg: r.kg,
+      reps: r.reps,
+      rpe: r.rpe,
+      date: r.performed_on,
+    }));
+  }
   /** Para el motor: el plan vigente MÁS las series retiradas que tienen ejecución (historial). */
   async listPlanned(athleteId: string): Promise<PlannedSet[]> {
     return (
@@ -243,7 +327,22 @@ export class RecordsRepo {
     )) as { d: string | null };
     return r.d;
   }
-  async upsertCheckIn(athleteId: string, c: CheckInInput, reason?: string): Promise<void> {
+  async upsertCheckIn(athleteId: string, input: CheckInInput, reason?: string): Promise<void> {
+    const { soreness, confidence, sleepHours, bodyweightKg, note, ...c } = input;
+    const hasExtras =
+      [soreness, confidence, sleepHours, bodyweightKg].some((x) => x != null) || !!note?.trim();
+    if (hasExtras)
+      await this.db.run(
+        `INSERT INTO checkin_extras (athlete_id, date, soreness, confidence, sleep_hours, bodyweight_kg, note) VALUES (?,?,?,?,?,?,?)
+        ON CONFLICT (athlete_id, date) DO UPDATE SET soreness=excluded.soreness, confidence=excluded.confidence, sleep_hours=excluded.sleep_hours, bodyweight_kg=excluded.bodyweight_kg, note=excluded.note`,
+        athleteId,
+        c.date,
+        soreness ?? null,
+        confidence ?? null,
+        sleepHours ?? null,
+        bodyweightKg ?? null,
+        note?.trim() ?? '',
+      );
     const before = (await this.db.get(
       'SELECT date, sleep, energy, motivation, stress, pain FROM checkins WHERE athlete_id = ? AND date = ?',
       athleteId,
@@ -271,10 +370,32 @@ export class RecordsRepo {
       c.pain,
     );
   }
+  /** Datos opcionales del TRAC ampliado por fecha (no entran en la predisposición). */
+  async listCheckInExtras(athleteId: string) {
+    return (await this.db.all(
+      'SELECT date, soreness, confidence, sleep_hours AS sleepHours, bodyweight_kg AS bodyweightKg, note FROM checkin_extras WHERE athlete_id = ? ORDER BY date',
+      athleteId,
+    )) as unknown as {
+      date: string;
+      soreness: number | null;
+      confidence: number | null;
+      sleepHours: number | null;
+      bodyweightKg: number | null;
+      note: string;
+    }[];
+  }
   async listCheckIns(athleteId: string): Promise<CheckInInput[]> {
     return (await this.db.all(
       'SELECT date, sleep, energy, motivation, stress, pain FROM checkins WHERE athlete_id = ? ORDER BY date',
       athleteId,
+    )) as unknown as CheckInInput[];
+  }
+  /** Check-ins desde una fecha (liviano). */
+  async listCheckInsSince(athleteId: string, from: string): Promise<CheckInInput[]> {
+    return (await this.db.all(
+      'SELECT date, sleep, energy, motivation, stress, pain FROM checkins WHERE athlete_id = ? AND date >= ? ORDER BY date',
+      athleteId,
+      from,
     )) as unknown as CheckInInput[];
   }
 }

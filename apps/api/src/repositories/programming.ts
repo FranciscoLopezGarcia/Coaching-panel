@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { MacroMeta, MesoMeta, MicroMeta, PlanTemplate } from '@coaching/engine';
+import type { BlockTemplate, MacroMeta, MesoMeta, MicroMeta, PlanTemplate } from '@coaching/engine';
 import type { Db } from '../db/connection.js';
 
 /** Macro → meso → microciclo con fechas explícitas y duración variable, plantillas y vínculos explícitos entre identidades de exposición. */
@@ -107,7 +107,7 @@ export class ProgrammingRepo {
     }));
   }
 
-  async saveTemplate(athleteId: string, t: PlanTemplate, nowIso: string): Promise<string> {
+  async saveTemplate(athleteId: string, t: PlanTemplate | BlockTemplate, nowIso: string): Promise<string> {
     const id = randomUUID();
     await this.db.run(
       'INSERT INTO plan_templates (id, athlete_id, name, payload, created_at) VALUES (?,?,?,?,?)',
@@ -119,21 +119,32 @@ export class ProgrammingRepo {
     );
     return id;
   }
-  async getTemplate(athleteId: string, id: string): Promise<PlanTemplate | null> {
+  async getTemplate(athleteId: string, id: string): Promise<PlanTemplate | BlockTemplate | null> {
     const r = (await this.db.get(
       'SELECT payload FROM plan_templates WHERE athlete_id = ? AND id = ?',
       athleteId,
       id,
     )) as { payload: string } | undefined;
-    return r ? (JSON.parse(r.payload) as PlanTemplate) : null;
+    return r ? (JSON.parse(r.payload) as PlanTemplate | BlockTemplate) : null;
   }
-  async listTemplates(athleteId: string): Promise<{ id: string; name: string; createdAt: string }[]> {
+  async listTemplates(
+    athleteId: string,
+  ): Promise<{ id: string; name: string; createdAt: string; kind: 'semana' | 'bloque'; weeks: number }[]> {
     return (
       (await this.db.all(
-        'SELECT id, name, created_at FROM plan_templates WHERE athlete_id = ? ORDER BY created_at DESC',
+        'SELECT id, name, created_at, payload FROM plan_templates WHERE athlete_id = ? ORDER BY created_at DESC',
         athleteId,
-      )) as { id: string; name: string; created_at: string }[]
-    ).map((r) => ({ id: r.id, name: r.name, createdAt: r.created_at }));
+      )) as { id: string; name: string; created_at: string; payload: string }[]
+    ).map((r) => {
+      const t = JSON.parse(r.payload) as Partial<BlockTemplate>;
+      return {
+        id: r.id,
+        name: r.name,
+        createdAt: r.created_at,
+        kind: t.kind === 'block' ? ('bloque' as const) : ('semana' as const),
+        weeks: t.kind === 'block' ? (t.weeks ?? 0) : 1,
+      };
+    });
   }
 
   async link(athleteId: string, from: string, to: string, on: string, note: string): Promise<void> {

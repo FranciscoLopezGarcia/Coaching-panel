@@ -6,6 +6,9 @@ import { openDb, type Db } from './db/connection.js';
 import { AthletesRepo } from './repositories/athletes.js';
 import { DecisionsRepo } from './repositories/decisions.js';
 import { HistoryRepo } from './repositories/history.js';
+import { ExtrasRepo } from './repositories/extras.js';
+import { CoachExtrasService } from './services/coach-extras.js';
+import { registerCoachExtrasRoutes } from './routes/coach-extras.js';
 import { InterventionsRepo } from './repositories/interventions.js';
 import { ObservedRepo } from './repositories/observed.js';
 import { ProgrammingRepo } from './repositories/programming.js';
@@ -24,6 +27,7 @@ import { registerConsolidationRoutes } from './routes/consolidation.js';
 import { registerErrorHandler } from './routes/http.js';
 import { registerTableRoutes } from './routes/tables.js';
 import { registerHistoryRoutes } from './routes/history.js';
+import { registerExportRoutes } from './routes/export.js';
 import { DashboardService } from './services/dashboard.js';
 import { DataLoader } from './services/data.js';
 import { EvaluationService } from './services/evaluation.js';
@@ -44,6 +48,8 @@ export interface AppContext {
   records: RecordsRepo;
   decisions: DecisionsRepo;
   history: HistoryRepo;
+  extrasRepo: ExtrasRepo;
+  coachExtras: CoachExtrasService;
   observed: ObservedRepo;
   revisions: RevisionsRepo;
   exerciseMap: ExerciseMapRepo;
@@ -76,6 +82,7 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
   const records = new RecordsRepo(db);
   const decisions = new DecisionsRepo(db);
   const history = new HistoryRepo(db);
+  const extrasRepo = new ExtrasRepo(db);
   const observed = new ObservedRepo(db);
   const references = new ReferencesRepo(db);
   const accounts = new AccountsRepo(db);
@@ -119,12 +126,14 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
     loader,
     plans,
     evaluation: new EvaluationService(db, loader, decisions, history),
+    extrasRepo,
+    coachExtras: new CoachExtrasService(athletes, records, history, extrasRepo, clock, nowIso),
     historyService: new HistoryService(loader, history),
     dashboard: new DashboardService(athletes, records, decisions, history),
     imports: new ImportService(observed, plans, config.timeZone, nowIso, exerciseMap),
     interventions: new InterventionService(interventionsRepo, decisions, loader, clock, nowIso),
     programming: new ProgrammingService(records, programmingRepo, plans, nowIso, history),
-    queries: new QueryService(loader, decisions, history, programmingRepo, records),
+    queries: new QueryService(loader, decisions, history, programmingRepo, records, extrasRepo),
     replay: new ReplayService(loader, history),
     projection: new ProjectionService(loader, db, clock),
     today: clock,
@@ -152,6 +161,8 @@ export async function buildApp(ctx0?: AppContext, opts: { logger?: boolean } = {
   });
   registerAthleteRoutes(app, ctx);
   registerHistoryRoutes(app, ctx);
+  registerExportRoutes(app, ctx);
+  registerCoachExtrasRoutes(app, ctx);
   registerConsolidationRoutes(app, ctx);
   registerTableRoutes(app);
   registerPortalRoutes(app, ctx);

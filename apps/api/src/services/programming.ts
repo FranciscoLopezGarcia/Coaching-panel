@@ -1,5 +1,6 @@
 import {
   addSets,
+  applyBlockTemplate,
   applyTemplate,
   removeSets,
   resolvePlannedKg,
@@ -11,6 +12,7 @@ import {
   ProgramError,
   repeatStructure,
   repeatWeek,
+  saveBlockTemplate,
   saveTemplate,
   type PlannedSet,
   type Preview,
@@ -84,7 +86,21 @@ export class ProgrammingService {
         case 'apply_template': {
           const t = await this.programming.getTemplate(athleteId, op.templateId);
           if (!t) throw new NotFoundError('Plantilla inexistente');
+          if ('kind' in t)
+            throw new ProgramError(
+              'Esa plantilla es de un bloque entero: usá «Aplicar plantilla de bloque».',
+            );
           const r = applyTemplate(current, t, op);
+          overwrites = r.overwrites;
+          after = [...current.filter((s) => !r.overwrites.some((o) => o.id === s.id)), ...r.added];
+          break;
+        }
+        case 'apply_block_template': {
+          const t = await this.programming.getTemplate(athleteId, op.templateId);
+          if (!t) throw new NotFoundError('Plantilla inexistente');
+          if (!('kind' in t))
+            throw new ProgramError('Esa plantilla es de una semana: usá «Aplicar plantilla».');
+          const r = applyBlockTemplate(current, t, op);
           overwrites = r.overwrites;
           after = [...current.filter((s) => !r.overwrites.some((o) => o.id === s.id)), ...r.added];
           break;
@@ -177,6 +193,21 @@ export class ProgrammingService {
     };
   }
 
+  async saveBlockTemplate(athleteId: string, o: { name: string; blockKey: string }): Promise<{ id: string }> {
+    try {
+      return {
+        id: await this.programming.saveTemplate(
+          athleteId,
+          saveBlockTemplate(await this.records.listActivePlannedByBlock(athleteId, o.blockKey), o),
+          this.nowIso(),
+        ),
+      };
+    } catch (e) {
+      if (e instanceof ProgramError) throw new UnprocessableError(e.message);
+      throw e;
+    }
+  }
+
   async saveTemplate(
     athleteId: string,
     o: { name: string; blockKey: string; weekNo: number },
@@ -185,7 +216,7 @@ export class ProgrammingService {
       return {
         id: await this.programming.saveTemplate(
           athleteId,
-          saveTemplate(await this.records.listActivePlanned(athleteId), o),
+          saveTemplate(await this.records.listActivePlannedByBlock(athleteId, o.blockKey), o),
           this.nowIso(),
         ),
       };

@@ -17,6 +17,7 @@ import {
   programOpFullSchema,
   replaySchema,
   revisionsQuerySchema,
+  saveBlockTemplateSchema,
   saveTemplateSchema,
   sourceQuerySchema,
   strengthReferenceSchema,
@@ -42,6 +43,8 @@ const dateRange = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
   source: z.string().optional(),
+  /** Granularidad de músculos para esta consulta (si falta, la del atleta). */
+  view: z.enum(['fino', 'medio', 'grueso']).optional(),
 });
 
 /** Consolidación del motor: catálogo, estado explicativo, métricas, récords, importaciones, referencias, intervenciones, programación, consultas y replay. */
@@ -248,6 +251,13 @@ export function registerConsolidationRoutes(app: FastifyInstance, ctx: AppContex
     const { id } = parse(idParam, req.params);
     await must(id);
     return reply.code(201).send(await ctx.programming.saveTemplate(id, parse(saveTemplateSchema, req.body)));
+  });
+  app.post('/api/athletes/:id/block-templates', async (req, reply) => {
+    const { id } = parse(idParam, req.params);
+    await must(id);
+    return reply
+      .code(201)
+      .send(await ctx.programming.saveBlockTemplate(id, parse(saveBlockTemplateSchema, req.body)));
   });
   app.get('/api/athletes/:id/templates', async (req) => {
     const { id } = parse(idParam, req.params);

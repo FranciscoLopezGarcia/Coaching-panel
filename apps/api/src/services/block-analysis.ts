@@ -105,6 +105,7 @@ export class BlockAnalysisService {
       asOf: o.asOf,
       source: o.source,
       lift: o.lift,
+      zoneCuts: d.athlete.params.intensityCuts,
     });
     if (!cmp) return null;
     return {

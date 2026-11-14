@@ -64,7 +64,7 @@ export class EvaluationService {
       cutoff,
     );
     await this.db.transaction(async () => {
-      this.decisions.saveAll(athleteId, merged);
+      await this.decisions.saveAll(athleteId, merged);
       await this.decisions.saveEvaluation(athleteId, evaluation);
     });
     return { evaluation, decisions: merged };

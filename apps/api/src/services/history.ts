@@ -195,6 +195,7 @@ export class HistoryService {
         isWarmup: s.isWarmup,
         retired: d.retiredIds.has(s.id),
         priority: s.priority,
+        exposureRole: s.exposureRole,
         refKg: s.refKg,
         copiedFrom: s.copiedFrom,
         plannedKgSource: s.plannedKgSource,

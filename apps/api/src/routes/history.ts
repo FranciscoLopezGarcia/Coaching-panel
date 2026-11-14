@@ -101,7 +101,14 @@ export function registerHistoryRoutes(app: FastifyInstance, ctx: AppContext): vo
   app.get('/api/athletes/:id/checkins', async (req) => {
     const { id } = parse(idParam, req.params);
     await must(id);
-    return (await ctx.records.listCheckIns(id)).map((c) => ({ ...c, readiness: readinessOf(c) })).reverse();
+    const extras = new Map((await ctx.records.listCheckInExtras(id)).map((e) => [e.date, e]));
+    return (await ctx.records.listCheckIns(id))
+      .map((c) => {
+        const { date: _d, ...x } = extras.get(c.date) ?? ({ date: c.date } as never);
+        void _d;
+        return { ...c, ...x, readiness: readinessOf(c) };
+      })
+      .reverse();
   });
 
   app.post('/api/athletes/:id/session-feedback', async (req) => {

@@ -47,8 +47,18 @@ export const api = {
   logSet: (b: SetBody) => queueSet(b),
   note: (sessionKey: string, exerciseName: string, note: string) =>
     call('PUT', '/api/me/notes', { sessionKey, exerciseName, note }),
-  checkin: (b: { sleep: number; energy: number; motivation: number; stress: number; pain: number }) =>
-    call('POST', '/api/me/checkins', b),
+  checkin: (b: {
+    sleep: number;
+    energy: number;
+    motivation: number;
+    stress: number;
+    pain: number;
+    soreness?: number | null;
+    confidence?: number | null;
+    sleepHours?: number | null;
+    bodyweightKg?: number | null;
+    note?: string;
+  }) => call('POST', '/api/me/checkins', b),
   finish: (key: string, endFatigue: number | null, note: string) =>
     call('POST', `/api/me/sessions/${encodeURIComponent(key)}/finish`, {
       endFatigue,

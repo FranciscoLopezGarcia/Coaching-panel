@@ -64,6 +64,7 @@ export * from './metric-result.js';
 export * from './catalog.js';
 export * from './records.js';
 export * from './muscles.js';
+export * from './exercise-library.js';
 export * from './metrics-observed.js';
 export { stressIndexPrg, exertionLoadEfort, SI_MODEL_PRG, SI_MODEL_EFORT } from './si.js';
 export * from './program.js';

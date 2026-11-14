@@ -87,6 +87,17 @@ export const paramsSchema = z
     endN: z.number().int().min(2).max(5),
     endStableN: z.number().int().min(4).max(12),
     families: z.record(familyMetaSchema),
+    /** Cortes de %1RM que definen las zonas de intensidad (p. ej. [75, 90] = 3 zonas). */
+    intensityCuts: z.array(z.number().min(10).max(150)).min(1).max(5),
+    /** Granularidad con que se informan los músculos (fino = 17 grupos; medio y grueso agrupan). */
+    muscleView: z.enum(['fino', 'medio', 'grueso']),
+    /** Mapa propio de músculos por ejercicio (clave = nombre normalizado). Gana sobre la convención del proyecto. */
+    muscleMap: z.record(
+      z.object({
+        direct: z.array(z.string().max(30)).max(10),
+        indirect: z.array(z.string().max(30)).max(10),
+      }),
+    ),
     perLift: z.object({ SQ: liftConfigSchema, BP: liftConfigSchema, DL: liftConfigSchema }).partial(),
   })
   .partial();
@@ -217,6 +228,12 @@ export const checkInSchema = z.object({
   motivation: scale,
   stress: scale,
   pain: scale,
+  /** TRAC ampliado (opcional, NO entra en la predisposición). */
+  soreness: scale.optional(),
+  confidence: scale.optional(),
+  sleepHours: z.number().min(0).max(24).nullable().optional(),
+  bodyweightKg: z.number().min(20).max(400).nullable().optional(),
+  note: z.string().max(500).optional(),
 });
 export const sessionFeedbackSchema = z.object({
   sessionKey: z.string().min(1),
@@ -233,6 +250,61 @@ export const competitionSchema = z.object({
   name: z.string().trim().min(1).max(80),
   date: iso,
   phase: z.string().max(60).default(''),
+  location: z.string().max(120).default(''),
+  weightClass: z.string().max(20).default(''),
+  /** Peso corporal registrado el día de la competencia (kg); null = sin dato. */
+  bodyweightKg: z.number().min(20).max(400).nullable().default(null),
+  /** Importancia declarada por el coach (A principal, B, C…); vacío = sin declarar. */
+  importance: z.enum(['', 'A', 'B', 'C']).default(''),
+  notes: z.string().max(500).default(''),
+});
+export type CompetitionInput = z.infer<typeof competitionSchema>;
+const attemptKg = z.number().positive().max(700).nullable().default(null);
+/** Un intento: lo previsto (apertura planificada) y lo realizado van separados; el resultado solo existe si hubo intento realizado. */
+export const attemptSchema = z.object({
+  lift: z.enum(['SQ', 'BP', 'DL']),
+  attemptNo: z.number().int().min(1).max(3),
+  plannedKg: attemptKg,
+  actualKg: attemptKg,
+  result: z.enum(['valido', 'nulo']).nullable().default(null),
+  note: z.string().max(200).default(''),
+});
+export const attemptsPutSchema = z.object({ attempts: z.array(attemptSchema).max(9) });
+export type AttemptInput = z.infer<typeof attemptSchema>;
+const isoOrNull = iso.nullable().default(null);
+export const profileSchema = z.object({
+  birthDate: isoOrNull,
+  sex: z.enum(['M', 'F', 'X']).nullable().default(null),
+  bodyweightKg: z.number().min(20).max(400).nullable().default(null),
+  weightClass: z.string().max(20).default(''),
+  federation: z.string().max(60).default(''),
+  equipment: z.enum(['raw', 'equipado', 'ambos']).nullable().default(null),
+  trainingSince: isoOrNull,
+  daysPerWeek: z.number().int().min(1).max(7).nullable().default(null),
+  goals: z.string().max(600).default(''),
+  historyNotes: z.string().max(1000).default(''),
+  constraintsNotes: z.string().max(600).default(''),
+});
+export type ProfileInput = z.infer<typeof profileSchema>;
+const muscleGroupName = z.string().min(1).max(40);
+export const customExerciseSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  lift: z.enum(['SQ', 'BP', 'DL']).nullable().default(null),
+  pattern: z.string().max(40).default(''),
+  equipment: z.string().max(40).default(''),
+  /** Músculos que reciben series: directo cuenta 1, indirecto 0,5 (convención del proyecto). */
+  muscles: z
+    .object({
+      direct: z.array(muscleGroupName).max(8).default([]),
+      indirect: z.array(muscleGroupName).max(8).default([]),
+    })
+    .default({ direct: [], indirect: [] }),
+  notes: z.string().max(300).default(''),
+});
+export type CustomExerciseInput = z.infer<typeof customExerciseSchema>;
+export const saveBlockTemplateSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  blockKey: z.string().min(1),
 });
 export const changeCommentSchema = z.object({ coachComment: z.string().max(500) });
 export const compareQuerySchema = z.object({
@@ -352,6 +424,11 @@ export interface CheckInRow {
   motivation: number | null;
   stress: number | null;
   pain: number | null;
+  soreness?: number | null;
+  confidence?: number | null;
+  sleepHours?: number | null;
+  bodyweightKg?: number | null;
+  note?: string;
   readiness: number | null;
 }
 export interface SessionRow {
@@ -386,6 +463,8 @@ export interface SessionRow {
     /** true = ya no está en la programación vigente pero se conserva porque tiene ejecución. */
     retired: boolean;
     priority: number | null;
+    /** Rol del movimiento (básico / variante / accesorio); null = el coach no lo clasificó. */
+    exposureRole: 'primaria' | 'secundaria' | 'accesorio' | null;
     refKg: number | null;
     copiedFrom: string | null;
     plannedKgSource: 'fixed' | 'derived' | null;
@@ -574,6 +653,14 @@ const programOpsBase = [
     replaceExisting: z.boolean().optional(),
   }),
   z.object({
+    type: z.literal('apply_block_template'),
+    templateId: z.string(),
+    blockKey: z.string(),
+    startDate: iso2,
+    familyKey: z.string().optional(),
+    replaceExisting: z.boolean().optional(),
+  }),
+  z.object({
     type: z.literal('change_protocol'),
     selection,
     change: z.object({
@@ -583,6 +670,8 @@ const programOpsBase = [
       protocol: protocolSchema.partial().nullable().optional(),
       variantKey: z.string().optional(),
       exerciseName: z.string().optional(),
+      exposureRole: z.enum(['primaria', 'secundaria', 'accesorio']).nullable().optional(),
+      priority: z.number().int().min(1).max(5).nullable().optional(),
     }),
   }),
   z.object({
@@ -788,6 +877,8 @@ export const coreQuerySchema = z
     view: z.enum(['weeks', 'sessions', 'all']).default('all'),
     /** realizado = solo lo ejecutado; previsto = la prescripción (series, reps, kg y RPE objetivo) tratada como dosis planificada. */
     basis: z.enum(['realizado', 'previsto']).default('realizado'),
+    /** Granularidad de músculos (si falta, la configurada para el atleta). */
+    muscleView: z.enum(['fino', 'medio', 'grueso']).optional(),
   })
   .refine((q) => q.from <= q.to, { message: 'from no puede ser posterior a to', path: ['from'] });
 export type CoreQuery = z.infer<typeof coreQuerySchema>;
@@ -803,3 +894,56 @@ export const prgSiTableQuerySchema = z.object({
   pctStep: z.coerce.number().min(0.5).max(50).optional(),
   repsMax: z.coerce.number().int().min(1).max(50).optional(),
 });
+
+/* ---- Perfil, competencias con intentos, marcas, panel hoy/semana y biblioteca (respuestas de la API) ---- */
+export interface ProfileData extends ProfileInput {
+  updatedAt: string | null;
+}
+export interface CompetitionDetail extends CompetitionInput {
+  id: string;
+  athleteId: string;
+  /** Días hasta la fecha (negativo = ya pasó). */
+  daysLeft: number;
+  attempts: (AttemptInput & { competitionId: string })[];
+  /** Mejor intento VÁLIDO por movimiento. */
+  best: Partial<Record<Lift, number>>;
+  /** Solo si hay un intento válido en los tres movimientos; si no, null (faltante ≠ cero). */
+  total: number | null;
+}
+export interface LiftMarksData {
+  lift: Lift;
+  competition: { kg: number; date: string; competition: string } | null;
+  trainingHeaviest: { kg: number; reps: number; date: string } | null;
+  trainingSingle: { kg: number; date: string } | null;
+  trainingE1rm: { kg: number; date: string } | null;
+  diffKg: number | null;
+}
+export interface AgendaSessionData {
+  sessionKey: string;
+  date: string;
+  exercises: string[];
+  setsPlanned: number;
+  setsDone: number;
+  setsSkipped: number;
+  status: 'hecha' | 'parcial' | 'sin_registro' | 'pendiente';
+}
+export interface AgendaData {
+  today: string;
+  week: { from: string; to: string };
+  sessions: AgendaSessionData[];
+  checkInToday: boolean;
+  lastCheckIn: string | null;
+  painSets7d: { count: number; max: number | null };
+  nextCompetition: { name: string; date: string; daysLeft: number } | null;
+}
+export interface LibraryEntryData {
+  name: string;
+  lift: Lift | null;
+  role: 'primaria' | 'secundaria' | 'accesorio';
+  equipment: string;
+  origin: 'fija' | 'propia';
+  id: string | null;
+  pattern: string | null;
+  muscles: { group: string; kind: 'directo' | 'indirecto'; weight: number }[] | null;
+  notes: string;
+}

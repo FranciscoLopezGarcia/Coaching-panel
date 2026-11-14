@@ -6,7 +6,7 @@ import { WeekCopyDialog } from './WeekCopyDialog';
 import { QuickEntry } from './QuickEntry';
 import { MOVEMENT_GROUPS, MOVEMENT_OTHER, movementFields, segmentsToText } from './quickSession';
 import { BlockNavigator } from './BlockNavigator';
-import { PriorityFilter, usePrio } from './PriorityFilter';
+import { PriorityFilter, RoleFilter, usePrio, useRole } from './PriorityFilter';
 import { validateRepsRange } from './prescription';
 import { DataSheet } from './DataSheet';
 import { validateCell, type SheetColumn } from './sheetModel';
@@ -21,6 +21,7 @@ import { useLoad } from '../hooks';
 import { Async } from '../components/Async';
 import { workspaceApi as w, get, send, type ProgramResult, type Meso } from './api';
 import { Empty, Message, Modal, number, today, shift, dateLabel, Detail, usePending, readSearch } from './ui';
+import { useLibrary } from './LibraryPanel';
 export type KnownSet = ImportPlanInput['sets'][number];
 const cacheKey = (id: string) => `base:planned-identities:${id}`;
 export function knownSets(id: string): KnownSet[] {
@@ -68,7 +69,7 @@ export function Programming({
   const [mode, setMode] = useState('plan');
   const [layout, setLayout] = useState('cards');
   const [msg, setMsg] = useState('');
-  const [template, setTemplate] = useState(false);
+  const [template, setTemplate] = useState<false | 'semana' | 'bloque'>(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const data = useLoad(async () => {
@@ -260,10 +261,23 @@ export function Programming({
                     <button onClick={() => setOperation('repeat_structure')} disabled={!weeks.length}>
                       Repetir estructura
                     </button>
-                    <button onClick={() => setTemplate(true)} disabled={!weeks.length}>
+                    <button onClick={() => setTemplate('semana')} disabled={!weeks.length}>
                       Guardar plantilla
                     </button>
                     <button onClick={() => setOperation('apply_template')}>Aplicar plantilla</button>
+                    <button
+                      onClick={() => setTemplate('bloque')}
+                      disabled={!weeks.length}
+                      title="Guarda todas las semanas de este bloque como plantilla"
+                    >
+                      Guardar bloque como plantilla
+                    </button>
+                    <button
+                      onClick={() => setOperation('apply_block_template')}
+                      title="Aplica una plantilla de bloque entero al bloque elegido"
+                    >
+                      Aplicar plantilla de bloque
+                    </button>
                     <button
                       onClick={() => setOperation('change_protocol')}
                       disabled={!selectedSessions.length}
@@ -486,14 +500,18 @@ export function Programming({
         />
       )}
       {template && (
-        <Modal title="Guardar plantilla de semana" onClose={() => setTemplate(false)}>
+        <Modal
+          title={template === 'bloque' ? 'Guardar bloque como plantilla' : 'Guardar plantilla de semana'}
+          onClose={() => setTemplate(false)}
+        >
           <form
             onSubmit={async (e) => {
               e.preventDefault();
               if (busy) return;
               setBusy(true);
               try {
-                await send(id, 'templates', { name, blockKey: block, weekNo: week || weeks.at(-1) });
+                if (template === 'bloque') await send(id, 'block-templates', { name, blockKey: block });
+                else await send(id, 'templates', { name, blockKey: block, weekNo: week || weeks.at(-1) });
                 setMsg('Plantilla guardada. Solo programación, sin resultados.');
                 setTemplate(false);
               } catch (e) {
@@ -504,14 +522,16 @@ export function Programming({
             }}
           >
             <p>
-              Origen: {block} · semana {week || weeks.at(-1)}. Se conserva la distribución y los protocolos.
+              {template === 'bloque'
+                ? `Origen: ${block} completo (${weeks.length} semana(s)). Se conservan sesiones, orden, roles y protocolos; no las fechas ni los resultados.`
+                : `Origen: ${block} · semana ${week || weeks.at(-1)}. Se conserva la distribución y los protocolos.`}
             </p>
             <label>
               Nombre
               <input required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
             </label>
             <button className="primary" disabled={busy}>
-              Guardar plantilla
+              {template === 'bloque' ? 'Guardar plantilla de bloque' : 'Guardar plantilla'}
             </button>
           </form>
         </Modal>
@@ -540,6 +560,8 @@ interface Segment {
   rest: string;
   note: string;
   priority: string;
+  /** Rol del movimiento: '' = sin clasificar · primaria (básico) · secundaria (variante) · accesorio. */
+  role?: string;
   view?: string;
   prog?: string;
 }
@@ -563,6 +585,7 @@ const newSegment = (): Segment => ({
   rest: '',
   note: '',
   priority: '1',
+  role: '',
 });
 const segmentColumns: SheetColumn[] = [
   { key: 'exerciseName', label: 'Ejercicio', required: true },
@@ -623,6 +646,17 @@ const segmentColumns: SheetColumn[] = [
     ],
   },
   { key: 'priority', label: 'Prioridad', type: 'number', min: 1, max: 5, step: 1, required: true },
+  {
+    key: 'role',
+    label: 'Rol del movimiento',
+    type: 'select',
+    options: [
+      { value: '', label: 'Sin rol' },
+      { value: 'primaria', label: 'Básico' },
+      { value: 'secundaria', label: 'Variante' },
+      { value: 'accesorio', label: 'Accesorio' },
+    ],
+  },
 ];
 export function CreateDialog({
   id,
@@ -656,6 +690,7 @@ export function CreateDialog({
   const [objective, setObjective] = useState('');
   const [status, setStatus] = useState('planificado');
   const [segments, setSegments] = useState<Segment[]>([newSegment()]);
+  const library = useLibrary();
   const [segmentGrid, setSegmentGrid] = useState(() => window.matchMedia('(min-width: 900px)').matches);
   const [advanced, setAdvanced] = useState(false);
   const [quick, setQuick] = useState(true);
@@ -697,6 +732,7 @@ export function CreateDialog({
         refKg: s.ref ? Number(s.ref.replace(',', '.')) : null,
         isWarmup: s.warmup,
         priority: Number(s.priority.replace(',', '.')),
+        exposureRole: (s.role || null) as 'primaria' | 'secundaria' | 'accesorio' | null,
         protocol: {
           repsMax: s.repsMax ? Number(s.repsMax.replace(',', '.')) : null,
           loadMode: s.mode,
@@ -1007,6 +1043,11 @@ export function CreateDialog({
                 <button type="button" aria-expanded={advanced} onClick={() => setAdvanced(!advanced)}>
                   {advanced ? 'Ocultar campos avanzados' : 'Referencia, tempo y opciones avanzadas'}
                 </button>
+                <datalist id="biblioteca-ejercicios">
+                  {library.map((en) => (
+                    <option key={en.name} value={en.name} />
+                  ))}
+                </datalist>
                 {segments.map((s, i) => (
                   <fieldset key={i}>
                     <legend>Segmento {i + 1}</legend>
@@ -1095,9 +1136,25 @@ export function CreateDialog({
                                 : 'any'
                             }
                             value={s[k]}
+                            list={k === 'exerciseName' ? 'biblioteca-ejercicios' : undefined}
                             onChange={(e) => {
+                              const v = e.target.value;
+                              // Si el nombre es de la biblioteca, se sugiere el movimiento y el rol (editables); nunca pisa lo ya elegido.
+                              const hit =
+                                k === 'exerciseName'
+                                  ? library.find((en) => en.name.toLowerCase() === v.trim().toLowerCase())
+                                  : undefined;
                               setSegments(
-                                segments.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)),
+                                segments.map((x, j) =>
+                                  j === i
+                                    ? {
+                                        ...x,
+                                        [k]: v,
+                                        ...(hit && x.lift === '' && hit.lift ? { lift: hit.lift } : {}),
+                                        ...(hit && !x.role ? { role: hit.role } : {}),
+                                      }
+                                    : x,
+                                ),
                               );
                               setReview(null);
                             }}
@@ -1326,7 +1383,10 @@ export function OperationDialog({
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState('');
   const [evidence, setEvidence] = useState<ExposureDetail | null>(null);
-  const templates = useLoad(() => get<{ id: string; name: string }[]>(id, 'templates'), [id]);
+  const templates = useLoad(
+    () => get<{ id: string; name: string; kind: 'semana' | 'bloque'; weeks: number }[]>(id, 'templates'),
+    [id],
+  );
   const perf = useLoad(() => api.performance(id), [id]);
   const exposures = [
     ...new Set([
@@ -1360,6 +1420,9 @@ export function OperationDialog({
         break;
       case 'apply_template':
         op = { type, ...base, templateId: template, weekNo: n[0]!, startDate: date };
+        break;
+      case 'apply_block_template':
+        op = { type, blockKey: block, templateId: template, startDate: date, replaceExisting: replace };
         break;
       case 'move_session':
         op = { type, sessionKey: source, plannedDate: date };
@@ -1437,6 +1500,7 @@ export function OperationDialog({
           repeat_week: 'Crear siguiente semana',
           repeat_structure: 'Repetir estructura',
           apply_template: 'Aplicar plantilla',
+          apply_block_template: 'Aplicar plantilla de bloque',
           change_protocol: 'Modificar protocolos',
           move_session: 'Mover sesión',
         }[type]
@@ -1468,7 +1532,7 @@ export function OperationDialog({
               </select>
             </label>
           )}
-          {type !== 'move_session' && (
+          {type !== 'move_session' && type !== 'apply_block_template' && (
             <label>
               Semana
               {['repeat_structure', 'change_protocol'].includes(type)
@@ -1477,24 +1541,39 @@ export function OperationDialog({
               <input required value={target} onChange={(e) => setTarget(e.target.value)} />
             </label>
           )}
-          {['repeat_week', 'duplicate_session', 'apply_template', 'move_session'].includes(type) && (
+          {[
+            'repeat_week',
+            'duplicate_session',
+            'apply_template',
+            'apply_block_template',
+            'move_session',
+          ].includes(type) && (
             <label>
               Fecha destino
               <input required type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </label>
           )}
-          {type === 'apply_template' && (
+          {(type === 'apply_template' || type === 'apply_block_template') && (
             <label>
               Plantilla
               <select required value={template} onChange={(e) => setTemplate(e.target.value)}>
                 <option value="">Elegí una plantilla</option>
-                {templates.data?.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
+                {templates.data
+                  ?.filter((t) => t.kind === (type === 'apply_block_template' ? 'bloque' : 'semana'))
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {t.kind === 'bloque' ? ` · ${t.weeks} sem` : ''}
+                    </option>
+                  ))}
               </select>
             </label>
+          )}
+          {type === 'apply_block_template' && (
+            <p className="small muted">
+              Se aplica al bloque elegido ({block}) con la fecha de inicio indicada: ids nuevos, sin
+              resultados. Si el bloque ya tiene series, pide confirmación para reemplazarlas.
+            </p>
           )}
           {type === 'change_protocol' && (
             <>
@@ -1710,5 +1789,11 @@ export function OperationDialog({
 
 function PriorityFilterBar() {
   const [prio, setPrio] = usePrio();
-  return <PriorityFilter value={prio} onChange={setPrio} />;
+  const [role, setRole] = useRole();
+  return (
+    <>
+      <PriorityFilter value={prio} onChange={setPrio} />
+      <RoleFilter value={role} onChange={setRole} />
+    </>
+  );
 }

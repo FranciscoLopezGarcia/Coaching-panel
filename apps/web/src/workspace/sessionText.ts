@@ -21,6 +21,8 @@ export interface ExGroup {
   /** Movimiento: SQ/BP/DL, 'acc:<grupo>' o 'acc:otro'. */
   lift: string;
   priority: number | null;
+  /** Rol del movimiento (`exposureRole`): null = sin clasificar. */
+  role: string | null;
   exposureId: string;
   sets: SetRow[];
 }
@@ -38,6 +40,7 @@ export function groupByExercise(sets: SetRow[]): ExGroup[] {
       name: s.exerciseName,
       lift: movementValue(s.lift, s.protocol?.muscleGroup),
       priority: s.priority,
+      role: s.exposureRole ?? null,
       exposureId: s.exposureId,
       sets: [],
     };

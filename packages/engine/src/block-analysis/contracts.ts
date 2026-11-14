@@ -1,4 +1,6 @@
 /** Contratos del Analizador integral de bloques (spec BASE_Analizador_Bloques_v1). Solo lectura: no prescribe ni predice. */
+import type { BlockCompliance } from './compliance.js';
+import type { IntensityZones } from './zones.js';
 import type { Lift } from '../types.js';
 
 export const ANALYSIS_VERSION = 'block-analysis-v1';
@@ -138,4 +140,8 @@ export interface BlockComparison {
   quality: BlockQuality[];
   cards: ExerciseCard[];
   variants: VariantPerformance[];
+  /** Distribución de series/repeticiones por zonas de %1RM por bloque (descriptiva, cortes del coach). */
+  zones: IntensityZones;
+  /** Cumplimiento (previsto vs hecho) por bloque y por semana. Descriptivo; faltante ≠ omitido. */
+  compliance: BlockCompliance[];
 }

@@ -7,6 +7,7 @@ import { workspaceApi } from '../workspace/api';
 import { api, request } from '../api/client';
 import { StatusBadge } from '../components/StatusBadge';
 import { LIFT_NAMES, STATUS } from '../labels';
+import { TodayBoard } from '../workspace/AgendaCard';
 
 const LIFTS: Lift[] = ['SQ', 'BP', 'DL'];
 const rosterSearch = () => {
@@ -240,6 +241,10 @@ export function Dashboard() {
             <li className="muted">Nada que revisar con prioridad.</li>
           )}
         </Panel>
+        <section className="panel wide-panel" aria-label="Hoy">
+          <h3>Hoy en el plantel</h3>
+          <TodayBoard link={link} />
+        </section>
         <Panel title="Próximas competencias">
           {dash.competitions.length ? (
             dash.competitions.map((c) => (

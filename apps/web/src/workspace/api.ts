@@ -52,6 +52,7 @@ export interface MuscleData {
   rows: {
     week: { from: string; to: string; partial: boolean };
     muscle: string;
+    label: string;
     directSets: number;
     indirectSets: number;
     equivalentSets: number;

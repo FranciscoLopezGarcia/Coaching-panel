@@ -67,7 +67,7 @@ export class DecisionsRepo {
       coachNote: patch.coachNote ?? cur.coachNote,
       decidedOn: patch.decidedOn ?? cur.decidedOn,
     };
-    this.saveAll(athleteId, [row]);
+    await this.saveAll(athleteId, [row]);
     return row;
   }
   /** @deprecated Compatibilidad con el contrato anterior (`coachDecision`): se traduce a ciclo de vida. "Aprobada" NO significa aplicada. */

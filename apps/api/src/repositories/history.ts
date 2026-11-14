@@ -8,6 +8,7 @@ import {
   type PlanSnapshot,
   type SessionFeedback,
 } from '@coaching/engine';
+import type { CompetitionInput } from '@coaching/contracts';
 import type { Db } from '../db/connection.js';
 import { upgradePlannedSet } from './legacy.js';
 
@@ -63,7 +64,15 @@ export class HistoryRepo {
     )) as { m: number };
     return r.m + 1;
   }
-  async addVersion(athleteId: string, v: Omit<PlanSnapshot, 'id' | 'seq'>): Promise<PlanSnapshot> {
+  /** Huella y contenido serializado de una versión: se calculan ANTES de abrir una transacción (son trabajo de CPU, no de base). */
+  prepareVersion(sets: PlanSnapshot['sets']): { fingerprint: string; content: string } {
+    return { fingerprint: fingerprint(sets), content: JSON.stringify(sets) };
+  }
+  async addVersion(
+    athleteId: string,
+    v: Omit<PlanSnapshot, 'id' | 'seq'>,
+    prepared?: { fingerprint: string; content: string },
+  ): Promise<PlanSnapshot> {
     const id = randomUUID().slice(0, 8);
     const seq = await this.nextSeq(athleteId);
     await this.db.run(
@@ -75,8 +84,8 @@ export class HistoryRepo {
       v.detectedOn,
       v.effectiveOn,
       v.label,
-      fingerprint(v.sets),
-      JSON.stringify(v.sets),
+      prepared?.fingerprint ?? fingerprint(v.sets),
+      prepared?.content ?? JSON.stringify(v.sets),
     );
     return { ...v, id, seq };
   }
@@ -189,34 +198,87 @@ export class HistoryRepo {
     )) as unknown as CoachReview[];
   }
 
-  async addCompetition(athleteId: string, c: { name: string; date: string; phase: string }): Promise<string> {
+  async addCompetition(
+    athleteId: string,
+    c: Partial<CompetitionInput> & { name: string; date: string },
+  ): Promise<string> {
     const id = randomUUID();
     await this.db.run(
-      'INSERT INTO competitions (id, athlete_id, name, date, phase) VALUES (?,?,?,?,?)',
+      'INSERT INTO competitions (id, athlete_id, name, date, phase, location, weight_class, bodyweight_kg, importance, notes) VALUES (?,?,?,?,?,?,?,?,?,?)',
       id,
       athleteId,
       c.name,
       c.date,
-      c.phase,
+      c.phase ?? '',
+      c.location ?? '',
+      c.weightClass ?? '',
+      c.bodyweightKg ?? null,
+      c.importance ?? '',
+      c.notes ?? '',
     );
     return id;
   }
-  async listCompetitions(
-    athleteId?: string,
-  ): Promise<{ id: string; athleteId: string; name: string; date: string; phase: string }[]> {
+  async updateCompetition(athleteId: string, id: string, c: CompetitionInput): Promise<boolean> {
+    const r = await this.db.run(
+      'UPDATE competitions SET name = ?, date = ?, phase = ?, location = ?, weight_class = ?, bodyweight_kg = ?, importance = ?, notes = ? WHERE id = ? AND athlete_id = ?',
+      c.name,
+      c.date,
+      c.phase,
+      c.location,
+      c.weightClass,
+      c.bodyweightKg,
+      c.importance,
+      c.notes,
+      id,
+      athleteId,
+    );
+    return r.changes > 0;
+  }
+  /** Borra la competencia y, en cascada, sus intentos. Es una acción explícita del coach sobre un dato que cargó él. */
+  async deleteCompetition(athleteId: string, id: string): Promise<boolean> {
+    await this.db.run(
+      'DELETE FROM competition_attempts WHERE competition_id IN (SELECT id FROM competitions WHERE id = ? AND athlete_id = ?)',
+      id,
+      athleteId,
+    );
+    const r = await this.db.run('DELETE FROM competitions WHERE id = ? AND athlete_id = ?', id, athleteId);
+    return r.changes > 0;
+  }
+  async listCompetitions(athleteId?: string): Promise<CompetitionRow[]> {
     const rows = (
       athleteId
         ? await this.db.all('SELECT * FROM competitions WHERE athlete_id = ? ORDER BY date', athleteId)
         : await this.db.all('SELECT * FROM competitions ORDER BY date')
-    ) as { id: string; athlete_id: string; name: string; date: string; phase: string }[];
+    ) as {
+      id: string;
+      athlete_id: string;
+      name: string;
+      date: string;
+      phase: string;
+      location: string;
+      weight_class: string;
+      bodyweight_kg: number | null;
+      importance: string;
+      notes: string;
+    }[];
     return rows.map((r) => ({
       id: r.id,
       athleteId: r.athlete_id,
       name: r.name,
       date: r.date,
       phase: r.phase,
+      location: r.location ?? '',
+      weightClass: r.weight_class ?? '',
+      bodyweightKg: r.bodyweight_kg ?? null,
+      importance: (r.importance ?? '') as CompetitionRow['importance'],
+      notes: r.notes ?? '',
     }));
   }
+}
+
+export interface CompetitionRow extends CompetitionInput {
+  id: string;
+  athleteId: string;
 }
 
 export type { Lift };

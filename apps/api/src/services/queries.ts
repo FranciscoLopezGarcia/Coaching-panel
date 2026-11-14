@@ -34,6 +34,9 @@ import type { ProgrammingRepo } from '../repositories/programming.js';
 import type { RecordsRepo } from '../repositories/records.js';
 import type { DataLoader } from './data.js';
 import { NotFoundError } from './errors.js';
+import { muscleConfigOf } from './params.js';
+import { libraryMuscleMap } from './library.js';
+import type { ExtrasRepo } from '../repositories/extras.js';
 
 const bySource = (obs: ObservedSet[], source?: string) =>
   source ? obs.filter((o) => o.source === source) : obs;
@@ -46,7 +49,15 @@ export class QueryService {
     private history: HistoryRepo,
     private programming: ProgrammingRepo,
     private recordsRepo: RecordsRepo,
+    private extras?: ExtrasRepo,
   ) {}
+
+  /** Configuración de músculos del atleta sobre la base de los ejercicios propios del coach (el mapa del atleta gana). */
+  private async muscleCfg(params: Parameters<typeof muscleConfigOf>[0], view?: string) {
+    const base = this.extras ? libraryMuscleMap(await this.extras.listExercises()) : {};
+    const cfg = muscleConfigOf(params, view);
+    return { ...cfg, map: { ...base, ...(cfg.map ?? {}) } };
+  }
 
   catalog() {
     return {
@@ -69,6 +80,7 @@ export class QueryService {
       domain: 'recomendado' | 'amplio';
       view: 'weeks' | 'sessions' | 'all';
       basis?: 'realizado' | 'previsto';
+      muscleView?: string;
     },
   ) {
     const d = await this.loader.load(athleteId, q.cutoff);
@@ -113,6 +125,7 @@ export class QueryService {
       readiness: d.readinessHistory,
       planned: d.planned,
       domain: q.domain,
+      muscleConfig: await this.muscleCfg(d.athlete.params, q.muscleView),
     });
     return {
       ...r,
@@ -128,7 +141,7 @@ export class QueryService {
   }
 
   async state(athleteId: string): Promise<AthleteStateData> {
-    const d = await this.loader.load(athleteId);
+    const d = await this.loader.loadProfile(athleteId);
     const ev = await this.decisions.latestEvaluation(athleteId);
     const lifts: AthleteStateData['lifts'] = {};
     if (ev) for (const l of Object.keys(ev.lifts) as Lift[]) if (ev.lifts[l]) lifts[l] = ev.lifts[l]!.state;
@@ -209,12 +222,17 @@ export class QueryService {
       references: d.references,
     });
   }
-  async weeklyMuscles(athleteId: string, q: { from: string; to: string; cutoff: string; source?: string }) {
+  async weeklyMuscles(
+    athleteId: string,
+    q: { from: string; to: string; cutoff: string; source?: string; view?: string },
+  ) {
+    const d = await this.loader.load(athleteId, q.cutoff);
     return weeklyByMuscle(
-      bySource((await this.loader.load(athleteId, q.cutoff)).observed, q.source),
+      bySource(d.observed, q.source),
       q.from,
       q.to,
       q.cutoff,
+      await this.muscleCfg(d.athlete.params, q.view),
     );
   }
   async weekCompare(

@@ -1285,3 +1285,162 @@ label.check {
   align-items: flex-start;
   margin: 10px 0;
 }
+
+/* Rol del movimiento (básico / variante / accesorio): distinto del orden 1°/2° */
+.role-badge {
+  display: inline-block;
+  margin-right: 0.35rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.role-badge.role-primaria {
+  color: inherit;
+  border-color: currentColor;
+}
+
+/* Configuración · músculos, zonas y exportación */
+.muscle-settings fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.2rem 0.75rem;
+  flex: 1;
+  min-width: 260px;
+}
+.muscle-settings fieldset label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 400;
+}
+.muscle-settings fieldset legend {
+  padding: 0 0.4rem;
+}
+.muscle-settings .row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.muscle-settings,
+.zone-settings,
+.export-panel {
+  margin-top: 1.25rem;
+}
+
+/* Hoy y semana · competencias · perfil · biblioteca · cumplimiento */
+.agenda-card h3 {
+  margin: 0.9rem 0 0.35rem;
+  font-size: 0.95rem;
+}
+.agenda-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.4rem 0;
+}
+.agenda-flag {
+  padding: 0.15rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.78rem;
+}
+.agenda-flag.ok {
+  border-color: currentColor;
+}
+.agenda-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.agenda-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.agenda-status {
+  min-width: 5.5rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  text-align: center;
+}
+.agenda-status.s-hecha {
+  border-color: currentColor;
+  font-weight: 600;
+}
+.agenda-status.s-sin_registro {
+  border-style: dashed;
+}
+.agenda-day {
+  min-width: 6rem;
+  font-size: 0.85rem;
+}
+.agenda-ex {
+  flex: 1 1 14rem;
+}
+.comp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.comp-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.competitions-panel .card + .card,
+.profile-panel .wide,
+.library-panel {
+  margin-top: 1rem;
+}
+.profile-panel .wide,
+.form-grid .wide {
+  grid-column: 1 / -1;
+}
+.attempts-table input {
+  width: 6rem;
+}
+.library-panel fieldset {
+  grid-column: 1 / -1;
+}
+.library-panel .check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: 0.75rem;
+}
+.ba-compliance {
+  margin-top: 1rem;
+}
+.wide-panel {
+  grid-column: 1 / -1;
+}
+.profile-panel .form-grid > .message,
+.profile-panel .form-grid > .sticky-actions {
+  grid-column: 1 / -1;
+}
+.library-panel .form-grid > p,
+.library-panel .form-grid > .message,
+.library-panel .form-grid > .sticky-actions,
+.competitions-panel .form-grid > .message,
+.competitions-panel .form-grid > .sticky-actions {
+  grid-column: 1 / -1;
+}
+.library-panel fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.25rem 0.5rem;
+}
+.library-panel .check {
+  white-space: nowrap;
+}

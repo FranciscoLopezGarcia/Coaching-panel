@@ -1,7 +1,19 @@
+import { roleName } from './PriorityFilter';
 import { useEffect, useMemo, useState } from 'react';
 import { get, query } from './api';
 import { dateLabel, number, today } from './ui';
 import './blockanalysis.css';
+import {
+  ComplianceChart,
+  DeltaTag,
+  DIR_COLOR,
+  E1rmChart,
+  MetricChart,
+  MetricGrid,
+  ZonesChart,
+  arrowOf,
+  dirOf,
+} from './BlockCharts';
 
 /**
  * Analizador integral de bloques: ventana B0→B3 (B0 = referencia), deltas SOLO contra el bloque anterior, e1RM por variante y señal A/B.
@@ -83,6 +95,25 @@ interface Signal {
   b: Side;
   agreement: 'coinciden' | 'difieren' | 'no_comparable';
 }
+interface ComplianceTotals {
+  sessionsPlanned: number;
+  sessionsWithWork: number;
+  sessionsComplete: number;
+  setsPlanned: number;
+  setsDone: number;
+  setsSkipped: number;
+  setsUnknown: number;
+  setsDoneShare: number | null;
+  setsDoneOfRecorded: number | null;
+}
+interface Compliance {
+  blockKey: string;
+  weeks: (ComplianceTotals & { weekNo: number })[];
+  total: ComplianceTotals;
+  load: { pairs: number; meanPct: number | null };
+  reps: { pairs: number; meanPct: number | null };
+  rpe: { pairs: number; meanDiff: number | null };
+}
 interface Analysis {
   asOf: string;
   window: { blocks: BlockCard[]; partial: boolean; currentBlockKey: string };
@@ -90,6 +121,25 @@ interface Analysis {
   rows: Row[];
   changes: Change[];
   quality: Quality[];
+  zones?: {
+    cuts: number[];
+    byBlock: {
+      blockKey: string;
+      withRef: number;
+      withoutRef: number;
+      zones: {
+        zone: number;
+        label: string;
+        range: string;
+        sets: number;
+        reps: number;
+        shareSets: number | null;
+        shareReps: number | null;
+      }[];
+    }[];
+    note: string;
+  };
+  compliance?: Compliance[];
   cards: Card[];
   variants: VariantPerf[];
   expression: Signal[];
@@ -229,6 +279,7 @@ export function BlockAnalysisPanel({ id, cutoff }: { id: string; cutoff?: string
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [more, setMore] = useState(false);
+  const [metric, setMetric] = useState('nl_per_week');
   const asOf = cutoff ?? today();
 
   useEffect(() => {
@@ -336,6 +387,33 @@ export function BlockAnalysisPanel({ id, cutoff }: { id: string; cutoff?: string
         </div>
       </header>
 
+      <section className="ba-visual" aria-label="Vista gráfica">
+        <div className="dir-legend">
+          <span>Color = dirección del cambio contra el bloque anterior, no un juicio:</span>
+          <span style={{ color: DIR_COLOR.up }}>{arrowOf('up')} subió</span>
+          <span style={{ color: DIR_COLOR.down }}>{arrowOf('down')} bajó</span>
+          <span style={{ color: DIR_COLOR.flat }}>{arrowOf('flat')} sin cambio / no comparable</span>
+          <span style={{ color: '#4fb985' }}>● máximo e1RM observado</span>
+          <span className="muted">Pasá el mouse por cualquier gráfico para ver el detalle.</span>
+        </div>
+        <MetricGrid rows={data.rows} labels={LABEL} blocks={blocks} selected={metric} onSelect={setMetric} />
+        {data.rows.find((r) => r.metricId === metric) && (
+          <MetricChart
+            row={data.rows.find((r) => r.metricId === metric)!}
+            label={LABEL[metric] ?? metric}
+            blocks={blocks}
+          />
+        )}
+        {data.zones && <ZonesChart zones={data.zones} blocks={blocks} />}
+        {data.compliance && data.compliance.length > 0 && (
+          <ComplianceChart data={data.compliance} blocks={blocks} />
+        )}
+        {lifts.map((l) => (
+          <E1rmChart key={l} lift={l} variants={data.variants} blocks={blocks} />
+        ))}
+      </section>
+
+      <h4 className="ba-tabletitle">Tabla de bloques</h4>
       <div className="ba-grid ba-chain" style={{ ['--cols' as string]: blocks.length }}>
         <div />
         {blocks.map((b, i) => {
@@ -371,19 +449,188 @@ export function BlockAnalysisPanel({ id, cutoff }: { id: string; cutoff?: string
               {LABEL[r.metricId] ?? r.metricId}
               <span className="muted small"> {r.unit}</span>
             </div>
-            {r.values.map((v, i) => (
-              <div key={i} className="ba-cell">
-                <span className="ba-val">
-                  {v === null ? 'No observada' : number(v, r.metricId === 'tonnage_per_week' ? 0 : 1)}
-                </span>
-                {i > 0 && r.deltas[i - 1] && (
-                  <span className="ba-delta">{fmtDelta(r.deltas[i - 1] as Delta)}</span>
-                )}
-              </div>
-            ))}
+            {r.values.map((v, i) => {
+              const dl = i > 0 ? (r.deltas[i - 1] as Delta | undefined) : undefined;
+              const dd = dl && (dl.status === 'ok' || dl.status === 'nuevo') ? dirOf(dl.abs) : 'flat';
+              const tint = dl?.pct == null ? 0.25 : Math.min(1, Math.abs(dl.pct) / 20);
+              return (
+                <div key={i} className={`ba-cell d-${dd}`} style={{ ['--tint' as string]: tint }}>
+                  <span className="ba-val">
+                    {v === null ? 'No observada' : number(v, r.metricId === 'tonnage_per_week' ? 0 : 1)}
+                  </span>
+                  {i > 0 && r.deltas[i - 1] && <DeltaTag d={r.deltas[i - 1]} />}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
+
+      {blocks.some((b) => !b.closed) && (
+        <p className="muted small">
+          La última columna está en curso: sus promedios por semana usan solo lo transcurrido y puede tener
+          semanas incompletas. Comparala con cautela frente a los bloques cerrados.
+        </p>
+      )}
+      {data.zones && (
+        <div className="ba-zones">
+          <h4>Distribución por zonas de intensidad (%1RM)</h4>
+          <p className="muted small">
+            Cortes del coach: {data.zones.cuts.join(' · ')} %1RM (se cambian en Configuración → Parámetros).{' '}
+            {data.zones.note}
+          </p>
+          <div className="ba-grid ba-chain" style={{ ['--cols' as string]: blocks.length }}>
+            <div />
+            {blocks.map((b, i) => (
+              <div key={b.blockKey} className="ba-colhead">
+                <strong>
+                  B{i} · {b.blockKey}
+                </strong>
+              </div>
+            ))}
+            {data.zones.byBlock[0]?.zones.map((z, zi) => (
+              <div key={z.zone} className="ba-rowwrap">
+                <div className="ba-metric">
+                  {z.label}
+                  <span className="muted small"> {z.range} %1RM · % de series</span>
+                </div>
+                {data.zones!.byBlock.map((bz) => {
+                  const zz = bz.zones[zi]!;
+                  return (
+                    <div key={bz.blockKey} className="ba-cell">
+                      <span className="ba-val">
+                        {zz.shareSets === null ? 'Sin referencia' : `${number(100 * zz.shareSets, 0)}%`}
+                      </span>
+                      <span className="muted small">
+                        {zz.sets} series · {zz.reps} reps
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            <div className="ba-rowwrap">
+              <div className="ba-metric">
+                Series sin referencia <span className="muted small">no entran a ninguna zona</span>
+              </div>
+              {data.zones.byBlock.map((bz) => (
+                <div key={bz.blockKey} className="ba-cell">
+                  <span className="ba-val">{bz.withoutRef}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {data.compliance && data.compliance.length > 0 && (
+        <div className="ba-compliance">
+          <h4>Cumplimiento: lo previsto contra lo hecho</h4>
+          <p className="muted small">
+            Plan y ejecución lado a lado, solo hasta el corte y sin calentamientos. «Sin registro» (previstas
+            sin dato) no es lo mismo que «omitidas». Carga, reps y RPE comparan solo las series que tienen
+            previsto y real. Es descriptivo: no dice si cumplir más o menos es mejor.
+          </p>
+          <div className="ba-grid ba-chain" style={{ ['--cols' as string]: blocks.length }}>
+            <div />
+            {blocks.map((b, i) => (
+              <div key={b.blockKey} className="ba-colhead">
+                <strong>
+                  B{i} · {b.blockKey}
+                </strong>
+              </div>
+            ))}
+            {(
+              [
+                [
+                  'Sesiones con trabajo',
+                  (c: Compliance) => `${c.total.sessionsWithWork}/${c.total.sessionsPlanned}`,
+                  (c: Compliance) => `${c.total.sessionsComplete} completas`,
+                ],
+                [
+                  'Series hechas',
+                  (c: Compliance) => `${c.total.setsDone}/${c.total.setsPlanned}`,
+                  (c: Compliance) =>
+                    c.total.setsDoneShare === null
+                      ? 'sin series previstas'
+                      : `${number(100 * c.total.setsDoneShare, 0)}% de lo previsto`,
+                ],
+                [
+                  'Omitidas · sin registro',
+                  (c: Compliance) => `${c.total.setsSkipped} · ${c.total.setsUnknown}`,
+                  (c: Compliance) =>
+                    c.total.setsDoneOfRecorded === null
+                      ? 'sin registros'
+                      : `${number(100 * c.total.setsDoneOfRecorded, 0)}% de las registradas se hicieron`,
+                ],
+                [
+                  'Carga real / prevista',
+                  (c: Compliance) => (c.load.meanPct === null ? '—' : `${number(c.load.meanPct, 0)}%`),
+                  (c: Compliance) => `${c.load.pairs} series con ambos datos`,
+                ],
+                [
+                  'Reps reales / previstas',
+                  (c: Compliance) => (c.reps.meanPct === null ? '—' : `${number(c.reps.meanPct, 0)}%`),
+                  (c: Compliance) => `${c.reps.pairs} series`,
+                ],
+                [
+                  'RPE real − objetivo',
+                  (c: Compliance) =>
+                    c.rpe.meanDiff === null
+                      ? '—'
+                      : `${c.rpe.meanDiff > 0 ? '+' : ''}${number(c.rpe.meanDiff, 1)}`,
+                  (c: Compliance) => `${c.rpe.pairs} series con ambos RPE`,
+                ],
+              ] as [string, (c: Compliance) => string, (c: Compliance) => string][]
+            ).map(([label, main, sub]) => (
+              <div key={label} className="ba-rowwrap">
+                <div className="ba-metric">{label}</div>
+                {data.compliance!.map((c) => (
+                  <div key={c.blockKey} className="ba-cell">
+                    <span className="ba-val">{main(c)}</span>
+                    <span className="muted small">{sub(c)}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+          <details>
+            <summary>Cumplimiento por semana</summary>
+            {data.compliance.map((c) => (
+              <div key={c.blockKey} className="table-wrap">
+                <table>
+                  <caption>{c.blockKey}</caption>
+                  <thead>
+                    <tr>
+                      <th>Semana</th>
+                      <th>Sesiones con trabajo</th>
+                      <th>Series hechas / previstas</th>
+                      <th>Omitidas</th>
+                      <th>Sin registro</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {c.weeks.map((w) => (
+                      <tr key={w.weekNo}>
+                        <td>S{w.weekNo}</td>
+                        <td>
+                          {w.sessionsWithWork}/{w.sessionsPlanned}
+                        </td>
+                        <td>
+                          {w.setsDone}/{w.setsPlanned}
+                          {w.setsDoneShare === null ? '' : ` (${number(100 * w.setsDoneShare, 0)}%)`}
+                        </td>
+                        <td>{w.setsSkipped}</td>
+                        <td>{w.setsUnknown}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </details>
+        </div>
+      )}
 
       <h4>Estructura por bloque</h4>
       <div className="ba-seg" role="group" aria-label="Vista">
@@ -420,7 +667,7 @@ export function BlockAnalysisPanel({ id, cutoff }: { id: string; cutoff?: string
                         ))}
                       </div>
                       <div className="muted small">
-                        {c.lift} · {c.role ?? 'sin rol'} · prioridad {c.priority ?? '—'}
+                        {c.lift} · {roleName(c.role)} · prioridad {c.priority ?? '—'}
                         {c.protocol ? ` · ${c.protocol}` : ''}
                       </div>
                       <div className="ba-nums small">

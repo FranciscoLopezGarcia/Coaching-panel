@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { AthleteAccess } from './AthleteAccess';
+import { MuscleSettings, ZoneSettings } from './MuscleSettings';
+import { ExportPanel } from './ExportPanel';
+import { downloadPlanCsvTemplate } from './planCsvTemplate';
 import type { AthleteDetail } from '@coaching/contracts';
 import { ParamsEditor } from '../components/ParamsEditor';
 import { api } from '../api/client';
@@ -166,7 +169,7 @@ export function Settings({
           </Message>
           <ParamsEditor
             params={athlete.params}
-            families={athlete.evaluation?.families.map((x) => x.familyKey) ?? []}
+            families={[...new Set(athlete.evaluation?.families.map((x) => x.familyKey) ?? [])]}
             onSave={async (p) => {
               setError('');
               try {
@@ -178,6 +181,9 @@ export function Settings({
               }
             }}
           />
+          <ZoneSettings id={id} athlete={athlete} onChanged={onChanged} />
+          <MuscleSettings id={id} athlete={athlete} onChanged={onChanged} />
+          <ExportPanel id={id} name={athlete.name} />
         </>
       )}
       {view === 'imports' && <Imports id={id} />}
@@ -266,6 +272,15 @@ function Imports({ id }: { id: string }) {
               <option value="plan-csv">Plan canónico · plan-canonical-v1</option>
             </select>
           </label>
+          {kind === 'plan-csv' && (
+            <button
+              type="button"
+              onClick={downloadPlanCsvTemplate}
+              title="Columnas: block, week, date, exercise, protocol (obligatorias) y opcionales"
+            >
+              Descargar CSV de ejemplo
+            </button>
+          )}
           <label>
             Archivo CSV
             <input

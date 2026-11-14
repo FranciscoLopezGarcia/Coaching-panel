@@ -8,6 +8,8 @@ import {
   INDIRECT_WEIGHT,
   MUSCLE_CONVENTION_VERSION,
   musclesForSet,
+  MUSCLE_LABELS,
+  type MuscleConfig,
   type MuscleGroup,
 } from './muscles.js';
 import { isWorkSet, type ObservedSet } from './observed.js';
@@ -216,7 +218,9 @@ export function weeklyByMovement(inp: WeeklyInput): WeeklyMovementRow[] {
 
 export interface MuscleWeekRow {
   week: WeekRef;
-  muscle: MuscleGroup;
+  muscle: string;
+  /** Nombre legible del grupo (fino o agrupado). */
+  label: string;
   directSets: number;
   indirectSets: number;
   /** Series equivalentes = directas × 1,0 + indirectas × 0,5. NO es NL ni tonelaje. */
@@ -233,14 +237,20 @@ export interface MuscleSummary {
 }
 
 /** Series equivalentes por músculo y semana, con aportes directos/indirectos discriminados. NO existe un "total de todos los músculos": los grupos se superponen. */
-export function weeklyByMuscle(obs: ObservedSet[], from: string, to: string, cutoff: string): MuscleSummary {
+export function weeklyByMuscle(
+  obs: ObservedSet[],
+  from: string,
+  to: string,
+  cutoff: string,
+  cfg?: MuscleConfig,
+): MuscleSummary {
   const rows: MuscleWeekRow[] = [];
   const unmapped = new Set<string>();
   for (const w of weekRefs(from, to, cutoff)) {
     const acc = new Map<MuscleGroup, { d: number; i: number; ex: Set<string> }>();
     for (const o of obs) {
       if (!isWorkSet(o) || !inRange(o.date, w)) continue;
-      const c = musclesForSet(o);
+      const c = musclesForSet(o, cfg);
       if (!c) {
         unmapped.add(o.exerciseName);
         continue;
@@ -257,6 +267,7 @@ export function weeklyByMuscle(obs: ObservedSet[], from: string, to: string, cut
       rows.push({
         week: w,
         muscle,
+        label: MUSCLE_LABELS[muscle] ?? muscle,
         directSets: a.d,
         indirectSets: a.i,
         equivalentSets: a.d * DIRECT_WEIGHT + a.i * INDIRECT_WEIGHT,

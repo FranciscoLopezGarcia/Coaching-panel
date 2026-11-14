@@ -64,6 +64,40 @@ export const EXERCISE_MUSCLES: Record<string, Contribution> = {
  * (no se adivina) y se informa como no mapeado.
  */
 const RULES: { re: RegExp; v: Contribution }[] = [
+  // --- nombres en español (el coach programa en español): específicos primero
+  {
+    re: /peso-muerto-rumano|rumano|buenos-dias/,
+    v: c(['isquiotibiales', 'gluteos', 'espalda_baja'], ['core', 'antebrazos', 'aductores']),
+  },
+  { re: /peso-muerto|despegue/, v: DEAD },
+  {
+    re: /sentadilla-bulgara|zancada|estocada|paso-al-cajon|desplante/,
+    v: c(['cuadriceps', 'gluteos'], ['isquiotibiales', 'aductores', 'core']),
+  },
+  {
+    re: /prensa-de-piernas|prensa-45|hack|sentadilla-hack/,
+    v: c(['cuadriceps', 'gluteos'], ['aductores', 'isquiotibiales']),
+  },
+  { re: /sentadilla|zercher|goblet/, v: SQUAT },
+  { re: /curl-femoral|curl-de-pierna|isquios/, v: c(['isquiotibiales'], ['pantorrillas']) },
+  { re: /extension-de-pierna|sillon-de-cuadriceps/, v: c(['cuadriceps']) },
+  { re: /empuje-de-cadera|puente-de-gluteo|hip-thrust/, v: c(['gluteos'], ['isquiotibiales', 'core']) },
+  { re: /elevaciones?-(laterales|frontales)/, v: c(['hombros'], ['trapecio']) },
+  { re: /jalon|dominada|pull-up/, v: c(['dorsales'], ['biceps', 'espalda_alta', 'antebrazos']) },
+  {
+    re: /(^|-)remo(-|$)/,
+    v: c(['dorsales', 'espalda_alta'], ['biceps', 'hombros', 'antebrazos', 'espalda_baja']),
+  },
+  { re: /fondos|press-cerrado|banca-agarre-cerrado/, v: c(['triceps', 'pectoral'], ['hombros']) },
+  {
+    re: /press-de-hombros?|press-militar|press-con-mancuernas-sentado/,
+    v: c(['hombros'], ['triceps', 'trapecio', 'core']),
+  },
+  { re: /press-con-mancuernas|aperturas?/, v: c(['pectoral'], ['triceps', 'hombros']) },
+  { re: /hiperextension/, v: c(['espalda_baja', 'gluteos'], ['isquiotibiales']) },
+  { re: /curl-de-biceps|curl-con-barra|curl-predicador/, v: c(['biceps'], ['antebrazos']) },
+  { re: /triceps|extension-de-triceps|press-frances/, v: c(['triceps']) },
+  { re: /abdominales|plancha|rueda-abdominal/, v: c(['core'], ['oblicuos']) },
   // --- nombres en español y abreviaturas habituales de powerlifting (convención del proyecto; ante duda, el ejercicio queda sin mapear)
   // posteriores antes que 'fly' (pecho)
   {
@@ -198,19 +232,123 @@ export function musclesFor(exerciseId: string, exerciseName?: string): MuscleCon
   return hit ? toList(hit.v) : null;
 }
 
+/* ---------------- Granularidad configurable y mapa propio del atleta ---------------- */
+/**
+ * Vista (granularidad) con la que se informan los músculos. `fino` = los 17 grupos de la convención.
+ * `medio` y `grueso` AGRUPAN grupos finos: una serie cuenta UNA vez por grupo agrupado (directo si alguno de sus grupos finos es directo;
+ * si no, indirecto), para no duplicar series al sumar grupos que se superponen.
+ */
+export const MUSCLE_VIEWS = ['fino', 'medio', 'grueso'] as const;
+export type MuscleView = (typeof MUSCLE_VIEWS)[number];
+export type MuscleKey = string;
+
+const MEDIO: Record<MuscleGroup, string> = {
+  cuadriceps: 'cuadriceps',
+  gluteos: 'gluteos',
+  isquiotibiales: 'isquiotibiales',
+  pantorrillas: 'pantorrillas',
+  aductores: 'aductores_abductores',
+  abductores: 'aductores_abductores',
+  espalda_baja: 'espalda_baja',
+  dorsales: 'espalda',
+  espalda_alta: 'espalda',
+  trapecio: 'espalda',
+  pectoral: 'pectoral',
+  hombros: 'hombros',
+  biceps: 'brazos',
+  triceps: 'brazos',
+  antebrazos: 'brazos',
+  core: 'core',
+  oblicuos: 'core',
+};
+const GRUESO: Record<MuscleGroup, string> = {
+  cuadriceps: 'tren_inferior_anterior',
+  gluteos: 'tren_inferior_posterior',
+  isquiotibiales: 'tren_inferior_posterior',
+  pantorrillas: 'tren_inferior_posterior',
+  aductores: 'tren_inferior_anterior',
+  abductores: 'tren_inferior_posterior',
+  espalda_baja: 'espalda_y_core',
+  dorsales: 'tren_superior_tiron',
+  espalda_alta: 'tren_superior_tiron',
+  trapecio: 'tren_superior_tiron',
+  pectoral: 'tren_superior_empuje',
+  hombros: 'tren_superior_empuje',
+  biceps: 'tren_superior_tiron',
+  triceps: 'tren_superior_empuje',
+  antebrazos: 'tren_superior_tiron',
+  core: 'espalda_y_core',
+  oblicuos: 'espalda_y_core',
+};
+/** Nombre legible de cada grupo (fino o agrupado). */
+export const MUSCLE_LABELS: Record<string, string> = {
+  cuadriceps: 'Cuádriceps',
+  gluteos: 'Glúteos',
+  isquiotibiales: 'Isquios',
+  pantorrillas: 'Gemelos',
+  aductores: 'Aductores',
+  abductores: 'Abductores',
+  aductores_abductores: 'Aductores y abductores',
+  espalda_baja: 'Espalda baja',
+  dorsales: 'Dorsales',
+  espalda_alta: 'Espalda alta',
+  trapecio: 'Trapecio',
+  espalda: 'Espalda (dorsal, alta, trapecio)',
+  pectoral: 'Pecho',
+  hombros: 'Hombros',
+  biceps: 'Bíceps',
+  triceps: 'Tríceps',
+  antebrazos: 'Antebrazos',
+  brazos: 'Brazos',
+  core: 'Core',
+  oblicuos: 'Oblicuos',
+  tren_inferior_anterior: 'Tren inferior · anterior',
+  tren_inferior_posterior: 'Tren inferior · posterior',
+  espalda_y_core: 'Espalda baja y core',
+  tren_superior_empuje: 'Tren superior · empuje',
+  tren_superior_tiron: 'Tren superior · tirón',
+};
+/** Mapa propio del atleta: para un ejercicio (por nombre), qué músculos reciben directo e indirecto. Gana sobre la convención del proyecto. */
+export type MuscleMap = Record<string, { direct: MuscleGroup[]; indirect: MuscleGroup[] }>;
+export interface MuscleConfig {
+  view?: MuscleView;
+  map?: MuscleMap;
+}
+/** Clave estable de un ejercicio para el mapa propio (nombre normalizado). */
+export const muscleMapKey = (exerciseName: string): string => slugOf(exerciseName);
+
+function collapse(list: MuscleContribution[], view: MuscleView | undefined): MuscleContribution[] {
+  if (!view || view === 'fino') return list;
+  const to = view === 'medio' ? MEDIO : GRUESO;
+  const acc = new Map<string, MuscleContribution>();
+  for (const m of list) {
+    const key = to[m.group] ?? m.group;
+    const cur = acc.get(key);
+    if (!cur || (m.kind === 'directo' && cur.kind !== 'directo'))
+      acc.set(key, { group: key as MuscleGroup, kind: m.kind, weight: m.weight });
+  }
+  return [...acc.values()];
+}
+
 /**
  * Aportes de una serie. Si el coach eligió el grupo muscular al programar, ese grupo manda: entra como DIRECTO (peso 1) y se conservan los
  * demás aportes que la convención por nombre le asigna (si los tiene). Sin elección → solo la convención por nombre.
  */
-export function musclesForSet(s: {
-  exerciseId: string;
-  exerciseName: string;
-  muscleGroup?: MuscleGroup | null;
-}): MuscleContribution[] | null {
-  const byName = musclesFor(s.exerciseId, s.exerciseName);
-  if (!s.muscleGroup) return byName;
+export function musclesForSet(
+  s: {
+    exerciseId: string;
+    exerciseName: string;
+    muscleGroup?: MuscleGroup | null;
+  },
+  cfg?: MuscleConfig,
+): MuscleContribution[] | null {
+  const own = cfg?.map?.[muscleMapKey(s.exerciseName)];
+  const byName = own
+    ? toList({ direct: own.direct, indirect: own.indirect })
+    : musclesFor(s.exerciseId, s.exerciseName);
+  if (!s.muscleGroup) return byName ? collapse(byName, cfg?.view) : byName;
   const rest = (byName ?? []).filter((m) => m.group !== s.muscleGroup);
-  return [{ group: s.muscleGroup, kind: 'directo', weight: DIRECT_WEIGHT }, ...rest];
+  return collapse([{ group: s.muscleGroup, kind: 'directo', weight: DIRECT_WEIGHT }, ...rest], cfg?.view);
 }
 
 /** Cuántas reglas y grupos tiene la convención (para mostrar cobertura). */
@@ -239,6 +377,25 @@ export const MOVEMENT_PATTERNS = [
 export type MovementPattern = (typeof MOVEMENT_PATTERNS)[number];
 
 const PATTERN_RULES: { re: RegExp; p: MovementPattern }[] = [
+  // --- nombres en español
+  {
+    re: /curl-femoral|curl-de-pierna|extension-de-pierna|sillon-de-cuadriceps|gemelos|pantorrilla/,
+    p: 'aislamiento_pierna',
+  },
+  { re: /elevaciones?-(laterales|frontales)|face-pull|vuelos?-posteriores/, p: 'aislamiento_hombro_espalda' },
+  {
+    re: /curl-de-biceps|curl-con-barra|curl-predicador|extension-de-triceps|press-frances|triceps/,
+    p: 'aislamiento_brazos',
+  },
+  { re: /abdominales|plancha|rueda-abdominal/, p: 'core' },
+  { re: /peso-muerto|rumano|buenos-dias|despegue|empuje-de-cadera|puente-de-gluteo/, p: 'bisagra_cadera' },
+  { re: /sentadilla-bulgara|zancada|estocada|desplante|paso-al-cajon/, p: 'unilateral_pierna' },
+  { re: /sentadilla|prensa-de-piernas|prensa-45/, p: 'sentadilla' },
+  { re: /press-de-hombros?|press-militar/, p: 'empuje_vertical' },
+  { re: /banca|press-cerrado|fondos|press-con-mancuernas|aperturas?/, p: 'empuje_horizontal' },
+  { re: /hiperextension/, p: 'bisagra_cadera' },
+  { re: /jalon|dominada/, p: 'traccion_vertical' },
+  { re: /(^|-)remo(-|$)/, p: 'traccion_horizontal' },
   {
     re: /leg-extension|extension-(de-)?(cuadricep|pierna)|cuadricep|(seated|lying|standing|laying)-leg-curl|hamstring-curl|leg-curl|nordic|glute-ham|ghr|calf|donkey-calf|tibialis|adduct|abduct|copenhagen|clamshell|lateral-walk|monster-walk|banded-walk|fire-hydrant|kickback-machine|glute-kickback|donkey-kick/,
     p: 'aislamiento_pierna',

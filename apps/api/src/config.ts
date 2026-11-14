@@ -21,10 +21,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     port: Number(env.PORT ?? 3001),
     host: env.HOST ?? '127.0.0.1',
+    // Orden: COACHING_DB_URL (producción en Vercel) > DB_PATH explícito > TURSO_DATABASE_URL (.env local) > archivo por defecto.
+    // Un DB_PATH explícito gana sobre TURSO_* para que `DB_PATH=./x.sqlite npm run ...` nunca toque producción por culpa del .env.
     dbPath:
       squash(env.COACHING_DB_URL) ??
-      squash(env.TURSO_DATABASE_URL) ??
       env.DB_PATH ??
+      squash(env.TURSO_DATABASE_URL) ??
       './data/coaching.sqlite',
     webOrigin: env.WEB_ORIGIN ?? 'http://localhost:5173',
     timeZone: env.TZ_APP ?? 'America/Argentina/Mendoza',

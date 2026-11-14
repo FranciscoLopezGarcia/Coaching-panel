@@ -19,11 +19,17 @@ import { Settings } from '../workspace/Settings';
 import { AthleteAccess } from '../workspace/AthleteAccess';
 import { DeleteAthleteDialog, EditAthleteDialog } from '../workspace/AthleteAdmin';
 import { RecoveryTab } from './athlete/RecoveryTab';
+import { AgendaCard } from '../workspace/AgendaCard';
+import { CompetitionsPanel } from '../workspace/CompetitionsPanel';
+import { LibraryPanel } from '../workspace/LibraryPanel';
+import { ProfilePanel } from '../workspace/ProfilePanel';
 import { SessionsTab } from './athlete/SessionsTab';
 import { Empty, Message, readSearch, updateSearch, today, shift, number, dateLabel } from '../workspace/ui';
 /** Programar y Analizar viven arriba (tarjetas de acción); acá solo lo que no está duplicado. */
 const tabs = [
   ['resumen', 'Resumen'],
+  ['perfil', 'Perfil'],
+  ['competencias', 'Competencias'],
   ['config', 'Configuración'],
 ] as const;
 const DAY = 86_400_000;
@@ -271,15 +277,19 @@ export function AthletePage({ id }: { id: string }) {
               onClick={() => select({ tab: 'plan', block: null, week: null, session: null, context: '1' })}
             >
               <small>MACRO ↗</small>
-              <strong>{effectiveMacro}</strong>
+              <strong>{context.loading && !context.data ? 'Cargando…' : effectiveMacro}</strong>
             </button>
             <button onClick={() => select({ tab: 'plan', week: null, session: null, context: '1' })}>
               <small>MESO ↗</small>
-              <strong>{meso?.name ?? (block || 'Sin meso')}</strong>
+              <strong>
+                {context.loading && !context.data ? 'Cargando…' : (meso?.name ?? (block || 'Sin meso'))}
+              </strong>
             </button>
             <button onClick={() => select({ tab: 'plan', session: null })}>
               <small>SEMANA ↗</small>
-              <strong>{week ? `S${week}` : 'Sin selección'}</strong>
+              <strong>
+                {context.loading && !context.data ? 'Cargando…' : week ? `S${week}` : 'Sin selección'}
+              </strong>
             </button>
             <div className="period-picker">
               <small>PERÍODO DE ANÁLISIS</small>
@@ -373,6 +383,10 @@ export function AthletePage({ id }: { id: string }) {
           )}
           {tab === 'resumen' && (
             <>
+              <AgendaCard
+                id={id}
+                onOpen={(sessionKey) => select({ tab: 'plan', session: sessionKey, context: '1' })}
+              />
               <section className="summary-cta">
                 <div>
                   <h2>Resultado de los bloques</h2>
@@ -418,7 +432,15 @@ export function AthletePage({ id }: { id: string }) {
                           <small>ÚLTIMO e1RM · CURVA RPE</small>
                           <strong className="lift-value">
                             {last ? number(last.e) + ' kg' : '—'}{' '}
-                            <span>{last ? dateLabel(last.date) : 'Sin estimación'}</span>
+                            <span>
+                              {last
+                                ? dateLabel(last.date)
+                                : performance.loading
+                                  ? 'Calculando…'
+                                  : performance.error
+                                    ? 'No se pudo calcular'
+                                    : 'Sin estimación'}
+                            </span>
                           </strong>
                         </div>
                         <p
@@ -495,6 +517,7 @@ export function AthletePage({ id }: { id: string }) {
                     context.data?.sessions.filter((s) => s.blockKey === block && s.weekNo === week) ?? []
                   }
                   week={week}
+                  loading={context.loading && !context.data}
                   onSelect={select}
                 />
                 <details className="recent-changes">
@@ -541,9 +564,12 @@ export function AthletePage({ id }: { id: string }) {
               onPeriod={(f, t) => select({ from: f, to: t })}
             />
           )}
+          {tab === 'perfil' && <ProfilePanel id={id} />}
+          {tab === 'competencias' && <CompetitionsPanel id={id} />}
           {tab === 'config' && (
             <>
               <Settings id={id} athlete={athlete} onChanged={refresh} />
+              <LibraryPanel />
               <section className="card" id="acceso-atleta">
                 <h2>Acceso del atleta</h2>
                 <AthleteAccess id={id} />

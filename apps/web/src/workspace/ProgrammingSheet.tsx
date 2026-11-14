@@ -5,7 +5,7 @@ import { DataSheet } from './DataSheet';
 import { validateCell, type SheetColumn, type CellChange } from './sheetModel';
 import { workspaceApi as w, type ProgramResult } from './api';
 import { Message, usePending, Detail } from './ui';
-import { matchesPrio, usePrio } from './PriorityFilter';
+import { matchesPrio, matchesRole, usePrio, useRole } from './PriorityFilter';
 
 type Change = Extract<ProgramOpFullInput['op'], { type: 'change_protocol' }>['change'];
 type Drafts = Record<string, Record<string, string>>;
@@ -17,8 +17,19 @@ const modes = [
 ];
 const columns: SheetColumn[] = [
   { key: 'session', label: 'Sesión', readOnly: true },
-  { key: 'prio', label: 'Prio', readOnly: true },
   { key: 'exerciseName', label: 'Ejercicio', required: true },
+  {
+    key: 'exposureRole',
+    label: 'Rol',
+    type: 'select',
+    options: [
+      { value: '', label: 'Sin rol' },
+      { value: 'primaria', label: 'Básico' },
+      { value: 'secundaria', label: 'Variante' },
+      { value: 'accesorio', label: 'Accesorio' },
+    ],
+  },
+  { key: 'priority', label: 'Prioridad', type: 'number', min: 1, max: 5, step: 1 },
   {
     key: 'segment',
     label: 'Segmento',
@@ -51,7 +62,16 @@ const protocolKeys = new Set([
   'instructions',
   'repsMax',
 ]);
-const numeric = new Set(['reps', 'plannedKg', 'targetRpe', 'pct', 'capKg', 'pauseSec', 'repsMax']);
+const numeric = new Set([
+  'priority',
+  'reps',
+  'plannedKg',
+  'targetRpe',
+  'pct',
+  'capKg',
+  'pauseSec',
+  'repsMax',
+]);
 export function ProgrammingSheet({
   id,
   sessions,
@@ -83,8 +103,9 @@ export function ProgrammingSheet({
         .map((x) => ({
           id: x.plannedSetId,
           session: `${s.date} · ${s.exerciseName} · ${x.isWarmup ? 'A' : x.setNo}`,
-          prio: x.priority == null ? '—' : `${x.priority}°`,
+          priority: x.priority == null ? '' : String(x.priority),
           prioN: x.priority == null ? '' : String(x.priority),
+          exposureRole: x.exposureRole ?? '',
           exerciseName: x.exerciseName,
           segment: x.protocol?.segment ?? 'work',
           reps: String(x.planned.reps),
@@ -101,11 +122,16 @@ export function ProgrammingSheet({
         })),
     );
   const [prio] = usePrio();
+  const [role] = useRole();
   const rows = baseRows.map((r) => ({ ...r, ...drafts[r.id] }));
   // El filtro solo cambia qué filas se ven; las ediciones siguen apuntando a la fila real de la planilla.
   const visible = rows
     .map((r, i) => ({ r, i }))
-    .filter((x) => matchesPrio(baseRows[x.i]!.prioN === '' ? null : Number(baseRows[x.i]!.prioN), prio));
+    .filter(
+      (x) =>
+        matchesPrio(baseRows[x.i]!.prioN === '' ? null : Number(baseRows[x.i]!.prioN), prio) &&
+        matchesRole(baseRows[x.i]!.exposureRole || null, role),
+    );
   const changed = rows.filter((r, i) =>
     columns.some((c) => r[c.key as keyof typeof r] !== baseRows[i]![c.key as keyof typeof r]),
   );

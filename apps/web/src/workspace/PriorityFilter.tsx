@@ -68,3 +68,65 @@ export function PriorityFilter({ value, onChange }: { value: Prio; onChange: (p:
     </div>
   );
 }
+
+/**
+ * ROL del movimiento (distinto del orden 1°/2°): qué papel juega el ejercicio en la programación.
+ * Se guarda en `exposureRole` (primaria · secundaria · accesorio); «sin rol» = el coach no lo clasificó (no se infiere).
+ */
+export type Role = 'ALL' | 'primaria' | 'secundaria' | 'accesorio' | 'NONE';
+export const ROLE_NAMES: Record<string, string> = {
+  primaria: 'Básico',
+  secundaria: 'Variante',
+  accesorio: 'Accesorio',
+};
+export const roleName = (role: string | null | undefined) => (role ? (ROLE_NAMES[role] ?? role) : 'Sin rol');
+const ROLE_OPTIONS: { k: Role; n: string; hint: string }[] = [
+  { k: 'ALL', n: 'Todos', hint: 'Todos los ejercicios' },
+  { k: 'primaria', n: 'Básicos', hint: 'Movimiento básico (el que se busca mejorar directamente)' },
+  { k: 'secundaria', n: 'Variantes', hint: 'Variantes o complementarios cercanos al básico' },
+  { k: 'accesorio', n: 'Accesorios', hint: 'Trabajo de asistencia / músculo' },
+  { k: 'NONE', n: 'Sin rol', hint: 'Ejercicios que el coach no clasificó' },
+];
+const readRole = (): Role => {
+  const v = readSearch().get('rol');
+  return v === 'primaria' || v === 'secundaria' || v === 'accesorio' || v === 'NONE' ? v : 'ALL';
+};
+export function useRole(): [Role, (r: Role) => void] {
+  const [role, setRole] = useState<Role>(readRole);
+  useEffect(() => {
+    const sync = () => setRole(readRole());
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, []);
+  return [role, (r) => updateSearch({ rol: r === 'ALL' ? null : r }, true)];
+}
+export const matchesRole = (role: string | null | undefined, f: Role) =>
+  f === 'ALL' || (f === 'NONE' ? !role : role === f);
+export function RoleBadge({ role }: { role: string | null | undefined }) {
+  if (!role) return null;
+  return (
+    <span className={`role-badge role-${role}`} title={`Rol del movimiento: ${roleName(role)}`}>
+      {roleName(role)}
+    </span>
+  );
+}
+export function RoleFilter({ value, onChange }: { value: Role; onChange: (r: Role) => void }) {
+  return (
+    <div className="mov-filter" role="group" aria-label="Filtro por rol del movimiento">
+      <span>Rol del movimiento</span>
+      <div className="bd-seg">
+        {ROLE_OPTIONS.map((o) => (
+          <button
+            key={o.k}
+            type="button"
+            title={o.hint}
+            aria-pressed={value === o.k}
+            onClick={() => onChange(o.k)}
+          >
+            {o.n}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}

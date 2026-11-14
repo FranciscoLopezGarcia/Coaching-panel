@@ -99,16 +99,51 @@ type Row = Record<string, unknown>;
 const plain = (columns: string[], rows: ArrayLike<unknown>[]): Row[] =>
   rows.map((r) => Object.fromEntries(columns.map((c, i) => [c, r[i]])));
 
+/** Máximo de consultas simultáneas a la base remota: más conexiones TLS a la vez saturan la red (Connect Timeout) en vez de acelerar. */
+const MAX_CONCURRENT = 4;
+class Gate {
+  private active = 0;
+  private waiting: (() => void)[] = [];
+  async run<T>(fn: () => Promise<T>): Promise<T> {
+    if (this.active >= MAX_CONCURRENT) await new Promise<void>((r) => this.waiting.push(r));
+    this.active++;
+    try {
+      return await fn();
+    } finally {
+      this.active--;
+      this.waiting.shift()?.();
+    }
+  }
+}
+
+/** Errores de red transitorios (conexión cortada o vencida): una LECTURA puede repetirse sin riesgo; una escritura nunca se repite sola. */
+const isTransient = (e: unknown): boolean =>
+  /Connect Timeout|other side closed|fetch failed|ECONNRESET|HTTP status 404|stream.*(expired|not found)/i.test(
+    `${(e as Error)?.message ?? ''} ${(e as { cause?: Error })?.cause?.message ?? ''}`,
+  );
+const isRead = (sql: string): boolean => /^\s*(select|with|pragma)\b/i.test(sql);
+
 class LibsqlDb implements Db {
   queries = 0;
+  private readonly gate = new Gate();
   private readonly tx = new AsyncLocalStorage<Transaction>();
   constructor(private readonly client: Client) {}
-  private exe() {
-    return this.tx.getStore() ?? this.client;
-  }
   private async query(sql: string, p: Param[]) {
     this.queries++;
-    const r = await this.exe().execute({ sql, args: p as never });
+    const t = this.tx.getStore();
+    // dentro de una transacción todo va por su propio stream (en serie); fuera, se limita la concurrencia
+    const r = t
+      ? await t.execute({ sql, args: p as never })
+      : await this.gate.run(async () => {
+          for (let i = 1; ; i++) {
+            try {
+              return await this.client.execute({ sql, args: p as never });
+            } catch (e) {
+              if (i >= 3 || !isRead(sql) || !isTransient(e)) throw e;
+              await new Promise((r) => setTimeout(r, 400 * i));
+            }
+          }
+        });
     return { rows: plain(r.columns, r.rows as ArrayLike<unknown>[]), changes: r.rowsAffected };
   }
   async all<T>(sql: string, ...p: Param[]) {

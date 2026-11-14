@@ -11,6 +11,8 @@ import {
   musclesForSet,
   patternFor,
   type MovementPattern,
+  MUSCLE_LABELS,
+  type MuscleConfig,
   type MuscleGroup,
 } from './muscles.js';
 import { isWorkSet, type ObservedSet } from './observed.js';
@@ -54,7 +56,8 @@ export interface CoreBundle {
 }
 
 export interface MuscleVolumeRow {
-  muscle: MuscleGroup;
+  muscle: string;
+  label: string;
   directSets: number;
   indirectSets: number;
   /** Series equivalentes = directas × 1,0 + indirectas × 0,5 (convención `musculos-v2`). */
@@ -80,7 +83,7 @@ const TONNAGE_OK = (s: ObservedSet) =>
   (s.loadKind === 'total' || s.loadKind === 'machine' || s.loadKind === 'added_bodyweight');
 
 /** Volumen por grupo muscular (series directas/indirectas/equivalentes, repeticiones y tonelaje equivalentes). Sin total entre músculos. */
-export function muscleVolume(sets: ObservedSet[]): MuscleVolume {
+export function muscleVolume(sets: ObservedSet[], cfg?: MuscleConfig): MuscleVolume {
   const acc = new Map<
     MuscleGroup,
     { d: number; i: number; reps: number; ton: number; tonN: number; ex: Set<string> }
@@ -88,7 +91,7 @@ export function muscleVolume(sets: ObservedSet[]): MuscleVolume {
   const unmapped = new Set<string>();
   for (const s of sets) {
     if (!isWorkSet(s)) continue;
-    const c = musclesForSet(s);
+    const c = musclesForSet(s, cfg);
     if (!c) {
       unmapped.add(s.exerciseName);
       continue;
@@ -109,6 +112,7 @@ export function muscleVolume(sets: ObservedSet[]): MuscleVolume {
   const rows: MuscleVolumeRow[] = [...acc.entries()]
     .map(([muscle, a]) => ({
       muscle,
+      label: MUSCLE_LABELS[muscle] ?? muscle,
       directSets: a.d,
       indirectSets: a.i,
       equivalentSets: a.d * DIRECT_WEIGHT + a.i * INDIRECT_WEIGHT,
@@ -300,6 +304,8 @@ export interface WeekRow {
 }
 
 export interface CoreInput {
+  /** Vista (fino/medio/grueso) y mapa propio de músculos del atleta. */
+  muscleConfig?: MuscleConfig;
   obs: ObservedSet[];
   cutoff: string;
   from: string;
@@ -578,7 +584,7 @@ export function computeCore(inp: CoreInput): CoreResult {
       source: s0.source,
       totals: bundle(inp, sets, s0.date, s0.date, undefined),
       exercises,
-      muscles: muscleVolume(sets),
+      muscles: muscleVolume(sets, inp.muscleConfig),
       patterns: patternVolume(sets),
       fatigue: {
         version: FATIGUE_VERSION,
@@ -643,7 +649,7 @@ export function computeCore(inp: CoreInput): CoreResult {
       sessions: wSessions.length,
       trainingDays: dates.length,
       totals,
-      muscles: muscleVolume(wSets),
+      muscles: muscleVolume(wSets, inp.muscleConfig),
       patterns: patternVolume(wSets),
       fatigue: {
         endFatigue: {
@@ -676,7 +682,7 @@ export function computeCore(inp: CoreInput): CoreResult {
     scope: { lift: inp.lift ?? null, source: inp.source ?? null },
     domain,
     totals: bundle(inp, inPeriod, inp.from, to, inp.lift),
-    muscles: muscleVolume(inPeriod),
+    muscles: muscleVolume(inPeriod, inp.muscleConfig),
     patterns: patternVolume(inPeriod),
     sessions,
     weeks,

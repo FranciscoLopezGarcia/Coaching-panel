@@ -5,6 +5,13 @@ import { LineChart } from '../../components/LineChart';
 import { useLoad } from '../../hooks';
 import { fmt } from '../../labels';
 
+/** TRAC ampliado (opcional): no entra en la disposición. */
+const EXTRAS: [string, string][] = [
+  ['soreness', 'Dolor muscular'],
+  ['confidence', 'Confianza'],
+  ['sleepHours', 'Horas de sueño'],
+  ['bodyweightKg', 'Peso (kg)'],
+];
 const FIELDS: [string, string][] = [
   ['sleep', 'Sueño'],
   ['energy', 'Energía'],
@@ -23,7 +30,12 @@ export function RecoveryTab({ id }: { id: string }) {
     motivation: '',
     stress: '',
     pain: '',
+    soreness: '',
+    confidence: '',
+    sleepHours: '',
+    bodyweightKg: '',
   });
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const save = async () => {
@@ -32,7 +44,8 @@ export function RecoveryTab({ id }: { id: string }) {
     try {
       await api.addCheckin(id, {
         date,
-        ...Object.fromEntries(FIELDS.map(([k]) => [k, vals[k] ? Number(vals[k]) : null])),
+        ...Object.fromEntries([...FIELDS, ...EXTRAS].map(([k]) => [k, vals[k] ? Number(vals[k]) : null])),
+        ...(note.trim() ? { note: note.trim() } : {}),
       });
       setMsg('Guardado');
       rows.reload();
@@ -68,6 +81,10 @@ export function RecoveryTab({ id }: { id: string }) {
                     <th key={l}>{l}</th>
                   ))}
                   <th>Disposición</th>
+                  {EXTRAS.map(([, l]) => (
+                    <th key={l}>{l}</th>
+                  ))}
+                  <th>Nota</th>
                 </tr>
               </thead>
               <tbody>
@@ -78,6 +95,12 @@ export function RecoveryTab({ id }: { id: string }) {
                       <td key={k}>{fmt((x as unknown as Record<string, number | null>)[k], 0)}</td>
                     ))}
                     <td>{fmt(x.readiness)}</td>
+                    {EXTRAS.map(([k]) => (
+                      <td key={k}>
+                        {fmt((x as unknown as Record<string, number | null | undefined>)[k] ?? null, 1)}
+                      </td>
+                    ))}
+                    <td className="small">{x.note ?? ''}</td>
                   </tr>
                 ))}
               </tbody>
@@ -103,6 +126,21 @@ export function RecoveryTab({ id }: { id: string }) {
                   />
                 </label>
               ))}
+              {EXTRAS.map(([k, l]) => (
+                <label key={k}>
+                  {l} (opcional){' '}
+                  <input
+                    type="number"
+                    step="any"
+                    value={vals[k]}
+                    onChange={(e) => setVals({ ...vals, [k]: e.target.value })}
+                  />
+                </label>
+              ))}
+              <label>
+                Nota (opcional){' '}
+                <input value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
+              </label>
             </div>
             <div className="row">
               <button disabled={busy} onClick={save}>

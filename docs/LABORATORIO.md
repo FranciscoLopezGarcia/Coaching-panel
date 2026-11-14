@@ -172,3 +172,5 @@ Todo es aditivo salvo lo marcado.
 - `GET /api/athletes/:id/state` → suma `freshness {evaluatedCutoff, storedFingerprint, currentFingerprint, inputsChangedSinceEvaluation}`. La huella cubre las entradas **conocidas al corte** de la última evaluación (programación, ejecución, cuestionarios, revisiones, cambios, referencias, parámetros): `true` = alguien (cualquier cliente) cambió datos de ese corte después de evaluar; un dato posterior al corte no la invalida; `null` = evaluación guardada antes de existir la huella. Re-evaluar la limpia. La evaluación (`POST /evaluate`) incluye `inputFingerprint`.
 - Configuración de proyección: `minCoverageSample` (10) en `config`.
 - Nuevas utilidades de línea de comandos (backend): `lab:create`, `import:plan`, `pilot:check`.
+
+> **Qué base se usa:** `COACHING_DB_URL` (Vercel) > `DB_PATH` explícito > `TURSO_DATABASE_URL` (.env local) > archivo por defecto. Así `DB_PATH=./data/x.sqlite npm run …` nunca toca producción aunque el `.env` tenga Turso.

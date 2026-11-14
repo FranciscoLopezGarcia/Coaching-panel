@@ -112,6 +112,14 @@ export interface ImportResult {
  * Versionado del plan. Cada guardado APLICADO que cambia el contenido genera una versión y UN evento compuesto (diff contra la versión previa).
  * Guardar lo mismo, reordenar filas con IDs estables o reimportar no crea versiones ni eventos. Los borradores no tocan el plan vigente ni generan eventos.
  */
+/** Forma canónica (claves ordenadas) para comparar dos series sin importar el orden de los campos. */
+const canon = (v: unknown): string =>
+  JSON.stringify(v, (_k, x) =>
+    x && typeof x === 'object' && !Array.isArray(x)
+      ? Object.fromEntries(Object.entries(x as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : 1)))
+      : x,
+  );
+
 export class PlanService {
   constructor(
     private db: Db,
@@ -141,7 +149,7 @@ export class PlanService {
   }
 
   async importPlan(athleteId: string, input: ImportPlanInput, stepKg?: number): Promise<ImportResult> {
-    const { next, derivedIdentity } = await this.resolve(athleteId, input, stepKg);
+    const { current, next, derivedIdentity } = await this.resolve(athleteId, input, stepKg);
     const lastApplied = await this.history.latestApplied(athleteId);
     const warnings = derivedIdentity.length
       ? [
@@ -190,19 +198,28 @@ export class PlanService {
         version: { id: lastApplied.id, seq: lastApplied.seq },
         note: 'Sin cambios respecto de la versión aplicada.',
       };
+    const prepared = this.history.prepareVersion(next);
+    const before = new Map(current.map((s) => [s.id, canon(s)]));
+    const changedSets = next.filter((s) => before.get(s.id) !== canon(s));
     return await this.db.transaction(async () => {
-      this.records.upsertPlanned(athleteId, next, source);
+      // Solo se escriben las series nuevas o modificadas: reescribir todo el plan acumulado en cada publicación
+      // hacía la transacción tan larga que contra una base remota se cortaba por tiempo.
+      await this.records.upsertPlanned(athleteId, changedSets, source);
       const gone = input.replace
         ? await this.records.retireMissing(athleteId, new Set(next.map((s) => s.id)))
         : { retired: 0, deleted: 0 };
       await this.history.dropDrafts(athleteId);
-      const v: PlanSnapshot = await this.history.addVersion(athleteId, {
-        status: 'aplicado',
-        detectedOn: this.today(),
-        effectiveOn: input.effectiveOn ?? null,
-        label: input.label ?? '',
-        sets: next,
-      });
+      const v: PlanSnapshot = await this.history.addVersion(
+        athleteId,
+        {
+          status: 'aplicado',
+          detectedOn: this.today(),
+          effectiveOn: input.effectiveOn ?? null,
+          label: input.label ?? '',
+          sets: next,
+        },
+        prepared,
+      );
       let event: ChangeEvent | null = null;
       if (lastApplied) {
         const e = diffSnapshots(lastApplied, v);

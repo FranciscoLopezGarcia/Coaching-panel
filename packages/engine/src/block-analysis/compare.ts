@@ -1,3 +1,5 @@
+import { blockCompliance } from './compliance.js';
+import { intensityZones } from './zones.js';
 import { blockMetrics, type BlockMetrics } from '../metrics.js';
 import { SI_MODEL } from '../si.js';
 import type { ActualSet, Lift, PlannedSet } from '../types.js';
@@ -23,6 +25,8 @@ export interface BlockComparisonInput {
   source: MetricSource;
   /** 'ALL' = todos los lifts. */
   lift?: Lift | 'ALL';
+  /** Cortes de %1RM que definen las zonas de intensidad (por defecto 75 y 90). */
+  zoneCuts?: number[];
 }
 
 interface Spec {
@@ -122,6 +126,13 @@ export function compareAdjacentBlocks(inp: BlockComparisonInput): BlockCompariso
     quality,
     cards: window.blocks.flatMap((b) => exerciseCards(inp.planned, views, b.blockKey, b.weeks, lift)),
     variants,
+    zones: intensityZones(
+      views,
+      window.blocks.map((b) => b.blockKey),
+      lift,
+      inp.zoneCuts,
+    ),
+    compliance: window.blocks.map((b) => blockCompliance(inp.planned, inp.actual, b.blockKey, inp.asOf)),
   };
 }
 

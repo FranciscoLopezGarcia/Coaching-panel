@@ -77,6 +77,15 @@ function Trac({ home, onSaved }: { home: HomeData; onSaved: () => void }) {
     stress: t?.stress ?? 4,
     pain: t?.pain ?? 1,
   });
+  const [more, setMore] = useState({
+    soreness: '',
+    confidence: '',
+    sleepHours: '',
+    bodyweightKg: '',
+    note: '',
+  });
+  const num = (x: string) =>
+    x.trim() === '' || !Number.isFinite(Number(x.replace(',', '.'))) ? null : Number(x.replace(',', '.'));
   const [edit, setEdit] = useState(!home.trac.doneToday);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -104,7 +113,14 @@ function Trac({ home, onSaved }: { home: HomeData; onSaved: () => void }) {
             setBusy(true);
             setError('');
             try {
-              await api.checkin(v);
+              await api.checkin({
+                ...v,
+                soreness: num(more.soreness),
+                confidence: num(more.confidence),
+                sleepHours: num(more.sleepHours),
+                bodyweightKg: num(more.bodyweightKg),
+                note: more.note.trim() || undefined,
+              });
               setEdit(false);
               onSaved();
             } catch (err) {
@@ -132,6 +148,52 @@ function Trac({ home, onSaved }: { home: HomeData; onSaved: () => void }) {
               </small>
             </label>
           ))}
+          <details>
+            <summary>Más datos (opcional)</summary>
+            <p className="small muted">
+              No cambian la predisposición: son para que tu coach tenga más contexto.
+            </p>
+            <label>
+              Dolor muscular (1 = nada, 10 = mucho)
+              <input
+                inputMode="numeric"
+                value={more.soreness}
+                onChange={(e) => setMore({ ...more, soreness: e.target.value })}
+              />
+            </label>
+            <label>
+              Confianza para entrenar hoy (1–10)
+              <input
+                inputMode="numeric"
+                value={more.confidence}
+                onChange={(e) => setMore({ ...more, confidence: e.target.value })}
+              />
+            </label>
+            <label>
+              Horas dormidas
+              <input
+                inputMode="decimal"
+                value={more.sleepHours}
+                onChange={(e) => setMore({ ...more, sleepHours: e.target.value })}
+              />
+            </label>
+            <label>
+              Peso corporal (kg)
+              <input
+                inputMode="decimal"
+                value={more.bodyweightKg}
+                onChange={(e) => setMore({ ...more, bodyweightKg: e.target.value })}
+              />
+            </label>
+            <label>
+              Nota para el coach
+              <textarea
+                maxLength={500}
+                value={more.note}
+                onChange={(e) => setMore({ ...more, note: e.target.value })}
+              />
+            </label>
+          </details>
           <p className="muted">
             Predisposición estimada: <strong>{avg}</strong>/10
           </p>

@@ -9,3 +9,12 @@ export {
   exerciseCards,
   type BlockComparisonInput,
 } from './compare.js';
+export {
+  intensityZones,
+  sanitizeCuts,
+  DEFAULT_ZONE_CUTS,
+  type IntensityZones,
+  type BlockZones,
+  type ZoneRow,
+} from './zones.js';
+export * from './compliance.js';

@@ -325,6 +325,80 @@ export function applyTemplate(
   return { added, overwrites: target };
 }
 
+/* ---------------- Plantillas de bloque completo ---------------- */
+
+export interface BlockTemplate {
+  kind: 'block';
+  name: string;
+  /** Cantidad de semanas del bloque de origen. */
+  weeks: number;
+  /** Sesiones con su semana y su día relativo al primer día del bloque de origen. */
+  sessions: { relSession: string; weekNo: number; offsetDays: number; dayNo: number }[];
+  sets: (TemplateSet & { weekNo: number })[];
+  source: { blockKey: string };
+}
+
+/** Guarda TODA la estructura de un bloque (todas sus semanas) como plantilla: sin fechas absolutas, sin resultados y sin ids de instancia. */
+export function saveBlockTemplate(sets: PlannedSet[], o: { name: string; blockKey: string }): BlockTemplate {
+  const src = sets.filter((s) => s.blockKey === o.blockKey);
+  if (!src.length) throw new ProgramError('No hay series en ese bloque para guardar como plantilla.');
+  const first = src.map((s) => s.plannedDate).sort()[0] as string;
+  const keys = [...new Set(src.map((s) => s.sessionKey))].sort((a, b) => {
+    const sa = src.find((x) => x.sessionKey === a) as PlannedSet;
+    const sb = src.find((x) => x.sessionKey === b) as PlannedSet;
+    return sa.weekNo - sb.weekNo || sa.plannedDate.localeCompare(sb.plannedDate) || a.localeCompare(b);
+  });
+  return {
+    kind: 'block',
+    name: o.name,
+    source: { blockKey: o.blockKey },
+    weeks: Math.max(...src.map((s) => s.weekNo)),
+    sessions: keys.map((k, i) => {
+      const s = src.find((x) => x.sessionKey === k) as PlannedSet;
+      return {
+        relSession: `s${i + 1}`,
+        weekNo: s.weekNo,
+        offsetDays: diffDays(s.plannedDate, first),
+        dayNo: s.dayNo,
+      };
+    }),
+    sets: src.map((s) => {
+      const { id: _id, sessionKey, plannedDate: _pd, blockKey: _bk, copiedFrom: _cf, ...rest } = s;
+      void [_id, _pd, _bk, _cf];
+      return { ...rest, relSession: `s${keys.indexOf(sessionKey) + 1}` };
+    }),
+  };
+}
+
+/** Aplica una plantilla de bloque a un bloque de destino explícito desde una fecha de inicio. Ids nuevos; no pisa un bloque con series sin confirmación. */
+export function applyBlockTemplate(
+  existing: PlannedSet[],
+  t: BlockTemplate,
+  o: { blockKey: string; startDate: string; familyKey?: string; replaceExisting?: boolean },
+): Added {
+  const added: PlannedSet[] = t.sets.map((ts) => {
+    const sess = t.sessions.find((x) => x.relSession === ts.relSession) as BlockTemplate['sessions'][number];
+    const { relSession, ...rest } = ts;
+    const sessionKey = `${o.blockKey}-w${ts.weekNo}-${relSession}`;
+    return {
+      ...rest,
+      id: `${sessionKey}-${ts.exposureId}-${ts.setNo}`,
+      sessionKey,
+      plannedDate: addDays(o.startDate, sess.offsetDays),
+      blockKey: o.blockKey,
+      weekNo: ts.weekNo,
+      familyKey: o.familyKey ?? rest.familyKey,
+      copiedFrom: null,
+    };
+  });
+  const target = existing.filter((s) => s.blockKey === o.blockKey);
+  if (target.length && !o.replaceExisting)
+    throw new ProgramError(
+      `El bloque ${o.blockKey} ya tiene ${target.length} serie(s): no se sobrescribe sin una confirmación explícita (replaceExisting).`,
+    );
+  return { added, overwrites: target };
+}
+
 /* ---------------- Cambio de protocolo en destinos explícitos ---------------- */
 
 export interface ProtocolChange {
@@ -334,6 +408,10 @@ export interface ProtocolChange {
   protocol?: Partial<Protocol> | null;
   variantKey?: string;
   exerciseName?: string;
+  /** Rol del movimiento (null = sin clasificar). */
+  exposureRole?: 'primaria' | 'secundaria' | 'accesorio' | null;
+  /** Orden/importancia declarada por el coach (null = sin prioridad). */
+  priority?: number | null;
 }
 
 /** Cambia el protocolo SOLO de las series seleccionadas. Devuelve el plan completo con esas series modificadas; el resto queda idéntico. */
@@ -374,6 +452,8 @@ export function changeProtocol(
         : {}),
       ...(change.variantKey !== undefined ? { variantKey: change.variantKey } : {}),
       ...(change.exerciseName !== undefined ? { exerciseName: change.exerciseName } : {}),
+      ...(change.exposureRole !== undefined ? { exposureRole: change.exposureRole } : {}),
+      ...(change.priority !== undefined ? { priority: change.priority } : {}),
       protocol: proto,
     };
     changed.push(n);

@@ -7,3 +7,7 @@ export function isoToDays(iso: string): number {
 export function daysBetween(to: string, from: string): number {
   return isoToDays(to) - isoToDays(from);
 }
+/** Suma `n` días (puede ser negativo) a una fecha civil ISO. */
+export function shiftIsoDate(iso: string, n: number): string {
+  return new Date((isoToDays(iso) + n) * 86_400_000).toISOString().slice(0, 10);
+}

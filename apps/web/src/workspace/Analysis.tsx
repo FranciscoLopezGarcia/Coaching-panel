@@ -1,3 +1,4 @@
+import { MuscleRadar } from './MuscleRadar';
 import { EssentialAnalysis } from './EssentialAnalysis';
 import { BlockDashboard } from './BlockDashboard';
 import { BlockAnalysisPanel } from './BlockAnalysisPanel';
@@ -130,6 +131,7 @@ function AdvancedAnalysis({
   const [view, setView] = useState('trends');
   const [dose, setDose] = useState('nl');
   const [group, setGroup] = useState('movement');
+  const [muscleView, setMuscleView] = useState('');
   const [movement, setMovement] = useState('');
   const [seriesKey, setSeries] = useState('');
   const [help, setHelp] = useState<{ metric: MetricDefinition; result?: MetricResult } | null>(null);
@@ -138,7 +140,10 @@ function AdvancedAnalysis({
       get<import('./api').Weekly[]>(id, 'weekly' + query({ from, to, cutoff })),
       get<import('./api').Series>(id, 'series' + query({ from, to, cutoff })),
       w.catalog(),
-      get<import('./api').MuscleData>(id, 'weekly-muscles' + query({ from, to, cutoff })),
+      get<import('./api').MuscleData>(
+        id,
+        'weekly-muscles' + query({ from, to, cutoff, ...(muscleView ? { view: muscleView } : {}) }),
+      ),
       get<{ date: string; kind: string; label: string }[]>(id, 'annotations' + query({ from, to })),
       get<{
         records: {
@@ -155,7 +160,7 @@ function AdvancedAnalysis({
       }>(id, 'records' + query({ cutoff })),
     ]);
     return { weekly, series, catalog, muscles, annotations, records };
-  }, [id, from, to, cutoff]);
+  }, [id, from, to, cutoff, muscleView]);
   const definition = (key: string) => data.data?.catalog.metrics.find((m) => m.id === key);
   const explain = (key: string, result?: MetricResult) => {
     const metric = definition(key);
@@ -231,6 +236,17 @@ function AdvancedAnalysis({
                     <option value="muscle">Por grupo muscular</option>
                   </select>
                 </label>
+                {group === 'muscle' && (
+                  <label>
+                    Detalle muscular
+                    <select value={muscleView} onChange={(e) => setMuscleView(e.target.value)}>
+                      <option value="">El configurado del atleta</option>
+                      <option value="fino">Fino (17 grupos)</option>
+                      <option value="medio">Medio (espalda, brazos y core agrupados)</option>
+                      <option value="grueso">Grueso (tren superior/inferior)</option>
+                    </select>
+                  </label>
+                )}
                 {group === 'movement' && (
                   <label>
                     Movimiento
@@ -283,6 +299,13 @@ function AdvancedAnalysis({
                     />
                   ) : (
                     <>
+                      <MuscleRadar
+                        id={id}
+                        from={from}
+                        to={to}
+                        cutoff={cutoff}
+                        view={muscleView || undefined}
+                      />
                       <p className="small muted">
                         Directo × {d.muscles.convention.directWeight}; indirecto ×{' '}
                         {d.muscles.convention.indirectWeight}. Grupos superpuestos: no se suman.
@@ -296,6 +319,7 @@ function AdvancedAnalysis({
                               <th>Directas</th>
                               <th>Indirectas</th>
                               <th>Equivalentes</th>
+                              <th>Ejercicios que aportan</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -305,10 +329,11 @@ function AdvancedAnalysis({
                                   {dateLabel(r.week.from)}
                                   {r.week.partial ? ' · parcial' : ''}
                                 </td>
-                                <td>{r.muscle}</td>
+                                <td>{r.label ?? r.muscle}</td>
                                 <td>{number(r.directSets)}</td>
                                 <td>{number(r.indirectSets)}</td>
                                 <td>{number(r.equivalentSets)}</td>
+                                <td className="small muted">{r.exercises.join(' · ')}</td>
                               </tr>
                             ))}
                           </tbody>

@@ -1,7 +1,7 @@
 import type { SessionRow } from '@coaching/contracts';
 import { dateLabel } from './ui';
 import { groupByExercise, protocolText, type SetRow } from './sessionText';
-import { matchesPrio, PriorityBadge, usePrio } from './PriorityFilter';
+import { matchesPrio, matchesRole, PriorityBadge, RoleBadge, usePrio, useRole } from './PriorityFilter';
 
 const WD = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 const weekday = (d: string) => WD[new Date(d + 'T12:00:00Z').getUTCDay()];
@@ -24,11 +24,14 @@ export function SessionCards({
   onRecord: (s: SessionRow) => void;
 }) {
   const [prio] = usePrio();
+  const [role] = useRole();
   const ordered = [...sessions].sort((a, b) => a.date.localeCompare(b.date) || a.dayNo - b.dayNo);
   return (
     <div className="sc-grid">
       {ordered.map((s, i) => {
-        const visible = s.sets.filter((x) => !x.retired && matchesPrio(x.priority, prio));
+        const visible = s.sets.filter(
+          (x) => !x.retired && matchesPrio(x.priority, prio) && matchesRole(x.exposureRole, role),
+        );
         const shown: SetRow[] =
           mode === 'plan'
             ? visible
@@ -77,6 +80,7 @@ export function SessionCards({
                 <li key={g.name} className="sc-row">
                   <span className="sc-ex">
                     <PriorityBadge priority={g.priority} />
+                    <RoleBadge role={g.role} />
                     {g.name}
                   </span>
                   <span className="sc-proto">

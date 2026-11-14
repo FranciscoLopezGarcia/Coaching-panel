@@ -3,10 +3,12 @@ import { dateLabel } from './ui';
 export function WeekOverview({
   sessions,
   week,
+  loading = false,
   onSelect,
 }: {
   sessions: SessionRow[];
   week: number;
+  loading?: boolean;
   onSelect: (v: Record<string, string | null>) => void;
 }) {
   const done = sessions.filter(
@@ -34,7 +36,8 @@ export function WeekOverview({
             <span>{s.sets.every((x) => x.actual?.status === 'done') ? '✓ Realizada' : 'Registrar →'}</span>
           </button>
         ))}
-        {!sessions.length && (
+        {loading && <p className="muted">Cargando la semana…</p>}
+        {!loading && !sessions.length && (
           <p className="muted">
             Sin sesiones en esta selección.{' '}
             <button onClick={() => onSelect({ tab: 'plan' })}>Abrir programación</button>
