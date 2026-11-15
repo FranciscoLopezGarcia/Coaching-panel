@@ -156,6 +156,21 @@ function ensureFree(existing: PlannedSet[], created: PlannedSet[], replaceExisti
   return overwrites;
 }
 
+/**
+ * Número de orden de cada serie dentro de su sesión. `setNo` se reinicia en cada ejercicio, así que usarlo para armar ids
+ * repite ids en sesiones con más de un ejercicio. Orden fijo por (slot, nº de serie, id): vista previa y publicación coinciden.
+ */
+function ordinalsBySession(src: PlannedSet[]): Map<string, number> {
+  const out = new Map<string, number>();
+  const bySession = new Map<string, PlannedSet[]>();
+  for (const x of src) bySession.set(x.sessionKey, [...(bySession.get(x.sessionKey) ?? []), x]);
+  for (const list of bySession.values())
+    [...list]
+      .sort((x, y) => x.slotKey.localeCompare(y.slotKey) || x.setNo - y.setNo || x.id.localeCompare(y.id))
+      .forEach((x, i) => out.set(x.id, i + 1));
+  return out;
+}
+
 export function duplicateSession(
   sets: PlannedSet[],
   o: {
@@ -173,8 +188,9 @@ export function duplicateSession(
   if (!src.length) throw new ProgramError(`No existe la sesión ${o.sessionKey}.`);
   if (sets.some((s) => s.sessionKey === o.newSessionKey) && !o.replaceExisting)
     throw new ProgramError(`Ya existe la sesión ${o.newSessionKey}: se necesita otro identificador.`);
+  const ordinal = ordinalsBySession(src);
   const added = copySets(src, (s) => ({
-    id: `${o.newSessionKey}-${s.setNo}`,
+    id: `${o.newSessionKey}-${ordinal.get(s.id)}`,
     sessionKey: o.newSessionKey,
     plannedDate: o.plannedDate,
     dayNo: o.dayNo ?? s.dayNo,
@@ -205,8 +221,9 @@ export function repeatWeek(
   const shift = o.targetStartDate
     ? diffDays(o.targetStartDate, first)
     : (o.shiftDays ?? 7 * (o.targetWeek - o.sourceWeek));
+  const ordinal = ordinalsBySession(src);
   const added = copySets(src, (s) => ({
-    id: `${o.blockKey}-w${o.targetWeek}-${s.sessionKey.replace(new RegExp(`^${o.blockKey}-w${o.sourceWeek}-`), '')}-${s.setNo}`.replace(
+    id: `${o.blockKey}-w${o.targetWeek}-${s.sessionKey.replace(new RegExp(`^${o.blockKey}-w${o.sourceWeek}-`), '')}-${ordinal.get(s.id)}`.replace(
       /--+/g,
       '-',
     ),

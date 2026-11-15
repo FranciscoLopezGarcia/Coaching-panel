@@ -29,8 +29,13 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
   );
 }
 export function Message({ error, children }: { error?: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // un error en un formulario largo se lleva a la vista para que no pase desapercibido
+  useEffect(() => {
+    if (error) ref.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+  }, [error, children]);
   return (
-    <div className={error ? 'message error' : 'message'} role={error ? 'alert' : 'status'}>
+    <div ref={ref} className={error ? 'message error' : 'message'} role={error ? 'alert' : 'status'}>
       {children}
     </div>
   );

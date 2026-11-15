@@ -178,6 +178,27 @@ describe('Duplicar y repetir programación', () => {
     expect(new Set(r.added.map((s) => s.id)).size).toBe(3);
     expect(JSON.stringify(p)).toBe(before); // el original no cambió
   });
+  it('una sesión con varios ejercicios (setNo reinicia en cada uno) genera ids únicos al duplicar y al repetir semana', () => {
+    // la banca pasa a la misma sesión que la sentadilla: dos ejercicios, cada uno con setNo 1..n
+    const p = plan().map((x) =>
+      x.sessionKey === 'B1-w1-d3' ? { ...x, sessionKey: 'B1-w1-d1', plannedDate: '2026-03-02' } : x,
+    );
+    const dup = duplicateSession(p, {
+      sessionKey: 'B1-w1-d1',
+      newSessionKey: 'N',
+      plannedDate: '2026-03-09',
+    });
+    expect(dup.added).toHaveLength(5);
+    expect(new Set(dup.added.map((x) => x.id)).size).toBe(5);
+    const rep = repeatWeek(p, { blockKey: 'B1', sourceWeek: 1, targetWeek: 2 });
+    expect(new Set(rep.added.map((x) => x.id)).size).toBe(rep.added.length);
+    // determinista: vista previa y publicación calculan lo mismo
+    expect(
+      ids(
+        duplicateSession(p, { sessionKey: 'B1-w1-d1', newSessionKey: 'N', plannedDate: '2026-03-09' }).added,
+      ),
+    ).toEqual(ids(dup.added));
+  });
   it('no copia resultados, cuestionarios ni estados de completado (solo hay prescripción)', () => {
     const r = duplicateSession(plan(), {
       sessionKey: 'B1-w1-d1',

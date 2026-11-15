@@ -836,7 +836,16 @@ export function CreateDialog({
                   return;
                 }
               }
-            const sets = build();
+            let sets: ReturnType<typeof build>;
+            try {
+              sets = build();
+            } catch (err) {
+              // falta elegir el movimiento de un accesorio, etc.: se muestra en pantalla (antes solo salía en la consola)
+              setReview(null);
+              setCreationPreview(null);
+              setError((err as Error).message);
+              return;
+            }
             setReview(null);
             setCreationPreview(null);
             setBusy(true);
