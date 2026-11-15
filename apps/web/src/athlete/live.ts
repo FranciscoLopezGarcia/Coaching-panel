@@ -24,7 +24,7 @@ export function useLive(onChange: () => void): LiveState {
     };
     const poll = async () => {
       const h = auth();
-      if (!h || stopped) return;
+      if (!h || stopped || document.visibilityState === 'hidden') return;
       try {
         const r = await fetch('/api/me/rev', { headers: h, cache: 'no-store' });
         if (r.ok) {

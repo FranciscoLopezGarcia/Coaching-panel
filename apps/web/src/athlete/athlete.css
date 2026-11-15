@@ -1,6 +1,7 @@
 /* Portal del atleta: oscuro, tarjetas grandes y tabla de series al estilo Hevy. Mobile first. */
 .ath {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
   display: flex;
@@ -498,7 +499,7 @@
 }
 .ath-rest {
   position: sticky;
-  bottom: 70px;
+  bottom: 12px;
   z-index: 5;
   display: flex;
   align-items: center;
@@ -592,4 +593,26 @@
   font-size: 34px;
   background: #14406b;
   color: #d4e9ff;
+}
+
+/* aviso flotante: no empuja el contenido (antes movía la tabla y cerraba el teclado) */
+.ath-toast {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  max-width: min(520px, calc(100vw - 24px));
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
+}
+/* el campo enfocado nunca queda tapado por la barra de descanso */
+html {
+  scroll-padding-bottom: 140px;
+}
+.ath-sets input {
+  scroll-margin-bottom: 140px;
+}
+.ath-check {
+  touch-action: manipulation;
 }

@@ -91,7 +91,7 @@ function niceScale(lo: number, hi: number, n = 4) {
   for (let t = a; t <= b + step / 2; t += step) ticks.push(Math.round(t * 1e6) / 1e6);
   return { a, b, ticks };
 }
-const decimals = (id: string) => (id === 'tonnage_per_week' || id === 'si_total_per_week' ? 0 : 1);
+const decimals = (id: string) => (id === 'tonnage_per_week' ? 0 : 1);
 
 /* ---------- 1) gráfico grande de una métrica entre bloques ---------- */
 export function MetricChart({ row, label, blocks }: { row: CRow; label: string; blocks: CBlock[] }) {
@@ -503,7 +503,8 @@ export function ComplianceChart({ data, blocks }: { data: CCompliance[]; blocks:
       <div className="chart-head">
         <h4>Cumplimiento: previsto vs hecho</h4>
         <span className="muted small">
-          sobre las series previstas hasta el corte; «sin registro» no es «omitida»
+          el % = hechas / previstas al corte (cuenta las sin registro); «sin registro» no es «omitida» ni
+          «hecha»
         </span>
       </div>
       <div className="zone-legend">

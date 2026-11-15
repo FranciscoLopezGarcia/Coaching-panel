@@ -553,7 +553,7 @@ export function BlockAnalysisPanel({ id, cutoff }: { id: string; cutoff?: string
                   (c: Compliance) =>
                     c.total.setsDoneShare === null
                       ? 'sin series previstas'
-                      : `${number(100 * c.total.setsDoneShare, 0)}% de lo previsto`,
+                      : `${number(100 * c.total.setsDoneShare, 0)}% de las previstas al corte (incluye las sin registro)`,
                 ],
                 [
                   'Omitidas · sin registro',
@@ -561,7 +561,7 @@ export function BlockAnalysisPanel({ id, cutoff }: { id: string; cutoff?: string
                   (c: Compliance) =>
                     c.total.setsDoneOfRecorded === null
                       ? 'sin registros'
-                      : `${number(100 * c.total.setsDoneOfRecorded, 0)}% de las registradas se hicieron`,
+                      : `${c.total.setsDone}/${c.total.setsDone + c.total.setsSkipped} registradas hechas (${number(100 * c.total.setsDoneOfRecorded, 0)}%) · el % de arriba usa todas las previstas al corte`,
                 ],
                 [
                   'Carga real / prevista',

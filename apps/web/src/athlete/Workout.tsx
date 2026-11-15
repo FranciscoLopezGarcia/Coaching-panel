@@ -33,6 +33,55 @@ function initVals(s: SessionData): Vals {
   return v;
 }
 
+const isEditing = () => {
+  const a = document.activeElement;
+  return !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && !!a.closest('.ath-workout');
+};
+
+/** Cronómetro propio: su tic de cada segundo no vuelve a dibujar la tabla (eso hacía trabarse al escribir). */
+function Elapsed({ t0 }: { t0: number }) {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    const i = setInterval(() => setSecs(Math.floor((Date.now() - t0) / 1000)), 1000);
+    return () => clearInterval(i);
+  }, [t0]);
+  return (
+    <span className="ath-timer">
+      {String(Math.floor(secs / 60)).padStart(2, '0')}:{String(secs % 60).padStart(2, '0')}
+    </span>
+  );
+}
+
+/** Descanso entre series, con su propio reloj. */
+function RestBar({
+  rest,
+  onDone,
+}: {
+  rest: { until: number; total: number; name: string };
+  onDone: () => void;
+}) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    setNow(Date.now());
+    const i = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(i);
+  }, [rest]);
+  const left = Math.max(0, Math.ceil((rest.until - now) / 1000));
+  if (left <= 0) return null;
+  return (
+    <div className="ath-rest" role="timer" aria-live="off">
+      <span style={{ width: `${(left / rest.total) * 100}%` }} />
+      <b>
+        Descanso {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
+      </b>
+      <small>{rest.name}</small>
+      <button type="button" onClick={onDone}>
+        Omitir
+      </button>
+    </div>
+  );
+}
+
 /** Pantalla de entreno al estilo Hevy: tarjeta por ejercicio, tabla de series con anterior / kg / reps / RPE y un tilde por serie. */
 export function Workout({ keyName, go }: { keyName: string; go: (hash: string) => void }) {
   const [data, setData] = useState<SessionData | null>(null);
@@ -45,13 +94,14 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
   const finishRef = useRef<HTMLElement | null>(null);
   const [fatigue, setFatigue] = useState(6);
   const [note, setNote] = useState('');
-  const [saving, setSaving] = useState('');
   const t0 = useRef(Date.now());
-  const [secs, setSecs] = useState(0);
+  const valsRef = useRef(vals);
+  valsRef.current = vals;
+  const lastOwn = useRef(0); // última escritura propia: su aviso de revisión NO es un cambio del coach
+  const deferred = useRef(false); // hubo un cambio mientras el atleta escribía: se aplica al soltar el campo
   const touched = useRef(new Set<string>()); // series que el atleta tocó y aún no están confirmadas por el servidor
   const [pending, setPending] = useState(0);
   const [rest, setRest] = useState<{ until: number; total: number; name: string } | null>(null);
-  const [now, setNow] = useState(Date.now());
   const [updated, setUpdated] = useState(false);
   const load = (first: boolean) =>
     api
@@ -61,7 +111,15 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
         // lo que el atleta está escribiendo NO se pisa; el resto se alinea con el servidor
         setVals((old) => {
           const fresh = initVals(d);
-          for (const id of touched.current) if (old[id] && fresh[id]) fresh[id] = old[id];
+          for (const id of [...touched.current]) {
+            const o = old[id];
+            const f = fresh[id];
+            if (!o || !f) continue;
+            // si lo local ya coincide con el servidor, deja de estar protegido; si no, se conserva lo que escribió el atleta
+            if (o.kg === f.kg && o.reps === f.reps && o.rpe === f.rpe && o.done === f.done)
+              touched.current.delete(id);
+            else fresh[id] = o;
+          }
           return fresh;
         });
         if (first && d.endFatigue) setFatigue(d.endFatigue);
@@ -75,9 +133,26 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
     void load(true);
   }, [keyName]);
   const live = useLive(() => {
-    setUpdated(true);
+    // las escrituras del propio atleta también suben la revisión: no son un cambio del coach ni justifican recargar mientras escribe
+    if (Date.now() - lastOwn.current > 8000) setUpdated(true);
+    if (isEditing()) {
+      deferred.current = true;
+      return;
+    }
     void load(false);
   });
+  useEffect(() => {
+    const after = () => {
+      if (!deferred.current) return;
+      setTimeout(() => {
+        if (isEditing()) return; // pasó a otro campo: se aplica cuando termine de escribir
+        deferred.current = false;
+        void load(false);
+      }, 200);
+    };
+    document.addEventListener('focusout', after);
+    return () => document.removeEventListener('focusout', after);
+  }, [keyName]);
   useEffect(() => {
     if (!updated) return;
     const t = setTimeout(() => setUpdated(false), 3500);
@@ -88,7 +163,6 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
     const go = () =>
       void flushOutbox().then((r) => {
         setPending(r.left);
-        if (!r.left) touched.current.clear();
       });
     setPending(pendingCount());
     go();
@@ -99,22 +173,13 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
       window.removeEventListener('online', go);
     };
   }, []);
-  useEffect(() => {
-    if (!rest) return;
-    const i = setInterval(() => setNow(Date.now()), 500);
-    return () => clearInterval(i);
-  }, [rest]);
-  useEffect(() => {
-    const i = setInterval(() => setSecs(Math.floor((Date.now() - t0.current) / 1000)), 1000);
-    return () => clearInterval(i);
-  }, []);
   const all = useMemo(() => data?.exercises.flatMap((e) => e.sets) ?? [], [data]);
   const done = all.filter((s) => vals[s.id]?.done).length;
   if (error && !data) return <p className="ath-error">{error}</p>;
   if (!data) return <p className="muted">Cargando…</p>;
   const save = async (s: SetView, v: Vals[string]) => {
-    setSaving(s.id);
     touched.current.add(s.id);
+    lastOwn.current = Date.now();
     try {
       const r = await api.logSet({
         plannedSetId: s.id,
@@ -123,16 +188,18 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
         reps: num(v.reps),
         rpe: num(v.rpe),
       });
+      lastOwn.current = Date.now();
       setPending(pendingCount());
-      if (!r.queued) touched.current.delete(s.id);
+      // solo se libera si el atleta no siguió escribiendo mientras tanto
+      const c = valsRef.current[s.id];
+      if (!r.queued && c && c.kg === v.kg && c.reps === v.reps && c.rpe === v.rpe && c.done === v.done)
+        touched.current.delete(s.id);
     } catch (e) {
       setError((e as Error).message);
-    } finally {
-      setSaving('');
     }
   };
   const toggle = (s: SetView) => {
-    const cur = vals[s.id] as Vals[string];
+    const cur = valsRef.current[s.id] as Vals[string];
     // al marcar con campos vacíos, se completa con lo previsto (como en Hevy)
     const next = cur.done
       ? { ...cur, done: false }
@@ -142,20 +209,19 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
           rpe: cur.rpe,
           done: true,
         };
-    setVals({ ...vals, [s.id]: next });
+    setVals((o) => ({ ...o, [s.id]: next }));
     void save(s, next);
     // descanso previsto por el coach para este ejercicio: arranca al marcar la serie
     if (!cur.done && s.pauseSec) {
       const ex = data.exercises.find((e) => e.sets.some((x) => x.id === s.id));
       setRest({ until: Date.now() + s.pauseSec * 1000, total: s.pauseSec, name: ex?.name ?? '' });
-      setNow(Date.now());
     }
   };
   const edit = (s: SetView, k: 'kg' | 'reps' | 'rpe', value: string) => {
     touched.current.add(s.id);
-    setVals({ ...vals, [s.id]: { ...(vals[s.id] as Vals[string]), [k]: value } });
+    setVals((o) => ({ ...o, [s.id]: { ...(o[s.id] as Vals[string]), [k]: value } }));
   };
-  const left = rest ? Math.max(0, Math.ceil((rest.until - now) / 1000)) : 0;
+  const secs = Math.floor((Date.now() - t0.current) / 1000);
   const mm = String(Math.floor(secs / 60)).padStart(2, '0');
   const ss = String(secs % 60).padStart(2, '0');
   return (
@@ -170,9 +236,7 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
             {short(data.date)} · {data.block.name} · Semana {data.weekNo}
           </p>
         </div>
-        <span className="ath-timer">
-          {mm}:{ss}
-        </span>
+        <Elapsed t0={t0.current} />
       </header>
       {(live === 'offline' || pending > 0) && (
         <p className="ath-sync warn" role="status">
@@ -182,7 +246,7 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
         </p>
       )}
       {updated && (
-        <p className="ath-sync ok" role="status">
+        <p className="ath-sync ok ath-toast" role="status">
           Tu coach actualizó este entreno.
         </p>
       )}
@@ -280,7 +344,6 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
                             onClick={() => toggle(s)}
                             aria-pressed={v.done}
                             aria-label="Serie hecha"
-                            disabled={saving === s.id}
                           >
                             ✓
                           </button>
@@ -313,18 +376,7 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
           </section>
         );
       })}
-      {rest && left > 0 && (
-        <div className="ath-rest" role="timer" aria-live="off">
-          <span style={{ width: `${(left / rest.total) * 100}%` }} />
-          <b>
-            Descanso {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
-          </b>
-          <small>{rest.name}</small>
-          <button type="button" onClick={() => setRest(null)}>
-            Omitir
-          </button>
-        </div>
-      )}
+      {rest && <RestBar rest={rest} onDone={() => setRest(null)} />}
       {saved ? (
         <section className="ath-card ath-done" role="status">
           <div className="ath-done-mark">✓</div>

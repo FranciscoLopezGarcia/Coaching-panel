@@ -432,7 +432,7 @@ function buildLiftState(a: {
   const recovery: DimensionState = {
     id: 'recuperacion',
     status: recStatus,
-    summary: `Recuperación reportada: ${a.readiness}.${a.pain !== null ? ` Molestia máxima en 7 días: ${a.pain}/10.` : ''}${fat?.status === 'candidato_frecuencia' ? ' Hay deterioro dentro de la sesión con fatiga reportada.' : ''}`,
+    summary: `Recuperación reportada al corte ${a.cutoff}: ${a.readiness}.${a.pain !== null ? ` Molestia máxima en 7 días: ${a.pain}/10.` : ''}${fat?.status === 'candidato_frecuencia' ? ' Hay deterioro dentro de la sesión con fatiga reportada.' : ''}`,
     signals: [
       ...results.filter((x) => ['B-DOLOR', 'B-TECNICA', 'R-FREQUENCY'].includes(x.ruleId)).map(ruleKey),
     ],
