@@ -33,7 +33,9 @@ export function BlockNavigator({
 }) {
   const t = today();
   const [removing, setRemoving] = useState(false);
-  const blocks = [...new Set(sessions.map((s) => s.blockKey))]
+  // Todos los bloques: los que tienen sesiones Y los mesos creados que todavía no tienen ninguna (antes se escondían).
+  const keys = [...new Set([...sessions.map((s) => s.blockKey), ...mesos.map((m) => m.blockKey)])];
+  const blocks = keys
     .map((key) => {
       const ss = sessions.filter((s) => s.blockKey === key);
       const dates = ss.map((s) => s.date).sort();
@@ -43,16 +45,17 @@ export function BlockNavigator({
         key,
         name: m?.name ?? key,
         macroId: m?.macroId ?? null,
-        from: dates[0] ?? '',
-        to: dates[dates.length - 1] ?? '',
+        from: dates[0] ?? m?.startDate ?? '',
+        to: dates[dates.length - 1] ?? m?.endDate ?? m?.startDate ?? '',
         sessions: ss.length,
         ...tot,
       };
     })
-    .sort((a, b) => a.from.localeCompare(b.from));
+    // los que no tienen ninguna fecha van al final, en vez de al principio
+    .sort((a, b) => (a.from || '9999').localeCompare(b.from || '9999'));
   const idx = blocks.findIndex((b) => b.key === block);
   const status = (b: (typeof blocks)[number]) =>
-    b.to < t ? (b.ok ? 'past' : 'pending-past') : b.from <= t ? 'current' : 'future';
+    !b.sessions ? 'future' : b.to < t ? (b.ok ? 'past' : 'pending-past') : b.from <= t ? 'current' : 'future';
   const go = (b: (typeof blocks)[number] | undefined) =>
     b && onSelect({ macro: b.macroId, block: b.key, week: null, session: null });
   return (
@@ -104,17 +107,17 @@ export function BlockNavigator({
             title={`${b.sessions} sesiones · ${b.ok}/${b.n} series ejecutadas`}
           >
             <b>{b.name}</b>
-            <small>
-              {dateLabel(b.from)} – {dateLabel(b.to)}
-            </small>
+            <small>{b.from ? `${dateLabel(b.from)} – ${dateLabel(b.to)}` : 'Sin fechas'}</small>
             <em>
-              {status(b) === 'current'
-                ? 'en curso'
-                : status(b) === 'future'
-                  ? 'por venir'
-                  : b.n
-                    ? `${Math.round((b.ok / b.n) * 100)} % ejecutado`
-                    : ''}
+              {!b.sessions
+                ? 'sin sesiones todavía'
+                : status(b) === 'current'
+                  ? 'en curso'
+                  : status(b) === 'future'
+                    ? 'por venir'
+                    : b.n
+                      ? `${Math.round((b.ok / b.n) * 100)} % ejecutado`
+                      : ''}
             </em>
           </button>
         ))}

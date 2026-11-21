@@ -1,4 +1,4 @@
-import { isoWeekday, weekOfDate } from './sessionText';
+import { defaultSessionDate, isoWeekday, weekOfDate } from './sessionText';
 import { WeekDates } from './WeekDates';
 import { SessionCards } from './SessionCards';
 import { SessionTextEditor } from './SessionTextEditor';
@@ -142,7 +142,7 @@ export function Programming({
       <Async state={data}>
         {(d) => (
           <>
-            {!!d.sessions.length && (
+            {(!!d.sessions.length || !!d.mesos.length) && (
               <BlockNavigator
                 id={id}
                 onDeleted={() => {
@@ -685,7 +685,18 @@ export function CreateDialog({
   const [name, setName] = useState(defaultName);
   const [key, setKey] = useState(kind === 'meso' ? 'meso-' + crypto.randomUUID().slice(0, 8) : block);
   const [macroId, setMacro] = useState(macro);
-  const [start, setStart] = useState(today());
+  const [start, setStart] = useState(() =>
+    kind === 'session'
+      ? defaultSessionDate(
+          all,
+          mesos.find((m) => m.blockKey === block),
+          block,
+          week,
+          1,
+          today(),
+        )
+      : today(),
+  );
   const [end, setEnd] = useState('');
   const [objective, setObjective] = useState('');
   const [status, setStatus] = useState('planificado');
@@ -950,7 +961,19 @@ export function CreateDialog({
                   min={1}
                   value={weekNo}
                   onChange={(e) => {
-                    setWeek(Number(e.target.value));
+                    const n = Number(e.target.value);
+                    setWeek(n);
+                    if (n >= 1)
+                      setStart(
+                        defaultSessionDate(
+                          all,
+                          mesos.find((m) => m.blockKey === key),
+                          key,
+                          n,
+                          day,
+                          start,
+                        ),
+                      );
                     setReview(null);
                   }}
                 />
@@ -964,7 +987,10 @@ export function CreateDialog({
                   required
                   value={day}
                   onChange={(e) => {
-                    setDay(Number(e.target.value));
+                    const d = Number(e.target.value);
+                    setDay(d);
+                    // el día mueve la fecha dentro de la misma semana (lunes = 1)
+                    if (d >= 1 && d <= 7 && start) setStart(shift(start, d - isoWeekday(start)));
                     setReview(null);
                   }}
                 />

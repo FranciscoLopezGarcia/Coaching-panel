@@ -333,7 +333,7 @@ describe('notas y progresión sugerida', () => {
         acc('r2', 's-rem1', 2, '2026-11-03'),
         acc('r3', 's-rem1', 3, '2026-11-03'),
         ...[1, 2, 3].map((n) =>
-          acc(`q${n}`, 's-rem2', n, '2026-11-17', {
+          acc(`q${n}`, 's-rem2', n, '2026-11-13', {
             athleteProgression: 'reps_kg',
             instructions: 'Controlá la bajada',
           }),
@@ -368,7 +368,7 @@ describe('notas y progresión sugerida', () => {
   });
   it('si el coach no la habilita (o la vista oculta el kg), el atleta no recibe esos números', async () => {
     await call('POST', `/api/athletes/${a1}/plan`, {
-      sets: [1, 2, 3].map((n) => acc(`q${n}`, 's-rem2', n, '2026-11-17', { athleteProgression: null })),
+      sets: [1, 2, 3].map((n) => acc(`q${n}`, 's-rem2', n, '2026-11-13', { athleteProgression: null })),
       status: 'aplicado',
     });
     let ex = (await j(call('GET', '/api/me/sessions/s-rem2', undefined, await tok()))).exercises[0];
@@ -376,7 +376,7 @@ describe('notas y progresión sugerida', () => {
     expect(ex.sets[0].goal).toBeNull();
     await call('POST', `/api/athletes/${a1}/plan`, {
       sets: [1, 2, 3].map((n) =>
-        acc(`q${n}`, 's-rem2', n, '2026-11-17', { athleteProgression: 'reps_kg', athleteView: 'solo_rpe' }),
+        acc(`q${n}`, 's-rem2', n, '2026-11-13', { athleteProgression: 'reps_kg', athleteView: 'solo_rpe' }),
       ),
       status: 'aplicado',
     });
@@ -425,6 +425,7 @@ describe('bloque actual en el Home: manda la fecha, no lo pendiente', () => {
         mkA('v-old', 's-viejo', '2026-10-01', 'b-viejo', 1), // atrasada, nunca se hizo
         mkA('b2-1', 's-b2-1', '2026-11-12', 'b-nuevo', 2),
         mkA('b2-2', 's-b2-2', '2026-11-19', 'b-nuevo', 3),
+        mkA('b2-3', 's-b2-3', '2026-11-26', 'b-nuevo', 4),
       ],
       status: 'aplicado',
     });
@@ -436,5 +437,10 @@ describe('bloque actual en el Home: manda la fecha, no lo pendiente', () => {
     expect(home.block.currentWeek).toBe(2);
     const plan = await j(call('GET', '/api/me/plan', undefined, t));
     expect(plan.current).toMatchObject({ blockKey: 'b-nuevo', weekNo: 2, key: 's-b2-1' });
+    // hoy = martes 2026-11-10: se ve hasta el domingo 11-15; las semanas siguientes (11-19, 11-26) no llegan al atleta
+    const keys = plan.blocks.flatMap((b: { weeksList: { sessions: { key: string }[] }[] }) =>
+      b.weeksList.flatMap((w) => w.sessions.map((s) => s.key)),
+    );
+    expect(keys.sort()).toEqual(['s-b2-1', 's-viejo']);
   });
 });

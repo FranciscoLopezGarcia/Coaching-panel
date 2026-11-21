@@ -504,3 +504,36 @@ export function weekOfDate(
   return w >= 1 ? w : null;
 }
 export const mondayOfDate = mondayOf;
+
+/**
+ * Fecha por defecto al crear una sesión: la que corresponde a la semana del bloque, NO la de hoy.
+ * Prioridad: lunes de esa semana si ya tiene sesiones → inicio del meso + (semana-1)·7 → otra semana del bloque corrida
+ * por diferencia de semanas → recién ahí `fallback` (hoy). `day` es 1 = lunes … 7 = domingo.
+ */
+export function defaultSessionDate(
+  all: Pick<SessionRow, 'blockKey' | 'weekNo' | 'date'>[],
+  meso: { startDate: string | null } | undefined,
+  block: string,
+  weekNo: number,
+  day: number,
+  fallback: string,
+): string {
+  const add = (d: string, n: number) => {
+    const x = new Date(d + 'T12:00:00Z');
+    x.setUTCDate(x.getUTCDate() + n);
+    return x.toISOString().slice(0, 10);
+  };
+  const inBlock = all.filter((s) => s.blockKey === block);
+  const sameWeek = inBlock
+    .filter((s) => s.weekNo === weekNo)
+    .map((s) => s.date)
+    .sort();
+  let monday: string | null = null;
+  if (sameWeek[0]) monday = mondayOf(sameWeek[0]);
+  else if (meso?.startDate) monday = add(mondayOf(meso.startDate), 7 * (weekNo - 1));
+  else if (inBlock.length) {
+    const ref = [...inBlock].sort((a, b) => a.weekNo - b.weekNo || a.date.localeCompare(b.date))[0]!;
+    monday = add(mondayOf(ref.date), 7 * (weekNo - ref.weekNo));
+  }
+  return monday ? add(monday, Math.min(7, Math.max(1, day)) - 1) : fallback;
+}

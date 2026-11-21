@@ -108,11 +108,14 @@ export class PortalService {
 
   private async load(athleteId: string) {
     // las dos lecturas son independientes: van juntas (cada ida a la base en la nube cuesta)
-    const [planned, actualRows, finishes] = await Promise.all([
+    const [allPlanned, actualRows, finishes] = await Promise.all([
       this.records.listActivePlanned(athleteId),
       this.records.listActual(athleteId),
       this.history.listFinishes(athleteId),
     ]);
+    // El atleta ve de la semana actual (lunes a domingo) hacia atrás: lo que todavía no llegó no se le muestra.
+    const { sun } = this.weekBounds(this.today());
+    const planned = allPlanned.filter((p) => p.plannedDate <= sun);
     const actual = new Map(actualRows.map((a) => [a.plannedSetId, a]));
     const finished = new Map(finishes.map((f) => [f.sessionKey, f]));
     const bySession = new Map<string, PlannedSet[]>();
@@ -454,7 +457,12 @@ export class PortalService {
       pain?: number | null;
     },
   ) {
-    if (!(await this.records.listActivePlanned(athleteId)).some((p) => p.id === b.plannedSetId))
+    const { sun } = this.weekBounds(this.today());
+    if (
+      !(await this.records.listActivePlanned(athleteId)).some(
+        (p) => p.id === b.plannedSetId && p.plannedDate <= sun,
+      )
+    )
       throw new UnprocessableError('Esa serie no existe en tu plan.');
     await this.records.upsertActual(
       athleteId,
