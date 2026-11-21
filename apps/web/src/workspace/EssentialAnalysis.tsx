@@ -9,6 +9,7 @@ import { fetchCoreSessions } from './core';
 import { Curve } from '../performance/PerformanceCurve';
 import { get, query, workspaceApi, type Weekly, type Series, type MuscleData } from './api';
 import { dateLabel, number, readSearch, updateSearch, Detail, Modal } from './ui';
+import { RpeChip } from '../components/RpeChip';
 export type EssentialProps = {
   id: string;
   from: string;
@@ -637,12 +638,17 @@ function SessionSets({ s, exercise, variant }: { s: SessionRow; exercise: string
                 </td>
                 <td>
                   {prescribedReps(x.planned.reps, x.protocol)} × {number(x.planned.kg)} @
-                  {number(x.planned.targetRpe)}
+                  <RpeChip value={x.planned.targetRpe} label={null} />
                 </td>
                 <td>
-                  {x.actual
-                    ? `${number(x.actual.reps)} × ${number(x.actual.kg)} @${number(x.actual.rpe)}`
-                    : 'Sin registro'}
+                  {x.actual ? (
+                    <>
+                      {number(x.actual.reps)} × {number(x.actual.kg)} @
+                      <RpeChip value={x.actual.rpe} label={null} />
+                    </>
+                  ) : (
+                    'Sin registro'
+                  )}
                 </td>
               </tr>
             ))}

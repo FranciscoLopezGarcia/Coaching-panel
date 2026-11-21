@@ -102,7 +102,16 @@ type Tab =
   | 'graficos'
   | 'ejercicios';
 // por ahora todo en la familia del azul; más adelante se podrá asignar un color por atleta y bloque
-const PALETTE = ['#3d74e0', '#2f5cc0', '#6a97f0', '#4a86c7', '#27478f', '#85a9ee', '#3a63b5', '#8a8d96'];
+const PALETTE = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+  'var(--chart-6)',
+  'var(--chart-7)',
+  'var(--chart-8)',
+];
 const PATTERN_LABEL: Record<string, string> = {
   sentadilla: 'Sentadilla',
   bisagra_cadera: 'Bisagra',
@@ -197,15 +206,15 @@ function Compare({
               <g key={p.x + i}>
                 {paired ? (
                   <>
-                    <rect x={x} y={base - ha} width={bw} height={ha} className="bd-plan" rx="2">
+                    <rect x={x} y={base - ha} width={bw} height={ha} className="bd-plan" rx="0">
                       <title>{`${dateLabel(p.x)} · previsto ${number(p.a, 0)} ${unit}`}</title>
                     </rect>
-                    <rect x={x + bw + 1} y={base - hb} width={bw} height={hb} fill={p.color} rx="2">
+                    <rect x={x + bw + 1} y={base - hb} width={bw} height={hb} fill={p.color} rx="0">
                       <title>{`${dateLabel(p.x)} · realizado ${number(p.b, 0)} ${unit} · ${p.tip}`}</title>
                     </rect>
                   </>
                 ) : (
-                  <rect x={x} y={base - ha} width={bw} height={ha} fill={p.color} rx="2">
+                  <rect x={x} y={base - ha} width={bw} height={ha} fill={p.color} rx="0">
                     <title>{`${dateLabel(p.x)} · ${number(p.a, 0)} ${unit} · ${p.tip}`}</title>
                   </rect>
                 )}
@@ -341,12 +350,15 @@ function Kpi({
   plan,
   unit,
   hint,
+  e1rmMax,
 }: {
   name: string;
   real?: Val;
   plan?: Val;
   unit: string;
   hint?: string;
+  /** Máximo e1RM observado: lleva la clase `e1rm-max` (color y tipografía propios). */
+  e1rmMax?: boolean;
 }) {
   const r = real?.value ?? null;
   const p = plan?.value ?? null;
@@ -354,7 +366,7 @@ function Kpi({
   return (
     <div className="bd-kpi" title={hint}>
       <span>{name}</span>
-      <strong>{r === null ? '—' : number(r, 0)}</strong>
+      <strong className={e1rmMax ? 'e1rm-max' : undefined}>{r === null ? '—' : number(r, 0)}</strong>
       <em>
         {unit}
         {p !== null && ` · previsto ${number(p, 0)}`}
@@ -416,14 +428,14 @@ function Timeline({ blocks, sel, onSel }: { blocks: Block[]; sel: string; onSel:
             style={{ cursor: 'pointer' }}
             opacity={on ? 1 : 0.35}
           >
-            <rect x={x} y={4 + lane * 34} width={w} height="28" rx="6" fill={k.color} />
+            <rect x={x} y={4 + lane * 34} width={w} height="28" rx="0" fill={k.color} />
             {t(k.to) > now && (
               <rect
                 x={fx}
                 y={4 + lane * 34}
                 width={Math.max(0, x + w - fx)}
                 height="28"
-                rx="6"
+                rx="0"
                 fill="url(#bd-hatch)"
               />
             )}
@@ -966,6 +978,7 @@ function MovementView({
         <Kpi name="SI total" real={asVal(total((r) => r.si))} unit="RTS aprox." />
         <Kpi
           name="e1RM máximo"
+          e1rmMax
           real={allE1.length ? asVal(Math.max(...allE1)) : undefined}
           unit="kg · curva RTS"
         />
@@ -2249,7 +2262,7 @@ function BlockCompare({
                 const h = ((v ?? 0) / max) * 200;
                 const bx = 62 + i * slot + j * bw;
                 return (
-                  <rect key={l} x={bx} y={236 - h} width={bw - 2} height={h} fill={LIFT_COLOR[l]} rx="3">
+                  <rect key={l} x={bx} y={236 - h} width={bw - 2} height={h} fill={LIFT_COLOR[l]} rx="0">
                     <title>{`${x.b.key} · ${LIFT_FULL[l]}: ${v === null ? '—' : number(v, 1)}`}</title>
                   </rect>
                 );

@@ -1,6 +1,7 @@
 import { prescribedReps } from './prescription';
 import type { ExposureDetail } from './api';
 import { number, dateLabel } from './ui';
+import { RpeChip } from '../components/RpeChip';
 export function ExposureHistory({ value }: { value: ExposureDetail }) {
   return (
     <aside className="exposure-history">
@@ -32,11 +33,15 @@ export function ExposureHistory({ value }: { value: ExposureDetail }) {
                       <td>{x.setNo}</td>
                       <td>
                         {prescribedReps(x.planned.reps, x.planned.protocol)} × {number(x.planned.kg)} kg
-                        <p className="small muted">RPE {number(x.planned.targetRpe)}</p>
+                        <p className="small muted">
+                          <RpeChip value={x.planned.targetRpe} />
+                        </p>
                       </td>
                       <td>
                         {number(x.actual?.reps)} × {number(x.actual?.kg)} kg
-                        <p className="small muted">RPE real {number(x.actual?.rpe)}</p>
+                        <p className="small muted">
+                          <RpeChip value={x.actual?.rpe} label="RPE real" />
+                        </p>
                       </td>
                     </tr>
                   ))}

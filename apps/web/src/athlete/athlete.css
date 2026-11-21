@@ -38,7 +38,8 @@
 .ath-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 0;
+  clip-path: var(--cut-l);
   padding: 16px 18px;
   display: grid;
   gap: 10px;
@@ -52,9 +53,10 @@
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-soft);
-  border-radius: 999px;
+  border-radius: 0;
+  clip-path: var(--cut-xs);
   padding: 3px 10px;
 }
 .ath-row {
@@ -73,21 +75,22 @@
 .ath-ex li {
   padding: 8px 12px;
   background: var(--surface-2);
-  border-radius: 10px;
+  border-radius: 0;
+  clip-path: var(--cut-m);
   font-weight: 600;
 }
 .ath-progress {
   position: relative;
   height: 8px;
   background: var(--muted-bg);
-  border-radius: 999px;
+  border-radius: 0;
   overflow: hidden;
 }
 .ath-progress span {
   position: absolute;
   inset: 0 auto 0 0;
   background: var(--accent);
-  border-radius: 999px;
+  border-radius: 0;
   transition: width 0.25s;
 }
 .ath-progress.big {
@@ -106,7 +109,8 @@
   background: var(--accent);
   color: #fff;
   border: 0;
-  border-radius: 14px;
+  border-radius: 0;
+  clip-path: var(--cut-m);
   font-size: 17px;
   font-weight: 750;
   padding: 14px 18px;
@@ -123,7 +127,8 @@
 .ath-ghost {
   background: transparent;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 0;
+  clip-path: var(--cut-m);
   padding: 12px 16px;
   font-weight: 650;
   width: 100%;
@@ -132,7 +137,8 @@
 .ath-error {
   color: var(--bad);
   background: var(--bad-bg);
-  border-radius: 10px;
+  border-radius: 0;
+  clip-path: var(--cut-m);
   padding: 10px 12px;
 }
 .ath-info {
@@ -152,7 +158,8 @@
 .ath-objective {
   margin: 0;
   background: var(--surface-2);
-  border-radius: 10px;
+  border-radius: 0;
+  clip-path: var(--cut-m);
   padding: 10px 12px;
 }
 .ath-slider {
@@ -165,7 +172,7 @@
   font-weight: 650;
 }
 .ath-slider b {
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 18px;
 }
 .ath-slider input[type='range'] {
@@ -206,7 +213,8 @@
   gap: 14px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 22px;
+  border-radius: 0;
+  clip-path: var(--cut-l);
   padding: 28px 24px;
   box-shadow: var(--shadow);
 }
@@ -222,7 +230,8 @@
 .ath-logo {
   width: 54px;
   height: 54px;
-  border-radius: 16px;
+  border-radius: 0;
+  clip-path: var(--cut-l);
   background: var(--accent);
   color: #fff;
   font-size: 30px;
@@ -260,7 +269,8 @@
   border: 0;
   box-shadow: none;
   padding: 6px;
-  border-radius: 12px;
+  border-radius: 0;
+  clip-path: var(--cut-m);
   min-height: 0;
 }
 .ath-nav a span,
@@ -269,7 +279,7 @@
   line-height: 1.1;
 }
 .ath-nav a.on {
-  color: var(--accent);
+  color: var(--accent-text);
   background: var(--accent-soft);
 }
 /* selector */
@@ -280,7 +290,8 @@
   background: var(--accent);
   color: #fff;
   border: 0;
-  border-radius: 18px;
+  border-radius: 0;
+  clip-path: var(--cut-l);
   padding: 16px 18px;
   box-shadow: var(--shadow);
 }
@@ -306,7 +317,8 @@
   display: grid;
   gap: 1px;
   text-align: left;
-  border-radius: 12px;
+  border-radius: 0;
+  clip-path: var(--cut-m);
   padding: 10px 12px;
   min-height: 0;
 }
@@ -367,7 +379,8 @@
   min-width: 26px;
   height: 24px;
   padding: 0 6px;
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   font-weight: 800;
   font-size: 12px;
   background: var(--muted-bg);
@@ -389,7 +402,7 @@
   color: var(--info);
 }
 .ath-exercise h2 {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .ath-sets {
   width: 100%;
@@ -433,7 +446,8 @@
   padding: 4px;
   background: var(--surface-2);
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 0;
+  clip-path: var(--cut-m);
   font-weight: 700;
 }
 .ath-sets input::placeholder {
@@ -451,7 +465,8 @@
 .ath-check {
   width: 42px;
   height: 42px;
-  border-radius: 12px;
+  border-radius: 0;
+  clip-path: var(--cut-m);
   padding: 0;
   font-size: 20px;
   font-weight: 800;
@@ -470,7 +485,8 @@
   font-weight: 700;
   background: var(--muted-bg);
   color: var(--muted);
-  border-radius: 999px;
+  border-radius: 0;
+  clip-path: var(--cut-xs);
   padding: 2px 10px;
   margin: 0 6px 4px 0;
 }
@@ -486,16 +502,17 @@
 .ath-sync {
   margin: 0;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: 0;
+  clip-path: var(--cut-m);
   font-size: 13px;
 }
 .ath-sync.warn {
-  background: #3a2a10;
-  color: #f2c879;
+  background: var(--warn-bg);
+  color: var(--warn);
 }
 .ath-sync.ok {
-  background: #0f2a44;
-  color: #9cc9f5;
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 .ath-rest {
   position: sticky;
@@ -505,15 +522,16 @@
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
-  border-radius: 12px;
-  background: #0b1f36;
-  border: 1px solid #1d4a7a;
+  border-radius: 0;
+  clip-path: var(--cut-m);
+  background: var(--accent-soft);
+  border: 1px solid #3a4f66;
   overflow: hidden;
 }
 .ath-rest > span {
   position: absolute;
   inset: 0 auto 0 0;
-  background: #14406b;
+  background: var(--accent);
   opacity: 0.55;
   transition: width 0.5s linear;
 }
@@ -531,27 +549,29 @@
 .ath-rest button {
   background: transparent;
   color: inherit;
-  border: 1px solid #2c5f94;
-  border-radius: 8px;
+  border: 1px solid #4b6781;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   padding: 4px 10px;
 }
 
 .ath-coachnote {
   margin: 0 0 6px;
   padding: 8px 10px;
-  border-left: 3px solid #2c5f94;
-  background: rgba(20, 60, 110, 0.25);
-  border-radius: 6px;
+  border-left: 3px solid #4b6781;
+  background: rgba(75, 103, 129, 0.2);
+  border-radius: 0;
+  clip-path: var(--cut-s);
   font-size: 13px;
 }
 .ath-goal {
   margin: 0 0 8px;
   font-weight: 600;
-  color: #a9d0f7;
+  color: var(--accent-text);
 }
 .ath-pill.goal {
-  background: #0f2f52;
-  color: #bcdcff;
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 .ath-exnote {
   display: grid;
@@ -562,10 +582,11 @@
 .ath-exnote textarea {
   width: 100%;
   resize: vertical;
-  background: #0a1626;
+  background: var(--surface);
   color: inherit;
-  border: 1px solid #1b2f4a;
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  clip-path: var(--cut-s);
   padding: 8px;
   font: inherit;
 }
@@ -575,8 +596,8 @@
 }
 
 .ath-tag.ok {
-  background: #0f2f52;
-  color: #bcdcff;
+  background: var(--accent-soft);
+  color: var(--accent-text);
   margin-left: 6px;
 }
 .ath-done {
@@ -591,8 +612,8 @@
   display: grid;
   place-items: center;
   font-size: 34px;
-  background: #14406b;
-  color: #d4e9ff;
+  background: var(--accent);
+  color: #fff;
 }
 
 /* aviso flotante: no empuja el contenido (antes movía la tabla y cerraba el teclado) */

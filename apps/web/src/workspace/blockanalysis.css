@@ -1,7 +1,8 @@
 .ba {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 0;
+  clip-path: var(--cut-m);
   padding: 14px 16px;
   margin-bottom: 16px;
 }
@@ -27,7 +28,8 @@
 .ba-seg {
   display: inline-flex;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   overflow: hidden;
 }
 .ba-seg button,
@@ -41,7 +43,8 @@
 }
 .ba-btn {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
 }
 .ba-seg button[aria-pressed='true'] {
   background: var(--accent);
@@ -67,7 +70,8 @@
 }
 .ba-colhead {
   background: var(--surface-2);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
 }
 .ba-cell {
   border-top: 1px solid var(--line);
@@ -99,7 +103,8 @@
 .ba-card {
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   padding: 8px 10px;
 }
 .ba-card.ghost {
@@ -117,7 +122,8 @@
   display: inline-block;
   background: var(--muted-bg);
   color: var(--text);
-  border-radius: 999px;
+  border-radius: 0;
+  clip-path: var(--cut-xs);
   padding: 1px 8px;
   font-size: 0.8em;
 }
@@ -131,9 +137,6 @@
 }
 .ba-best {
   font-size: 1.6em;
-  font-weight: 700;
-  color: var(--ok);
-  font-variant-numeric: tabular-nums;
 }
 .ba-best small {
   font-size: 0.5em;
@@ -157,7 +160,7 @@
   fill: var(--muted);
 }
 .ba-dot.best {
-  fill: var(--ok);
+  fill: var(--e1rm-max);
 }
 .ba-tick {
   font-size: 7px;
@@ -204,7 +207,8 @@
   gap: 0.4rem 1.1rem;
   padding: 0.55rem 0.8rem;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
+  border-radius: 0;
+  clip-path: var(--cut-s);
   background: var(--surface);
   font-size: 0.8rem;
 }
@@ -220,16 +224,14 @@
   padding: 0.7rem 0.8rem 0.4rem;
   text-align: left;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 0;
+  clip-path: var(--cut-m);
   background: var(--surface);
   cursor: pointer;
-  transition:
-    border-color 0.15s,
-    transform 0.15s;
+  transition: border-color 0.15s;
 }
 .mini-card:hover {
   border-color: var(--accent);
-  transform: translateY(-1px);
 }
 .mini-card.on {
   border-color: var(--accent);
@@ -246,7 +248,8 @@
   position: relative;
   padding: 1rem 1.1rem 0.8rem;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 0;
+  clip-path: var(--cut-m);
   background: var(--surface);
 }
 .chart-head {
@@ -309,14 +312,14 @@
   fill: transparent;
 }
 .chart-hit:hover .chart-band {
-  fill: rgba(255, 255, 255, 0.05);
+  fill: var(--overlay);
 }
 .chart-missing {
   fill: var(--muted);
   opacity: 0.5;
 }
 .chart-dot {
-  fill: #0b0b0e;
+  fill: #141517;
   stroke: var(--text);
   stroke-width: 2;
 }
@@ -336,8 +339,9 @@
   min-width: 11rem;
   padding: 0.55rem 0.75rem;
   border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: #17171c;
+  border-radius: 0;
+  clip-path: var(--cut-s);
+  background: #1f2124;
   box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.9);
   font-size: 0.8rem;
   line-height: 1.45;
@@ -353,7 +357,8 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0.05rem 0.5rem;
-  border-radius: 999px;
+  border-radius: 0;
+  clip-path: var(--cut-xs);
   font-size: 0.78rem;
   font-weight: 700;
   white-space: nowrap;
@@ -402,7 +407,7 @@
   width: 0.7rem;
   height: 0.7rem;
   margin-right: 0.3rem;
-  border-radius: 3px;
+  border-radius: 0;
   vertical-align: -1px;
 }
 .zone-row {
@@ -421,7 +426,8 @@
   display: flex;
   height: 2.1rem;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   background: var(--muted-bg);
   align-items: center;
 }
@@ -430,7 +436,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #0b0b0e;
+  color: #141517;
   font-size: 0.78rem;
   font-weight: 700;
   cursor: default;

@@ -5,6 +5,7 @@ import { Login } from './Login';
 import { Picker } from './Picker';
 import { Workout } from './Workout';
 import './athlete.css';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 const go = (hash: string) => {
   window.location.hash = hash;
@@ -37,6 +38,7 @@ export function AthleteApp({ hash }: { hash: string }) {
         <a className={tab === 'picker' ? 'on' : ''} href="#/atleta/entrenos">
           <span>☰</span>Entrenos
         </a>
+        <ThemeToggle className="ath-theme" />
         <button
           onClick={async () => {
             try {

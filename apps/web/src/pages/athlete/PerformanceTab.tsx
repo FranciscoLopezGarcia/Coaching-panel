@@ -3,6 +3,7 @@ import { Async } from '../../components/Async';
 import { LineChart } from '../../components/LineChart';
 import { useLoad } from '../../hooks';
 import { fmt, LIFT_NAMES } from '../../labels';
+import { RpeChip } from '../../components/RpeChip';
 
 /** Rendimiento: e1RM de tabla por exposición (benchmark = ejercicio de competencia) y récords REALES de kg, claramente separados. */
 export function PerformanceTab({ id }: { id: string }) {
@@ -46,7 +47,10 @@ export function PerformanceTab({ id }: { id: string }) {
                           <td>{e.exposureId}</td>
                           <td>
                             {e.best ? (
-                              `${fmt(e.best.kg)}×${e.best.reps} @${fmt(e.best.rpe)}`
+                              <>
+                                {`${fmt(e.best.kg)}×${e.best.reps} @`}
+                                <RpeChip value={e.best.rpe} label={null} />
+                              </>
                             ) : (
                               <span className="muted">sin RPE real</span>
                             )}

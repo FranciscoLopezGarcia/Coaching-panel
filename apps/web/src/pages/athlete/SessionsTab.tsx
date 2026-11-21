@@ -4,6 +4,7 @@ import { api } from '../../api/client';
 import { Async } from '../../components/Async';
 import { useLoad } from '../../hooks';
 import { fmt, LIFT_NAMES } from '../../labels';
+import { RpeChip } from '../../components/RpeChip';
 
 /** Sesiones: previsto vs. real por serie. Sin bandeja de videos; la revisión técnica es un campo opcional del coach. */
 export function SessionsTab({ id, onChanged }: { id: string; onChanged: () => void }) {
@@ -97,13 +98,30 @@ export function SessionsTab({ id, onChanged }: { id: string; onChanged: () => vo
                         <td>{x.setNo}</td>
                         <td>
                           {x.planned.reps} reps
-                          {x.planned.targetRpe != null ? ` @${fmt(x.planned.targetRpe)}` : ''}
+                          {x.planned.targetRpe != null && (
+                            <>
+                              {' @'}
+                              <RpeChip value={x.planned.targetRpe} label={null} />
+                            </>
+                          )}
                           {x.planned.kg != null ? ` · ${fmt(x.planned.kg)} kg` : ''}
                         </td>
                         <td>
-                          {x.actual && x.actual.status === 'done'
-                            ? `${fmt(x.actual.kg)} kg × ${x.actual.reps}${x.actual.rpe != null ? ` @${fmt(x.actual.rpe)}` : ' (sin RPE)'}`
-                            : '—'}
+                          {x.actual && x.actual.status === 'done' ? (
+                            <>
+                              {`${fmt(x.actual.kg)} kg × ${x.actual.reps}`}
+                              {x.actual.rpe != null ? (
+                                <>
+                                  {' @'}
+                                  <RpeChip value={x.actual.rpe} label={null} />
+                                </>
+                              ) : (
+                                ' (sin RPE)'
+                              )}
+                            </>
+                          ) : (
+                            '—'
+                          )}
                         </td>
                         <td>{x.actual?.status ?? 'pendiente'}</td>
                         <td>{x.actual?.pain != null ? fmt(x.actual.pain, 0) : '—'}</td>

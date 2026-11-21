@@ -137,18 +137,18 @@ export function MuscleRadar({
                 {showPlan && (
                   <polygon
                     points={poly(d.plan.rows)}
-                    fill="#8a8f98"
+                    fill="#8c8f94"
                     fillOpacity={0.15}
-                    stroke="#8a8f98"
+                    stroke="#8c8f94"
                     strokeDasharray="4 3"
                   />
                 )}
                 {showReal && (
                   <polygon
                     points={poly(d.real.rows)}
-                    fill="#3b82f6"
+                    fill="var(--chart-main)"
                     fillOpacity={0.25}
-                    stroke="#3b82f6"
+                    stroke="var(--chart-main)"
                     strokeWidth={2}
                   />
                 )}

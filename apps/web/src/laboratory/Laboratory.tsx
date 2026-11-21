@@ -39,9 +39,8 @@ export function Laboratory({ onCreate }: { onCreate: () => void }) {
       <Async state={cases}>
         {(list) => (
           <div className="lab-cases">
-            {list.map((a, i) => (
+            {list.map((a) => (
               <article key={a.id}>
-                <span className="eyebrow">CASO {i + 1}</span>
                 <h3>{a.name}</h3>
                 <p>{a.objective}</p>
                 {a.guide && a.startDate && (
@@ -73,7 +72,7 @@ export function Laboratory({ onCreate }: { onCreate: () => void }) {
                       key={tab}
                       href={`#/athlete/${encodeURIComponent(a.id)}?${new URLSearchParams({ tab: tab!, ...((selected[a.id] ?? a.evaluatedOn) ? { cutoff: selected[a.id] ?? a.evaluatedOn!, to: selected[a.id] ?? a.evaluatedOn! } : {}), ...(a.startDate ? { from: a.startDate } : {}) })}`}
                     >
-                      {label} →
+                      {label}
                     </a>
                   ))}
                 </div>

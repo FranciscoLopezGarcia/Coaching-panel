@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent } from 'react';
 import { pasteCells, type SheetColumn, type CellChange } from './sheetModel';
+import { rpeInputProps } from '../components/RpeChip';
 export function DataSheet({
   label,
   columns,
@@ -97,6 +98,7 @@ export function DataSheet({
                         ) : (
                           <input
                             {...props}
+                            {...(/^(target)?rpe$/i.test(c.key) ? rpeInputProps(row[c.key]) : {})}
                             type={c.type === 'number' ? 'text' : (c.type ?? 'text')}
                             inputMode={c.type === 'number' ? 'decimal' : undefined}
                             autoComplete="off"

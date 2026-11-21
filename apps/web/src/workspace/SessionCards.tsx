@@ -113,7 +113,7 @@ export function SessionCards({
                   onRecord(s);
                 }}
               >
-                Registrar →
+                Registrar
               </button>
             </footer>
           </article>

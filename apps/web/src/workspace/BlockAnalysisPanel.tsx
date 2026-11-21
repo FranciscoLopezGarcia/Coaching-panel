@@ -393,7 +393,7 @@ export function BlockAnalysisPanel({ id, cutoff }: { id: string; cutoff?: string
           <span style={{ color: DIR_COLOR.up }}>{arrowOf('up')} subió</span>
           <span style={{ color: DIR_COLOR.down }}>{arrowOf('down')} bajó</span>
           <span style={{ color: DIR_COLOR.flat }}>{arrowOf('flat')} sin cambio / no comparable</span>
-          <span style={{ color: '#4fb985' }}>● máximo e1RM observado</span>
+          <span style={{ color: 'var(--e1rm-max)' }}>● máximo e1RM observado</span>
           <span className="muted">Pasá el mouse por cualquier gráfico para ver el detalle.</span>
         </div>
         <MetricGrid rows={data.rows} labels={LABEL} blocks={blocks} selected={metric} onSelect={setMetric} />
@@ -729,7 +729,7 @@ export function BlockAnalysisPanel({ id, cutoff }: { id: string; cutoff?: string
                           </span>
                         ) : (
                           <>
-                            <div className="ba-best" title="Mayor e1RM observado">
+                            <div className="ba-best e1rm-max" title="Mayor e1RM observado">
                               {number(v.bestKg, 1)} <small>kg</small>
                             </div>
                             <div className="small">

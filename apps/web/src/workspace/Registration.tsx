@@ -8,6 +8,7 @@ import { useLoad } from '../hooks';
 import { Async } from '../components/Async';
 import { send, get } from './api';
 import { Empty, Message, number, today, usePending, Detail } from './ui';
+import { RpeChip, rpeInputProps } from '../components/RpeChip';
 type Entry = {
   plannedSetId: string;
   status: 'done' | 'skipped' | 'pending';
@@ -265,8 +266,8 @@ function SessionForm({ id, s, onChanged }: { id: string; s: SessionRow; onChange
                         <p className="prescription">
                           Previsto:{' '}
                           <strong>
-                            {prescribedReps(p.planned.reps, p.protocol)} reps · {number(p.planned.kg)} kg ·
-                            RPE {number(p.planned.targetRpe)}
+                            {prescribedReps(p.planned.reps, p.protocol)} reps · {number(p.planned.kg)} kg ·{' '}
+                            <RpeChip value={p.planned.targetRpe} />
                           </strong>
                         </p>
                         <div className="form-grid compact">
@@ -288,6 +289,7 @@ function SessionForm({ id, s, onChanged }: { id: string; s: SessionRow; onChange
                                 max={k === 'rpe' || k === 'pain' ? 10 : undefined}
                                 step={k === 'reps' ? 1 : k === 'rpe' ? 0.5 : 'any'}
                                 value={x[k]}
+                                {...(k === 'rpe' ? rpeInputProps(x[k]) : {})}
                                 onChange={(e) =>
                                   draft(entries.map((y, j) => (j === i ? { ...y, [k]: e.target.value } : y)))
                                 }

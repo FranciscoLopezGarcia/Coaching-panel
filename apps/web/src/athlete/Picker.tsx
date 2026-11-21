@@ -53,7 +53,7 @@ export function Picker({ go }: { go: (hash: string) => void }) {
             {short(plan.next.date)} · {plan.blocks.find((x) => x.key === plan.next!.blockKey)?.name} · Semana{' '}
             {plan.next.weekNo}
           </span>
-          <b>Empezar →</b>
+          <b>Empezar</b>
         </button>
       )}
       <section className="ath-card">

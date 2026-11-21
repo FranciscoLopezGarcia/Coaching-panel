@@ -18,7 +18,6 @@ export function WeekOverview({
     <section className="week-overview">
       <div className="row between">
         <div>
-          <div className="eyebrow">TU PLAN EN MARCHA</div>
           <h2>
             Semana {week || 'actual'}{' '}
             <span className="chip">
@@ -26,14 +25,14 @@ export function WeekOverview({
             </span>
           </h2>
         </div>
-        <button onClick={() => onSelect({ tab: 'plan', action: 'next' })}>Programar próxima semana →</button>
+        <button onClick={() => onSelect({ tab: 'plan', action: 'next' })}>Programar próxima semana</button>
       </div>
       <div className="week-session-list">
         {sessions.map((s) => (
           <button key={s.sessionKey} onClick={() => onSelect({ tab: 'registro', session: s.sessionKey })}>
             <time>{dateLabel(s.date)}</time>
             <strong>{s.exerciseName}</strong>
-            <span>{s.sets.every((x) => x.actual?.status === 'done') ? '✓ Realizada' : 'Registrar →'}</span>
+            <span>{s.sets.every((x) => x.actual?.status === 'done') ? '✓ Realizada' : 'Registrar'}</span>
           </button>
         ))}
         {loading && <p className="muted">Cargando la semana…</p>}

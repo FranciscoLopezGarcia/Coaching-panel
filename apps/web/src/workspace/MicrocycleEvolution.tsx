@@ -6,7 +6,7 @@ import { OverviewChart, type Trace } from './OverviewChart';
  * e1RM, SI (total / central / periférico), tonelaje, NL, series e intensidad media relativa.
  * Solo presenta lo que entrega GET /weekly; no recalcula. Línea punteada = lo previsto en el plan.
  */
-const C = { main: '#3d74e0', alt: '#e0873d', third: '#4aa56b' };
+const C = { main: 'var(--chart-main)', alt: '#e0873d', third: '#4aa56b' };
 
 type Pick = (r: Weekly) => number | null;
 const actual =

@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { api, flushOutbox, pendingCount, type SessionData, type SetView } from './api';
 import { useLive } from './live';
+import { rpeInputProps } from '../components/RpeChip';
 
 type Vals = Record<string, { kg: string; reps: string; rpe: string; done: boolean }>;
 const num = (s: string) => (s.trim() === '' ? null : Number(s.replace(',', '.')));
@@ -331,6 +332,7 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
                             <input
                               inputMode="decimal"
                               value={v.rpe}
+                              {...rpeInputProps(v.rpe)}
                               placeholder={s.rpe !== null ? String(s.rpe).replace('.', ',') : '—'}
                               onChange={(e) => edit(s, 'rpe', e.target.value)}
                               onBlur={() => v.done && void save(s, v)}

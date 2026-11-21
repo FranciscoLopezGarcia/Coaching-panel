@@ -5,6 +5,7 @@ import { Async } from '../components/Async';
 import { fetchCoreSessions } from './core';
 import { number, readSearch, today } from './ui';
 import { prescribedReps } from './prescription';
+import { RpeChip } from '../components/RpeChip';
 const positions: Record<string, string> = {
   en_rango: 'Dentro del rango',
   bajo_rango: 'Bajo el rango',
@@ -62,7 +63,8 @@ export function SessionResponse({ id, session }: { id: string; session: SessionR
                             {f.rpe && (
                               <>
                                 {' '}
-                                · RPE {number(f.rpe.first)} → {number(f.rpe.last)}
+                                · <RpeChip value={f.rpe.first} /> →{' '}
+                                <RpeChip value={f.rpe.last} label={null} />
                               </>
                             )}
                             {f.reps && (
@@ -110,8 +112,12 @@ export function SessionResponse({ id, session }: { id: string; session: SessionR
                                           : '—'}
                                       </td>
                                       <td>{number(s.kg)}</td>
-                                      <td>{number(s.target?.rpe)}</td>
-                                      <td>{number(s.rpe)}</td>
+                                      <td>
+                                        <RpeChip value={s.target?.rpe} label={null} />
+                                      </td>
+                                      <td>
+                                        <RpeChip value={s.rpe} label={null} />
+                                      </td>
                                       <td>{number(s.rpeVsTarget)}</td>
                                       <td>{number(s.rpeVsPrevious)}</td>
                                     </tr>

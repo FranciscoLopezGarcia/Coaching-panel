@@ -50,7 +50,7 @@ body {
     sans-serif;
 }
 a {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .shell {
   max-width: 1100px;
@@ -74,7 +74,8 @@ a {
   border: 1px solid var(--line);
   border-left: 4px solid var(--accent);
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   font-size: 13px;
   color: var(--muted);
 }
@@ -110,7 +111,8 @@ h2 {
 button {
   font: inherit;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--text);
@@ -131,7 +133,8 @@ button.on {
 input {
   font: inherit;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--text);
@@ -144,7 +147,8 @@ table {
   border-collapse: collapse;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
 }
 th,
 td {
@@ -162,7 +166,8 @@ th {
 .badge {
   display: inline-block;
   padding: 2px 10px;
-  border-radius: 999px;
+  border-radius: 0;
+  clip-path: var(--cut-xs);
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
@@ -197,7 +202,8 @@ th {
 .card {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   padding: 12px 14px;
   margin: 10px 0;
 }
@@ -214,7 +220,8 @@ th {
   font-size: 12px;
   padding: 1px 8px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 0;
+  clip-path: var(--cut-xs);
   color: var(--muted);
 }
 .summary {
@@ -225,7 +232,8 @@ th {
   margin: 4px 0;
   padding: 8px 10px;
   background: var(--info-bg);
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
 }
 details {
   margin: 6px 0;
@@ -255,7 +263,8 @@ ul {
 }
 fieldset {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
 }
 label {
   display: grid;
@@ -301,7 +310,8 @@ label {
 .stat {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   padding: 12px 14px;
 }
 .stat-n {
@@ -316,7 +326,8 @@ label {
 .panel {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   padding: 4px 14px 10px;
 }
 .panel h3 {
@@ -364,7 +375,8 @@ textarea {
   width: 100%;
   font: inherit;
   padding: 8px;
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--text);
@@ -373,7 +385,8 @@ textarea {
 select {
   font: inherit;
   padding: 6px 8px;
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--text);
@@ -393,7 +406,7 @@ h4 {
 code {
   background: var(--muted-bg);
   padding: 0 4px;
-  border-radius: 4px;
+  border-radius: 0;
 }
 /* BASE: escritorio de trabajo, datos densos y estados discretos. */
 :root {
@@ -433,7 +446,8 @@ button {
   transition:
     background 0.12s,
     border-color 0.12s;
-  border-radius: 5px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   font-weight: 550;
   padding: 8px 12px;
 }
@@ -467,7 +481,7 @@ input,
 select {
   min-height: 38px;
   max-width: 100%;
-  border-radius: 4px;
+  border-radius: 0;
 }
 input[type='checkbox'] {
   min-height: unset;
@@ -564,7 +578,8 @@ p {
   gap: 14px;
   text-decoration: none;
   color: var(--muted);
-  border-radius: 5px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   padding: 12px;
   font-size: 13px;
 }
@@ -617,7 +632,7 @@ p {
   letter-spacing: 1.2px;
   padding: 5px 8px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 0;
   color: var(--muted);
 }
 main {
@@ -653,7 +668,8 @@ main {
 .stat {
   text-align: left;
   padding: 16px 20px;
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   box-shadow: 0 2px 3px #1d302603;
 }
 .stat-n {
@@ -685,7 +701,8 @@ main {
 }
 .panel {
   padding: 10px 18px 14px;
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
 }
 .panel h3 {
   margin: 8px 0 12px;
@@ -708,7 +725,7 @@ main {
 }
 .badge {
   font-size: 12px;
-  border-radius: 4px;
+  border-radius: 0;
   padding: 3px 7px;
   white-space: normal;
   font-weight: 600;
@@ -719,11 +736,12 @@ main {
 }
 .chip {
   font-size: 12px;
-  border-radius: 4px;
+  border-radius: 0;
   white-space: normal;
 }
 table {
-  border-radius: 5px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   font-size: 12px;
 }
 thead {
@@ -771,7 +789,8 @@ td a {
   box-shadow: 0 1px 2px #223a2703;
 }
 .card {
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   padding: 18px;
   margin: 14px 0;
 }
@@ -782,7 +801,7 @@ td a {
   padding: 12px 16px;
   font-size: 12px;
   margin: 14px 0;
-  border-radius: 4px;
+  border-radius: 0;
 }
 .message.error {
   background: var(--bad-bg);
@@ -818,7 +837,8 @@ td a {
   place-items: center;
   background: var(--surface-2);
   border: 1px solid var(--surface-2);
-  border-radius: 8px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   font-size: 18px;
   color: var(--muted);
   font-weight: 600;
@@ -832,7 +852,8 @@ td a {
   grid-template-columns: repeat(4, minmax(100px, 1fr)) minmax(185px, 1.4fr);
   background: var(--surface-2);
   border: 1px solid var(--surface-2);
-  border-radius: 5px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   margin: 20px 0 0;
   padding: 12px 4px;
   position: sticky;
@@ -883,13 +904,13 @@ td a {
   color: var(--muted);
 }
 .athlete-tabs button.on {
-  color: var(--accent);
+  color: var(--accent-text);
   border-bottom-color: var(--accent);
 }
 .athlete-tabs .current-training {
   margin-left: auto;
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .section-heading {
   margin: 24px 0 16px;
@@ -905,7 +926,8 @@ td a {
 .lift-card {
   border: 1px solid var(--line);
   background: var(--surface);
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   padding: 18px;
   border-top: 3px solid var(--surface-2);
 }
@@ -938,7 +960,7 @@ summary {
 .text-button {
   background: none;
   border: 0;
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 12px;
   padding: 2px 0;
   text-align: left;
@@ -955,7 +977,8 @@ summary {
 .chart-panel {
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   padding: 18px;
   min-width: 0;
 }
@@ -988,7 +1011,7 @@ summary {
   display: inline-block;
   width: 9px;
   height: 9px;
-  border-radius: 2px;
+  border-radius: 0;
   margin-right: 5px;
 }
 .planned-swatch {
@@ -1025,7 +1048,7 @@ summary {
 .bar {
   height: 11px;
   min-width: 0;
-  border-radius: 1px;
+  border-radius: 0;
   max-width: calc(100% - 45px);
 }
 .bar.planned {
@@ -1079,7 +1102,8 @@ summary {
   text-align: left;
   padding: 20px;
   background: var(--surface-2);
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
 }
 .macro-card h3 {
   font-size: 19px;
@@ -1117,7 +1141,7 @@ summary {
   place-items: center;
   background: var(--surface-2);
   color: var(--muted);
-  border-radius: 4px;
+  border-radius: 0;
 }
 .breadcrumbs {
   font-size: 12px;
@@ -1141,7 +1165,8 @@ summary {
   scroll-snap-align: start;
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   overflow: hidden;
   padding: 16px;
 }
@@ -1197,7 +1222,8 @@ summary {
   flex: 0 0 340px;
   border: 1px solid var(--line);
   background: var(--surface);
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   scroll-snap-align: start;
 }
 .session-column.selected {
@@ -1242,7 +1268,7 @@ summary {
   background: var(--surface-2);
   color: var(--muted);
   font-size: 12px;
-  border-radius: 4px;
+  border-radius: 0;
   flex-shrink: 0;
 }
 .full {
@@ -1256,7 +1282,8 @@ summary {
   padding: 35px 18px;
   background: var(--surface-2);
   border: 1px dashed var(--surface-2);
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   margin: 15px 0;
 }
 .empty p {
@@ -1286,7 +1313,8 @@ summary {
 fieldset {
   margin: 18px 0;
   padding: 16px;
-  border-radius: 5px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
 }
 legend {
   font-size: 12px;
@@ -1295,7 +1323,8 @@ legend {
 }
 dialog {
   border: 1px solid var(--surface-2);
-  border-radius: 9px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   box-shadow: 0 24px 80px #12231d44;
   max-width: 860px;
   width: calc(100% - 40px);
@@ -1340,7 +1369,8 @@ dialog > header h2 {
   margin: 20px 0;
   padding: 18px;
   border: 1px solid var(--surface-2);
-  border-radius: 5px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   background: var(--surface-2);
 }
 .preview h3 {
@@ -1377,7 +1407,8 @@ dialog > header h2 {
   padding: 18px;
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   margin: 12px 0;
 }
 .finding-row > .row {
@@ -1451,7 +1482,7 @@ dialog > header h2 {
   top: 10px;
 }
 .tabs .on {
-  border-radius: 4px;
+  border-radius: 0;
 }
 .tabs {
   padding-bottom: 10px;

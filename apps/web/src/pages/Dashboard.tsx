@@ -126,10 +126,7 @@ export function Dashboard() {
     <section>
       <div className="row between">
         <div>
-          <div className="eyebrow">TU ESPACIO DE TRABAJO</div>
-          <h1>
-            Inicio del coach<span className="heading-dot">.</span>
-          </h1>
+          <h1>Inicio del coach</h1>
           <p className="muted small">
             {new Intl.DateTimeFormat('es-AR', { dateStyle: 'full' }).format(
               new Date(dash.today + 'T12:00:00'),
@@ -228,7 +225,7 @@ export function Dashboard() {
                 <a href={link(p.athleteId)}>{p.athleteName}</a> · {LIFT_NAMES[p.lift]}{' '}
                 <StatusBadge status={p.status} />
                 <div className="row queue-actions">
-                  <a href={link(p.athleteId)}>Ver atleta →</a>
+                  <a href={link(p.athleteId)}>Ver atleta</a>
                   <a href={link(p.athleteId) + '?tab=plan'}>Abrir semana ↗</a>
                 </div>
                 <details>
@@ -391,7 +388,7 @@ export function Dashboard() {
           {list.items.length ? (
             list.items.map((x) => (
               <article className="card" key={x.id + x.detail}>
-                <a href={link(x.id)}>{x.name} →</a>
+                <a href={link(x.id)}>{x.name}</a>
                 <p>{x.detail}</p>
               </article>
             ))

@@ -12,6 +12,7 @@ import { Async } from '../components/Async';
 import { StatusBadge } from '../components/StatusBadge';
 import { HistoryTab } from '../pages/athlete/HistoryTab';
 import { Detail, Empty, Modal, Message, today, number } from './ui';
+import { RpeChip } from '../components/RpeChip';
 export function EvidenceDialog({ id, row, onClose }: { id: string; row: DecisionRow; onClose: () => void }) {
   const data = useLoad(() => w.evidence(id, row.key), [id, row.key]);
   return (
@@ -94,10 +95,12 @@ function EvidenceBody({ data }: { data: Evidence }) {
                         {s.planned.exerciseName} · {s.planned.setNo}
                       </td>
                       <td>
-                        {s.planned.reps} × {number(s.planned.plannedKg)} kg @ {number(s.planned.targetRpe)}
+                        {s.planned.reps} × {number(s.planned.plannedKg)} kg @{' '}
+                        <RpeChip value={s.planned.targetRpe} label={null} />
                       </td>
                       <td>
-                        {number(s.actual?.reps)} × {number(s.actual?.kg)} kg @ {number(s.actual?.rpe)}
+                        {number(s.actual?.reps)} × {number(s.actual?.kg)} kg @{' '}
+                        <RpeChip value={s.actual?.rpe} label={null} />
                       </td>
                     </tr>
                   ))}

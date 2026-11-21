@@ -9,6 +9,7 @@ import { Dashboard } from './pages/Dashboard';
 import { AthleteApp } from './athlete/AthleteApp';
 import { CoachLogin } from './coach/CoachLogin';
 import { coachLogout, installCoachAuth, loadCoachSession, type CoachSession } from './coach/auth';
+import { ThemeToggle } from './components/ThemeToggle';
 
 installCoachAuth();
 function useHashRoute() {
@@ -109,7 +110,10 @@ function Panel({ auth }: { auth: CoachSession | null }) {
           <span>
             Planificación y seguimiento <span className="muted">/ Powerlifting</span>
           </span>
-          <span className="local-label">LOCAL · COACH</span>
+          <span className="topbar-tools">
+            <ThemeToggle />
+            <span className="local-label">LOCAL · COACH</span>
+          </span>
         </header>
         <div className={laboratory ? 'instance-banner laboratory' : 'instance-banner'} role="status">
           {instanceLabel}

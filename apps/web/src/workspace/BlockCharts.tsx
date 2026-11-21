@@ -4,14 +4,14 @@ import { dateLabel, number } from './ui';
 /**
  * Gráficos grandes del analizador de bloques. SOLO presentan lo que entrega la API (no recalculan).
  * Color = DIRECCIÓN del cambio contra el bloque anterior (celeste sube, naranja baja, gris sin cambio): no es un juicio de «mejor/peor».
- * El verde queda reservado para el máximo e1RM observado.
+ * El máximo e1RM observado lleva su propio color y tipografía (clase `e1rm-max`, variable `--e1rm-max`).
  */
 export const DIR_COLOR = { up: '#4cc9f0', down: '#fb8f3c', flat: '#8a8d96' } as const;
 export type Dir = keyof typeof DIR_COLOR;
 export const dirOf = (n: number | null | undefined): Dir =>
   n == null || n === 0 ? 'flat' : n > 0 ? 'up' : 'down';
 export const arrowOf = (d: Dir) => (d === 'up' ? '↗' : d === 'down' ? '↘' : '→');
-const BLOCK_COLORS = ['#6b7a99', '#6d83f2', '#a07cf0', '#3fd0e0'];
+const BLOCK_COLORS = ['var(--c-gray)', 'var(--c-steel)', 'var(--c-bone)', 'var(--c-steel-dk)'];
 const ZONE_COLORS = ['#4cc9f0', '#6d83f2', '#a07cf0', '#e879c6', '#fb8f3c'];
 
 export interface CDelta {
@@ -177,7 +177,7 @@ export function MetricChart({ row, label, blocks }: { row: CRow; label: string; 
                     y={y(v)}
                     width={bw}
                     height={Math.max(2, m.t + ph - y(v))}
-                    rx={6}
+                    rx={0}
                     fill={BLOCK_COLORS[i % 4]}
                     opacity={b.closed ? 1 : 0.55}
                     strokeDasharray={b.closed ? undefined : '6 4'}
@@ -333,7 +333,7 @@ function MiniBars({
                   y={H - 40 - h}
                   width={bw}
                   height={Math.max(2, h)}
-                  rx={4}
+                  rx={0}
                   fill={BLOCK_COLORS[i % 4]}
                   opacity={b.closed ? 1 : 0.55}
                 />
@@ -631,7 +631,7 @@ export function ComplianceChart({ data, blocks }: { data: CCompliance[]; blocks:
                 y={H - 30 - h}
                 width={bw * 0.76}
                 height={Math.max(h, 1.5)}
-                rx={3}
+                rx={0}
                 fill={BLOCK_COLORS[w.bi % 4]}
               />
               {(w.weekNo === 1 || weeks.length < 16) && (
@@ -779,8 +779,8 @@ export function E1rmChart({
                     cx={X(q.x)}
                     cy={Y(q.p.e1rm)}
                     r={best ? 7 : 4.5}
-                    fill={best ? '#4fb985' : LINE_COLORS[ni % 6]}
-                    stroke="#0b0b0e"
+                    fill={best ? 'var(--e1rm-max)' : LINE_COLORS[ni % 6]}
+                    stroke="var(--bg)"
                     strokeWidth={1.5}
                     className="chart-pt"
                     onMouseMove={(e) =>

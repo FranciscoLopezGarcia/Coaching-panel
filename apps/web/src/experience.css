@@ -26,7 +26,7 @@ small,
   width: auto;
 }
 .sidebar nav a {
-  border-radius: 3px;
+  border-radius: 0;
 }
 .sidebar-foot p {
   font-size: 15px;
@@ -54,7 +54,7 @@ small,
   background: var(--surface-2);
   border: 0;
   border-bottom: 2px solid var(--surface-2);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 15px 18px;
 }
 .athlete-actions span {
@@ -108,7 +108,7 @@ small,
 .lift-card {
   border: 0;
   border-left: 3px solid var(--move);
-  border-radius: 2px;
+  border-radius: 0;
   padding: 16px 18px;
   background: var(--surface);
   --move: var(--sq);
@@ -162,7 +162,8 @@ small,
   margin: 26px 0;
   background: var(--surface-2);
   padding: 20px;
-  border-radius: 5px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
 }
 .week-overview h2 {
   margin: 6px 0;
@@ -182,7 +183,7 @@ small,
   padding: 12px;
   background: var(--surface-2);
   border: 0;
-  border-radius: 3px;
+  border-radius: 0;
 }
 .week-session-list time {
   font-size: 12px;
@@ -193,7 +194,7 @@ small,
 }
 .week-session-list span {
   font-size: 12px;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .recent-changes {
   margin: 18px 0;
@@ -208,7 +209,7 @@ small,
 .analysis-grid .chart-panel {
   border: 0;
   box-shadow: 0 1px 0 var(--line);
-  border-radius: 3px;
+  border-radius: 0;
 }
 .performance-curve {
   margin: 12px 0;
@@ -301,7 +302,7 @@ small,
 }
 .coach-panels .panel {
   border: 0;
-  border-radius: 3px;
+  border-radius: 0;
   min-height: 0;
   padding: 16px 20px;
 }
@@ -329,7 +330,7 @@ small,
   font-size: 12px;
   border: 1px solid var(--surface-2);
   padding: 4px 8px;
-  border-radius: 3px;
+  border-radius: 0;
 }
 .coach-panels details {
   color: var(--muted);
@@ -348,7 +349,7 @@ small,
   border: 0;
   border-left: 2px solid var(--surface-2) !important;
   border-top: 0 !important;
-  border-radius: 3px;
+  border-radius: 0;
 }
 .stat-n {
   font-size: 30px;
@@ -398,7 +399,7 @@ small,
 .week-column {
   border: 0;
   border-top: 3px solid var(--line);
-  border-radius: 3px;
+  border-radius: 0;
 }
 .week-column h3 {
   font-size: 20px;
@@ -433,7 +434,8 @@ small,
   font-size: 12px;
 }
 dialog {
-  border-radius: 6px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
 }
 dialog .preview {
   background: var(--surface-2);
@@ -624,7 +626,8 @@ button:disabled {
 .lab-cases article {
   background: var(--surface-2);
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: 0;
+  clip-path: var(--cut-s);
   padding: 16px;
 }
 .lab-cases p {
@@ -663,7 +666,7 @@ button:disabled {
 }
 .essential-panel {
   background: var(--surface-2);
-  border-radius: 4px;
+  border-radius: 0;
   padding: 20px;
   margin: 16px 0;
 }
@@ -765,7 +768,7 @@ button:disabled {
 .advanced-analysis > summary,
 .coach-context > summary {
   font-weight: 600;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 .essential-panel .session-observations details {
   padding: 10px 0;
@@ -813,7 +816,7 @@ button:disabled {
   background: var(--surface, var(--surface-2));
   padding: 16px;
   min-width: 0;
-  border-radius: 4px;
+  border-radius: 0;
 }
 .overview-panel h3 {
   font-size: 15px;
@@ -850,7 +853,7 @@ button:disabled {
 .overview-chart figcaption i {
   width: 9px;
   height: 9px;
-  border-radius: 2px;
+  border-radius: 0;
 }
 .chart-empty {
   color: var(--muted);

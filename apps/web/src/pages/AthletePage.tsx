@@ -203,7 +203,6 @@ export function AthletePage({ id }: { id: string }) {
                   .join('')}
               </span>
               <div>
-                <div className="eyebrow">PERFIL DEL ATLETA</div>
                 <h1>{athlete.name}</h1>
                 <p className="small muted">
                   {athlete.evaluation
