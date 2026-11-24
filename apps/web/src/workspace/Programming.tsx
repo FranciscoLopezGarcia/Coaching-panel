@@ -1,3 +1,5 @@
+import './blockdash.css';
+import './blockanalysis.css';
 import { defaultSessionDate, isoWeekday, weekOfDate } from './sessionText';
 import { WeekDates } from './WeekDates';
 import { SessionCards } from './SessionCards';
