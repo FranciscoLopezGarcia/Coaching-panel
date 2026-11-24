@@ -4,7 +4,7 @@ import { buildApp, buildContext } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 import { openDb } from '../src/db/connection.js';
 
-/** Portal del atleta: cuentas, aislamiento, modos de vista, registro de series y TRAC. BD en memoria, hoy = 2026-11-10. */
+/** Portal del atleta: cuentas, aislamiento, modos de vista, registro de series y check-in. BD en memoria, hoy = 2026-11-10. */
 let app: FastifyInstance;
 let a1: string;
 let a2: string;
@@ -134,13 +134,13 @@ describe('cuenta y acceso', () => {
 });
 
 describe('home, selector y siguiente', () => {
-  it('home: la sesión de hoy, el bloque y el TRAC', async () => {
+  it('home: la sesión de hoy, el bloque y el check-in', async () => {
     const { token } = await login('ana@mail.com', 'secreto1');
     const h = await j(call('GET', '/api/me/home', undefined, token));
     expect(h.session.key).toBe('s-hoy');
     expect(h.block).toMatchObject({ key: 'b1', weeks: 1 });
     expect(h.next.key).toBe('s-hoy');
-    expect(h.trac.doneToday).toBe(false);
+    expect(h.checkin.doneToday).toBe(false);
     const p = await j(call('GET', '/api/me/plan', undefined, token));
     expect(p.blocks[0].weeksList[0].sessions.map((s: { key: string }) => s.key)).toEqual(['s-hoy', 's-sig']);
   });
@@ -163,7 +163,7 @@ describe('home, selector y siguiente', () => {
     expect(s.status).toBe('done');
     expect(s.exercises[0].sets.map((x: { kind: string }) => x.kind)).toEqual(['warmup', 'top', 'work']);
   });
-  it('TRAC: el atleta lo carga y queda como hecho hoy', async () => {
+  it('check-in: el atleta lo carga y queda como hecho hoy', async () => {
     const { token } = await login('ana@mail.com', 'secreto1');
     expect(
       (
@@ -176,8 +176,8 @@ describe('home, selector y siguiente', () => {
       ).statusCode,
     ).toBe(200);
     const h = await j(call('GET', '/api/me/home', undefined, token));
-    expect(h.trac.doneToday).toBe(true);
-    expect(h.trac.today.sleep).toBe(7);
+    expect(h.checkin.doneToday).toBe(true);
+    expect(h.checkin.today.sleep).toBe(7);
   });
 });
 

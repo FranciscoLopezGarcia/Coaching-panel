@@ -1,4 +1,10 @@
-import { estimateCurve, estimatePrg, METHOD_CURVE, METHOD_PRG, type MethodRef } from './e1rm-methods.js';
+import {
+  estimateCurve,
+  estimateFormulas,
+  METHOD_CURVE,
+  METHOD_FORMULAS,
+  type MethodRef,
+} from './e1rm-methods.js';
 import type { RecordRef } from './metric-result.js';
 import { isWorkSet, type ObservedSet } from './observed.js';
 
@@ -18,7 +24,7 @@ export interface RecordEntry {
   type: RecordType;
   exercise: string;
   variantKey: string;
-  /** Qué parámetro identifica el récord: 'reps=5', 'kg=140', 'reps=5@rpe=8', 'method=prg-6-formulas'. */
+  /** Qué parámetro identifica el récord: 'reps=5', 'kg=140', 'reps=5@rpe=8', 'method=prom-6-formulas'. */
   key: string;
   value: number;
   unit: 'kg' | 'reps' | 'kg (e1RM)';
@@ -98,7 +104,7 @@ export function computeRecords(obs: ObservedSet[], cutoff: string): RecordEntry[
     // mejor e1RM por método: ESTIMACIÓN, no récord real
     for (const [m, f] of [
       [METHOD_CURVE, (s: ObservedSet) => estimateCurve(s.kg, s.reps, s.rpe)],
-      [METHOD_PRG, (s: ObservedSet) => estimatePrg(s.kg, s.reps)],
+      [METHOD_FORMULAS, (s: ObservedSet) => estimateFormulas(s.kg, s.reps)],
     ] as const) {
       let best: { s: ObservedSet; v: number } | null = null;
       for (const s of sets) {

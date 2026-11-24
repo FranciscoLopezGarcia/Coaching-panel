@@ -1,6 +1,6 @@
 import { computeObservedMetrics } from './metrics-observed.js';
 import type { CurveDomain } from './e1rm.js';
-import { estimateCurve, estimatePrg } from './e1rm-methods.js';
+import { estimateCurve, estimateFormulas } from './e1rm-methods.js';
 import { fatigueBetweenSets, FATIGUE_VERSION, type BetweenSets, type SetTarget } from './fatigue.js';
 import type { MetricResult } from './metric-result.js';
 import {
@@ -46,11 +46,11 @@ export interface CoreBundle {
   tonnage: CoreValue;
   /** Tres modelos con escalas propias: NO se suman ni se comparan entre sí. */
   si: {
-    rts: { total: CoreValue; central: CoreValue; peripheral: CoreValue; model: string };
-    prg: CoreValue & { model: string };
-    efort: CoreValue & { model: string };
+    doble: { total: CoreValue; central: CoreValue; peripheral: CoreValue; model: string };
+    cargaRel: CoreValue & { model: string };
+    esfuerzo: CoreValue & { model: string };
   };
-  e1rm: { curve: CoreValue; prg: CoreValue };
+  e1rm: { curve: CoreValue; formulas: CoreValue };
   /** Intensidad relativa media (% de la referencia fechada): simple (cada serie pesa igual) y ponderada por repeticiones. */
   intensity: { simple: CoreValue; byReps: CoreValue };
 }
@@ -144,7 +144,7 @@ export interface PatternVolumeRow {
   sets: number;
   nl: number;
   tonnage: number | null;
-  /** SI RTS (rts-aprox-v1) sumado sobre las series del patrón que tienen reps y RPE. null = ninguna serie con RPE. */
+  /** SI doble (si-doble-v1) sumado sobre las series del patrón que tienen reps y RPE. null = ninguna serie con RPE. */
   si: { total: number; central: number; peripheral: number; sets: number } | null;
   exercises: string[];
 }
@@ -234,7 +234,7 @@ export interface ExerciseBlock {
   metrics: CoreBundle;
   warmupSets: number;
   /** Mejor e1RM de la sesión por método (separados). */
-  bestE1rm: { curve: number | null; prg: number | null };
+  bestE1rm: { curve: number | null; formulas: number | null };
   medianRpe: number | null;
   topKg: number | null;
   fatigueBetweenSets: BetweenSets;
@@ -243,11 +243,11 @@ export interface ExerciseBlock {
     previousDate: string | null;
     daysSince: number | null;
     e1rmCurvePct: number | null;
-    e1rmPrgPct: number | null;
+    e1rmFormulasPct: number | null;
     topKgDelta: number | null;
     medianRpeDelta: number | null;
     nlDelta: number | null;
-    siRtsTotalRatio: number | null;
+    siDobleTotalRatio: number | null;
   } | null;
 }
 
@@ -261,10 +261,10 @@ export interface SessionFatigue {
   daysSincePreviousSession: number | null;
   /** Carga acumulada previa: 7 días anteriores (sin contar la sesión) y promedio semanal de los 28 anteriores. */
   rolling: {
-    acute7: { nl: number; tonnage: number; siRtsTotal: number | null; sessions: number };
-    chronicWeeklyMean28: { nl: number; tonnage: number; siRtsTotal: number | null } | null;
+    acute7: { nl: number; tonnage: number; siDobleTotal: number | null; sessions: number };
+    chronicWeeklyMean28: { nl: number; tonnage: number; siDobleTotal: number | null } | null;
     /** acute7 / chronicWeeklyMean28: razón DESCRIPTIVA (no es un umbral ni una predicción). null si no hay 28 días de historia previa. */
-    ratio: { nl: number | null; tonnage: number | null; siRtsTotal: number | null } | null;
+    ratio: { nl: number | null; tonnage: number | null; siDobleTotal: number | null } | null;
     coverage: string;
   };
 }
@@ -295,7 +295,7 @@ export interface WeekRow {
     vsPreviousWeek: {
       nl: number | null;
       tonnage: number | null;
-      siRtsTotal: number | null;
+      siDobleTotal: number | null;
       comparable: boolean;
       reason: string | null;
     } | null;
@@ -362,16 +362,16 @@ function bundle(inp: CoreInput, obs: ObservedSet[], from: string, to: string, li
     sets: cv(m.sets),
     tonnage: cv(m.tonnage),
     si: {
-      rts: {
-        total: cv(m.si_rts_total),
-        central: cv(m.si_rts_central),
-        peripheral: cv(m.si_rts_peripheral),
-        model: 'rts-aprox-v1',
+      doble: {
+        total: cv(m.si_doble_total),
+        central: cv(m.si_doble_central),
+        peripheral: cv(m.si_doble_peripheral),
+        model: 'si-doble-v1',
       },
-      prg: { ...cv(m.si_prg), model: 'prg-si-v1' },
-      efort: { ...cv(m.si_efort_xl), model: 'efort-xl-v1' },
+      cargaRel: { ...cv(m.si_carga_rel), model: 'si-carga-rel-v1' },
+      esfuerzo: { ...cv(m.carga_esfuerzo), model: 'carga-esfuerzo-v1' },
     },
-    e1rm: { curve: cv(m.e1rm_table_rpe), prg: cv(m.e1rm_prg_formulas) },
+    e1rm: { curve: cv(m.e1rm_table_rpe), formulas: cv(m.e1rm_formulas) },
     intensity: { simple: cv(m.intensity_rel), byReps: cv(m.intensity_rel_reps) },
   };
 }
@@ -390,9 +390,9 @@ const bestE1rm = (sets: ObservedSet[], domain: CurveDomain) => {
     .filter((v): v is number => v !== null);
   const p = el
     .filter(ok)
-    .map((s) => estimatePrg(s.kg, s.reps).value)
+    .map((s) => estimateFormulas(s.kg, s.reps).value)
     .filter((v): v is number => v !== null);
-  return { curve: c.length ? Math.max(...c) : null, prg: p.length ? Math.max(...p) : null };
+  return { curve: c.length ? Math.max(...c) : null, formulas: p.length ? Math.max(...p) : null };
 };
 
 export function computeCore(inp: CoreInput): CoreResult {
@@ -456,7 +456,7 @@ export function computeCore(inp: CoreInput): CoreResult {
     sessionTotals.set(s.key, {
       nl: b.nl.value ?? 0,
       tonnage: b.tonnage.value ?? 0,
-      si: b.si.rts.total.value,
+      si: b.si.doble.total.value,
     });
   }
   const sum = (keys: string[]) => ({
@@ -500,7 +500,7 @@ export function computeCore(inp: CoreInput): CoreResult {
           missing: ['accesorio: no se estima 1RM'],
           warnings: [],
         });
-        metrics.e1rm = { curve: none('kg'), prg: none('kg') };
+        metrics.e1rm = { curve: none('kg'), formulas: none('kg') };
       }
       const pr = priorities.get(`${s0.sessionKey}|${e0.exerciseName}`);
       const rpes = exSets
@@ -511,7 +511,7 @@ export function computeCore(inp: CoreInput): CoreResult {
         .filter(isWorkSet)
         .map((x) => x.kg)
         .filter((v): v is number => v !== null);
-      const best = isMain ? bestE1rm(exSets, domain) : { curve: null, prg: null };
+      const best = isMain ? bestE1rm(exSets, domain) : { curve: null, formulas: null };
       const block: ExerciseBlock = {
         exerciseName: e0.exerciseName,
         exerciseId: e0.exerciseId,
@@ -546,17 +546,17 @@ export function computeCore(inp: CoreInput): CoreResult {
           .map((x) => x.kg)
           .filter((v): v is number => v !== null);
         const pTop = pKgs.length ? Math.max(...pKgs) : null;
-        const curSi = metrics.si.rts.total.value;
-        const prevSi = pb.si.rts.total.value;
+        const curSi = metrics.si.doble.total.value;
+        const prevSi = pb.si.doble.total.value;
         block.vsPrevious = {
           previousDate: ps.date,
           daysSince: dayDiff(s0.date, ps.date),
           e1rmCurvePct: pctChange(pBest.curve, best.curve),
-          e1rmPrgPct: pctChange(pBest.prg, best.prg),
+          e1rmFormulasPct: pctChange(pBest.formulas, best.formulas),
           topKgDelta: block.topKg !== null && pTop !== null ? block.topKg - pTop : null,
           medianRpeDelta: block.medianRpe !== null && pRpe !== null ? block.medianRpe - pRpe : null,
           nlDelta: metrics.nl.value !== null && pb.nl.value !== null ? metrics.nl.value - pb.nl.value : null,
-          siRtsTotalRatio: curSi !== null && prevSi !== null && prevSi > 0 ? curSi / prevSi : null,
+          siDobleTotalRatio: curSi !== null && prevSi !== null && prevSi > 0 ? curSi / prevSi : null,
         };
         break;
       }
@@ -593,15 +593,15 @@ export function computeCore(inp: CoreInput): CoreResult {
         readiness: rd ? { value: rd.value, date: rd.date, ageDays: dayDiff(s0.date, rd.date) } : null,
         daysSincePreviousSession: prevSession ? dayDiff(s0.date, prevSession.date) : null,
         rolling: {
-          acute7: { nl: a7.nl, tonnage: a7.tonnage, siRtsTotal: a7.si, sessions: k7.length },
+          acute7: { nl: a7.nl, tonnage: a7.tonnage, siDobleTotal: a7.si, sessions: k7.length },
           chronicWeeklyMean28: chronic
-            ? { nl: chronic.nl, tonnage: chronic.tonnage, siRtsTotal: chronic.si }
+            ? { nl: chronic.nl, tonnage: chronic.tonnage, siDobleTotal: chronic.si }
             : null,
           ratio: chronic
             ? {
                 nl: ratio(a7.nl, chronic.nl),
                 tonnage: ratio(a7.tonnage, chronic.tonnage),
-                siRtsTotal: ratio(a7.si, chronic.si),
+                siDobleTotal: ratio(a7.si, chronic.si),
               }
             : null,
           coverage: enough28
@@ -637,7 +637,7 @@ export function computeCore(inp: CoreInput): CoreResult {
       vs = {
         nl: r(totals.nl.value, prevBundle.b.nl.value),
         tonnage: r(totals.tonnage.value, prevBundle.b.tonnage.value),
-        siRtsTotal: r(totals.si.rts.total.value, prevBundle.b.si.rts.total.value),
+        siDobleTotal: r(totals.si.doble.total.value, prevBundle.b.si.doble.total.value),
         comparable,
         reason: comparable
           ? null
@@ -690,7 +690,7 @@ export function computeCore(inp: CoreInput): CoreResult {
       nl: 'NL = Σ repeticiones de las series de trabajo (calentamientos excluidos). No es la cantidad de series.',
       tonnage:
         'Tonelaje = Σ kg × reps de series con carga total interpretable (mancuernas por lado, peso corporal y carga desconocida se excluyen y se informan).',
-      si: 'SI en tres modelos con escala propia (RTS aproximado, PRG, eFort XL): nunca se suman ni se comparan entre sí. Requieren RPE real; PRG además una referencia de fuerza fechada.',
+      si: 'SI en tres modelos con escala propia (doble aproximado, relativo a la referencia, XL): nunca se suman ni se comparan entre sí. Requieren RPE real; el relativo además una referencia de fuerza fechada.',
       movementPatterns:
         'Patrón de movimiento (sentadilla, bisagra de cadera, empujes, tracciones, aislamientos, core, transporte/olímpico): cada ejercicio en un solo patrón, por lo que series, NL y tonelaje por patrón sí suman.',
       muscles: `Series directas ×${DIRECT_WEIGHT}, indirectas ×${INDIRECT_WEIGHT} (convención ${MUSCLE_CONVENTION_VERSION}, del proyecto). Sin total entre músculos.`,

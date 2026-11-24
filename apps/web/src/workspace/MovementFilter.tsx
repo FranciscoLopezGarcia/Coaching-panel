@@ -1,3 +1,4 @@
+import '../analysis/filters.css';
 import { useEffect, useState } from 'react';
 import { readSearch, updateSearch } from './ui';
 

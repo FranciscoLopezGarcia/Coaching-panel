@@ -370,7 +370,7 @@ export class RecordsRepo {
       c.pain,
     );
   }
-  /** Datos opcionales del TRAC ampliado por fecha (no entran en la predisposición). */
+  /** Datos opcionales del check-in ampliado por fecha (no entran en la predisposición). */
   async listCheckInExtras(athleteId: string) {
     return (await this.db.all(
       'SELECT date, soreness, confidence, sleep_hours AS sleepHours, bodyweight_kg AS bodyweightKg, note FROM checkin_extras WHERE athlete_id = ? ORDER BY date',

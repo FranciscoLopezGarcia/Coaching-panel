@@ -27,10 +27,10 @@ apps/api:  routes ▶ services ▶ repositories ▶ db
 
 | Módulo                          | Responsabilidad                                                                                                     |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `e1rm`, `si`                    | e1RM de tabla [recuperado]; Stress Index `rts-aprox-v1` [aproximado]                                                |
+| `e1rm`, `si`                    | e1RM de tabla [recuperado]; Stress Index `si-doble-v1` [aproximado]                                                 |
 | `exposures`, `views`, `metrics` | exposiciones por sesión; NL, series, tonelaje, frecuencia, intensidad y SI por semana/bloque (previsto y realizado) |
 | `rules/*`, `pipeline`           | reglas por lift, prioridad y alternativas                                                                           |
-| `prg`                           | ACWR, FR, PeakIndex y tendencia reconstruidos de PRG (solo modo A de expresión)                                     |
+| `carga-ventana`                 | ACWR, FR, PeakIndex y tendencia de ventana reconstruidos (solo modo A de expresión)                                 |
 | `snapshot`, `diff`, `outcomes`  | versiones del plan, clasificador de cambios, desviaciones de ejecución y seguimiento posterior                      |
 | `blocks`                        | resumen por bloque, TTP observado y familias/golden                                                                 |
 | `compare`                       | comparativas A/B normalizadas por semana                                                                            |
@@ -55,4 +55,4 @@ Autenticación/roles y despliegue. No hay bandeja de videos ni integración con 
 ## Módulos añadidos en la consolidación
 
 `evidence*`, `explain`, `state`, `pr-candidate`, `intervention`, `catalog`/`metric-result`/`metrics-observed`/`records`/`e1rm-methods`/`references`,
-`muscles`, `program`, `queries`, `replay`, `import/{csv,hevy,plan-canonical,hash}`, `params` (registro). API: `routes/consolidation.ts`, servicios `imports/interventions/programming/queries/replay`, repos nuevos y `legacy.ts`.
+`muscles`, `program`, `queries`, `replay`, `import/{csv,export-csv,plan-canonical,hash}`, `params` (registro). API: `routes/consolidation.ts`, servicios `imports/interventions/programming/queries/replay`, repos nuevos y `legacy.ts`.

@@ -104,7 +104,7 @@ export interface Home {
   todaysCount: number;
   next: SessionMeta | null;
   block: BlockInfo | null;
-  trac: { doneToday: boolean; today: Checkin | null; recent: Checkin[] };
+  checkin: { doneToday: boolean; today: Checkin | null; recent: Checkin[] };
 }
 export interface PlanData {
   today: string;

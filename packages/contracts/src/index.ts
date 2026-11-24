@@ -4,7 +4,9 @@
  */
 import { z } from 'zod';
 import type {
+  AnalysisMetric,
   AthleteEvaluation,
+  BlockComparison,
   BlockMetrics,
   BlockSummary,
   ChangeEvent,
@@ -16,11 +18,14 @@ import type {
   Lift,
   LiftEvaluation,
   Outcome,
+  PeriodRow,
   RuleResult,
 } from '@coaching/engine';
 
 export type {
+  AnalysisMetric,
   AthleteEvaluation,
+  BlockComparison,
   BlockMetrics,
   BlockSummary,
   ChangeEvent,
@@ -32,8 +37,10 @@ export type {
   Lift,
   LiftEvaluation,
   Outcome,
+  PeriodRow,
   RuleResult,
 };
+export type { Granularity, Values, PeriodCompliance, CoreValue } from '@coaching/engine';
 export type { CompareRow, LiftChange, Delta, Ttp } from '@coaching/engine';
 
 const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'fecha ISO yyyy-mm-dd');
@@ -210,8 +217,8 @@ export const revisionsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
-/** Mapeo persistente de un ejercicio de Hevy (revisable; lift null = sin lift). */
-export const hevyExerciseMapSchema = z.object({
+/** Mapeo persistente de un ejercicio importado (revisable; lift null = sin lift). */
+export const externalExerciseMapSchema = z.object({
   title: z.string().min(1).max(200),
   lift: z.enum(['SQ', 'BP', 'DL']).nullable(),
   variantKey: z.string().max(100).optional(),
@@ -228,7 +235,7 @@ export const checkInSchema = z.object({
   motivation: scale,
   stress: scale,
   pain: scale,
-  /** TRAC ampliado (opcional, NO entra en la predisposición). */
+  /** check-in ampliado (opcional, NO entra en la predisposición). */
   soreness: scale.optional(),
   confidence: scale.optional(),
   sleepHours: z.number().min(0).max(24).nullable().optional(),
@@ -494,7 +501,7 @@ export interface SessionRow {
 }
 
 /** Nombre del modelo de SI usado en la UI. Un test verifica que coincide con el del motor. */
-export const SI_MODEL = 'rts-aprox-v1' as const;
+export const SI_MODEL = 'si-doble-v1' as const;
 
 /* ====================== Consolidación: importaciones, referencias, intervenciones, programación ====================== */
 import type {
@@ -535,8 +542,8 @@ export type { FamilySummaryT };
 const iso2 = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'fecha ISO yyyy-mm-dd');
 const csvText = z.string().min(1).max(20_000_000);
 
-/** Importación de Hevy: primero `dry_run` (no escribe), después `apply` con el `confirmToken` de lo que se vio. */
-export const hevyImportSchema = z.object({
+/** Importación de CSV: primero `dry_run` (no escribe), después `apply` con el `confirmToken` de lo que se vio. */
+export const csvImportSchema = z.object({
   csv: csvText,
   mode: z.enum(['dry_run', 'apply']).default('dry_run'),
   timeZone: z.string().max(60).optional(),
@@ -702,6 +709,12 @@ export const programOpFullSchema = z.object({
     ...programOpsBase,
     z.object({ type: z.literal('remove_sets'), selection }),
     z.object({ type: z.literal('add_sets'), sets: z.array(plannedSetSchema).min(1).max(500) }),
+    z.object({
+      type: z.literal('reorder_exercises'),
+      sessionKey: z.string(),
+      /** Nombres de ejercicio en el orden deseado. */
+      order: z.array(z.string().min(1)).min(1).max(60),
+    }),
   ]),
 });
 export const saveTemplateSchema = z.object({
@@ -758,7 +771,7 @@ export const abQuerySchema = z.object({
 });
 export const sourceQuerySchema = z.object({ source: z.string().optional(), cutoff: iso2.optional() });
 
-export type HevyImportInput = z.infer<typeof hevyImportSchema>;
+export type CsvImportInput = z.infer<typeof csvImportSchema>;
 export type PlanCsvImportInput = z.infer<typeof planCsvImportSchema>;
 export type ProgramOpInput = z.infer<typeof programOpSchema>;
 export type ProgramOpFullInput = z.infer<typeof programOpFullSchema>;
@@ -802,7 +815,7 @@ export const performanceProjectionQuerySchema = z
     exercise: z.string().min(1).optional(),
     exposureId: z.string().min(1).optional(),
     variantKey: z.string().min(1).optional(),
-    variable: z.enum(['e1rm_table_rpe', 'e1rm_prg_formulas']).default('e1rm_table_rpe'),
+    variable: z.enum(['e1rm_table_rpe', 'e1rm_formulas']).default('e1rm_table_rpe'),
     source: z.string().min(1).optional(),
     cutoff: iso2.optional(),
     horizonDays: z.coerce.number().int().min(1).max(365).optional(),
@@ -888,7 +901,7 @@ export const loadTableQuerySchema = z.object({
   e1rm: z.coerce.number().positive().max(1500),
   stepKg: z.coerce.number().positive().max(50).default(2.5),
 });
-export const prgSiTableQuerySchema = z.object({
+export const relSiTableQuerySchema = z.object({
   pctFrom: z.coerce.number().min(1).max(200).optional(),
   pctTo: z.coerce.number().min(1).max(200).optional(),
   pctStep: z.coerce.number().min(0.5).max(50).optional(),
@@ -946,4 +959,102 @@ export interface LibraryEntryData {
   pattern: string | null;
   muscles: { group: string; kind: 'directo' | 'indirecto'; weight: number }[] | null;
   notes: string;
+}
+
+/* ---------- Analizar: respuesta única de GET /api/athletes/:id/analysis (solo lectura) ---------- */
+export interface SignalSide {
+  state: 'favorable' | 'no_favorable' | 'indeterminado_por_faltantes' | 'sin_benchmarks';
+  /** Estado nativo del motor, sin adulterar. */
+  nativeStatus: string;
+  evidence: string[];
+  missing: string[];
+  dataUntil: string | null;
+}
+export interface ExpressionSignal {
+  lift: Lift;
+  /** B gobierna el indicador principal; A queda como contraste. */
+  principal: 'B';
+  a: SignalSide;
+  b: SignalSide;
+  agreement: 'coinciden' | 'difieren' | 'no_comparable';
+}
+/** Cambio de programación con fecha de vigencia, para marcarlo sobre los gráficos en el tiempo. */
+export interface PlanChangeMark {
+  id: string;
+  date: string;
+  classes: string[];
+  estimated: boolean;
+}
+/** Fatiga reportada al terminar una sesión (1–10), con la fecha en que se hizo. */
+export interface SessionFatiguePoint {
+  sessionKey: string;
+  date: string;
+  blockKey: string;
+  value: number;
+}
+/** Umbrales EFECTIVOS del atleta (los que usa el motor), para dibujar bandas de referencia sin que el frontend los conozca. */
+export interface ChartThresholds {
+  fatigue: number;
+  compliance: number;
+  pain: number;
+  /** Tolerancia de RPE sobre el objetivo. */
+  rpeTolerance: number;
+}
+export interface BlockAnalysisResult extends BlockComparison {
+  athleteId: string;
+  asOf: string;
+  availableBlocks: { blockKey: string; start: string; end: string }[];
+  expression: ExpressionSignal[];
+  planChanges: PlanChangeMark[];
+  sessionFatigue: SessionFatiguePoint[];
+  thresholds: ChartThresholds;
+  generatedFrom: { planRevisionCutoff: string; analysisVersion: string };
+}
+export interface DistributionWeek {
+  from: string;
+  to: string;
+  muscles: {
+    muscle: string;
+    label: string;
+    directSets: number;
+    indirectSets: number;
+    equivalentSets: number;
+  }[];
+  patterns: { pattern: string; sets: number; nl: number; tonnage: number | null }[];
+}
+/** Totales del período y detalle por semana calendario, calculados en el servidor. */
+export interface DistributionBasis {
+  weeks: DistributionWeek[];
+  muscles: DistributionWeek['muscles'];
+  patterns: DistributionWeek['patterns'];
+}
+export interface AnalysisResult {
+  version: string;
+  athleteId: string;
+  asOf: string;
+  from: string;
+  to: string;
+  lift: Lift | 'ALL';
+  granularity: 'week' | 'session';
+  /** Registro único de métricas: la web no declara magnitudes por su cuenta. */
+  metrics: AnalysisMetric[];
+  periods: PeriodRow[];
+  /** Comparación de bloques (actual + 3 previos), e1RM por variante, zonas, cumplimiento y señal A/B. Null si no hay bloques. */
+  blocks: BlockAnalysisResult | null;
+  /** Series equivalentes por músculo y volumen por patrón, por semana calendario (real y previsto por separado). */
+  distribution: { actual: DistributionBasis; planned: DistributionBasis };
+  /** Récords reales (separados del e1RM estimado) y referencias de fuerza fechadas. */
+  records: {
+    type: string;
+    exercise: string;
+    variantKey: string;
+    key: string;
+    value: number;
+    unit: string;
+    date: string;
+    isRealPR: boolean;
+  }[];
+  references: { exercise: string; kg: number; source: string; date: string }[];
+  /** Resumen por bloque con TTP y familias de microciclo. */
+  summary: { blocks: BlockSummary[]; families: FamilySummary[] };
 }

@@ -120,11 +120,11 @@ function expressionFixture() {
 const goodRecovery = [rd('2026-03-08', 8), rd('2026-03-01', 7.5), rd('2026-02-22', 8), rd('2026-02-15', 7.5)];
 
 describe('R-EXPRESSION · ventana favorable (dos modos, sin mezclarlos)', () => {
-  it('con referencia fechada y calendario completo se cumplen los modos A (PRG reconstruido) y B (motor propio)', () => {
+  it('con referencia fechada y calendario completo se cumplen los modos A (reglas de ventana) y B (motor propio)', () => {
     const le = ev(expressionFixture(), '2026-03-10', withMin(), { readinessHistory: goodRecovery });
     expect(rule(le, 'R-EXPRESSION-A')!.status).toBe('ventana_expresion');
     expect(rule(le, 'R-EXPRESSION-B')!.status).toBe('ventana_expresion');
-    expect(rule(le, 'R-EXPRESSION-A')!.evidence.join(' ')).toMatch(/no es el motor completo verificado/);
+    expect(rule(le, 'R-EXPRESSION-A')!.evidence.join(' ')).toMatch(/no es un motor completo verificado/);
     expect(le.principal!.status).toBe('ventana_expresion');
     expect(le.principal!.summary).toMatch(/no es un pico fisiológico confirmado/);
   });

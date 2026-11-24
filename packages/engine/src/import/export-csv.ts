@@ -4,7 +4,7 @@ import type { LoadKind, ObservedSet, SetType } from '../observed.js';
 import type { Lift } from '../types.js';
 
 /**
- * Importador del CSV de exportación de Hevy. Pura: texto → filas normalizadas + rechazos con motivo. No toca ninguna base de datos.
+ * Importador del CSV de exportación de un registro externo de entrenamientos. Pura: texto → filas normalizadas + rechazos con motivo. No toca ninguna base de datos.
  *
  * Interpretaciones EXPLÍCITAS (quedan registradas en el resultado):
  *  - Fechas: `start_time` no trae zona horaria. Se toma la hora tal como está escrita (hora local de la cuenta) y se usa su FECHA civil;
@@ -14,10 +14,12 @@ import type { Lift } from '../types.js';
  *  - RPE vacío = no registrado (null); peso vacío = null (nunca 0). No se deduce prescripción ni descanso de lo ejecutado.
  *  - Mancuernas: el peso se interpreta POR LADO (no se duplica ni se asume carga total); peso corporal sin carga añadida no tiene kg.
  */
-export const HEVY_SOURCE = 'hevy';
-export const HEVY_PARSER_VERSION = 'hevy-csv-v1';
+/** Valor de origen guardado en la base para lo importado por CSV. NO cambiar: renombrarlo rompería la reimportación idempotente y los datos ya cargados. */
+/** Valor de origen guardado en la base para lo importado por CSV. NO cambiar: renombrarlo rompería la reimportación idempotente y los datos ya cargados. */
+export const EXTERNAL_SOURCE = 'hevy';
+export const CSV_PARSER_VERSION = `${EXTERNAL_SOURCE}-csv-v1`;
 
-export interface HevyOptions {
+export interface CsvImportOptions {
   /** Zona horaria con la que se interpretan los instantes con offset. Default: la del coach. */
   timeZone?: string;
   /** Correcciones/ampliaciones al mapeo ejercicio → lift/variante/tipo de carga, por título exacto. */
@@ -60,7 +62,7 @@ const slug = (s: string) =>
 
 export function mappingFor(
   title: string,
-  over: HevyOptions['exerciseMap'] = {},
+  over: CsvImportOptions['exerciseMap'] = {},
 ): { mapping: ExerciseMapping; known: boolean } {
   const base = DEFAULT_MAP[title];
   const ov = over[title];
@@ -119,7 +121,7 @@ export interface ParsedDate {
 }
 
 /** "3 abr 2026, 18:30" · "Apr 3, 2026, 6:30 PM" · "2026-04-03 18:30:00" · "2026-04-03T21:30:00Z". null si no se entiende. */
-export function parseHevyDate(raw: string, timeZone: string): ParsedDate | null {
+export function parseCsvDate(raw: string, timeZone: string): ParsedDate | null {
   const s = raw.trim();
   let m = /^(\d{1,2})\s+([A-Za-zñÑ]{3,4})\.?\s+(\d{4}),?\s+(\d{1,2}):(\d{2})/.exec(s);
   if (m) {
@@ -173,7 +175,7 @@ export function parseHevyDate(raw: string, timeZone: string): ParsedDate | null 
   return null;
 }
 
-export interface HevyRow extends Omit<ObservedSet, 'id'> {
+export interface CsvRow extends Omit<ObservedSet, 'id'> {
   id: string;
   /** Clave estable para detectar duplicados y reimportar sin duplicar. */
   externalKey: string;
@@ -189,11 +191,11 @@ export interface Rejected {
   raw: Record<string, string>;
 }
 
-export interface HevyParse {
+export interface CsvParse {
   parserVersion: string;
   options: { timeZone: string; maxKg: number };
   fatal: string[];
-  rows: HevyRow[];
+  rows: CsvRow[];
   rejected: Rejected[];
   duplicatesInFile: number;
   /** Interpretación de fechas aplicada (para que el consumidor la muestre). */
@@ -209,11 +211,11 @@ const num = (s: string): number | null => {
   return Number.isFinite(n) ? n : NaN;
 };
 
-export function parseHevyCsv(text: string, opts: HevyOptions = {}): HevyParse {
+export function parseCsvExport(text: string, opts: CsvImportOptions = {}): CsvParse {
   const timeZone = opts.timeZone ?? 'America/Argentina/Mendoza';
   const maxKg = opts.maxKg ?? 1000;
-  const out: HevyParse = {
-    parserVersion: HEVY_PARSER_VERSION,
+  const out: CsvParse = {
+    parserVersion: CSV_PARSER_VERSION,
     options: { timeZone, maxKg },
     fatal: [],
     rows: [],
@@ -225,7 +227,7 @@ export function parseHevyCsv(text: string, opts: HevyOptions = {}): HevyParse {
   const missing = REQUIRED.filter((h) => !headers.includes(h));
   if (!headers.length || missing.length) {
     out.fatal.push(
-      `Faltan columnas obligatorias: ${missing.join(', ') || 'encabezado'}. ¿Es una exportación de entrenamientos de Hevy?`,
+      `Faltan columnas obligatorias: ${missing.join(', ') || 'encabezado'}. ¿Es una exportación de entrenamientos en CSV?`,
     );
     return out;
   }
@@ -237,7 +239,7 @@ export function parseHevyCsv(text: string, opts: HevyOptions = {}): HevyParse {
       rej('sin título de ejercicio');
       continue;
     }
-    const dt = parseHevyDate(d.start_time as string, timeZone);
+    const dt = parseCsvDate(d.start_time as string, timeZone);
     if (!dt) {
       rej(`fecha no interpretable: “${d.start_time}”`);
       continue;
@@ -292,9 +294,9 @@ export function parseHevyCsv(text: string, opts: HevyOptions = {}): HevyParse {
     if (mapping.loadKind === 'per_side')
       warnings.push('mancuernas: peso por lado (no se duplica ni se asume carga total)');
     out.rows.push({
-      id: `hevy-${fingerprintText(key)}`,
-      source: HEVY_SOURCE,
-      sessionKey: `hevy:${dt.date}:${slug((d.title as string) || 'sin-titulo')}:${slug(d.start_time as string)}`,
+      id: `${EXTERNAL_SOURCE}-${fingerprintText(key)}`,
+      source: EXTERNAL_SOURCE,
+      sessionKey: `${EXTERNAL_SOURCE}:${dt.date}:${slug((d.title as string) || 'sin-titulo')}:${slug(d.start_time as string)}`,
       date: dt.date,
       exerciseName: title,
       exerciseId: mapping.exerciseId,
@@ -321,7 +323,7 @@ export function parseHevyCsv(text: string, opts: HevyOptions = {}): HevyParse {
   return out;
 }
 
-export interface HevyPreview {
+export interface CsvPreview {
   newRows: number;
   duplicatesExisting: number;
   duplicatesInFile: number;
@@ -353,15 +355,15 @@ export interface HevyPreview {
   dateInterpretation: string;
   fatal: string[];
   /** Primeras filas normalizadas (para revisar el mapeo). */
-  sample: Pick<HevyRow, 'date' | 'exerciseName' | 'setType' | 'kg' | 'reps' | 'rpe' | 'loadKind' | 'lift'>[];
+  sample: Pick<CsvRow, 'date' | 'exerciseName' | 'setType' | 'kg' | 'reps' | 'rpe' | 'loadKind' | 'lift'>[];
 }
 
 /** Vista previa (dry-run): qué se importaría, qué se rechaza y por qué, qué ya existe y qué ejercicios no tienen mapeo. No escribe nada. */
-export function previewHevy(
-  p: HevyParse,
+export function previewCsv(
+  p: CsvParse,
   existingKeys: Set<string> = new Set(),
-  opts: HevyOptions = {},
-): HevyPreview {
+  opts: CsvImportOptions = {},
+): CsvPreview {
   const fresh = p.rows.filter((r) => !existingKeys.has(r.externalKey));
   const reasons = new Map<string, number>();
   for (const r of p.rejected)
@@ -391,17 +393,13 @@ export function previewHevy(
         known: mappingFor(r.exerciseName, opts.exerciseMap).known,
       });
   }
-  const gap = (metric: string, reason: string, f: (r: HevyRow) => boolean) => ({
+  const gap = (metric: string, reason: string, f: (r: CsvRow) => boolean) => ({
     metric,
     reason,
     rows: p.rows.filter((r) => r.setType !== 'warmup' && f(r)).length,
   });
   const validWithGaps = [
-    gap(
-      'e1rm_table_rpe',
-      'Sin RPE real: no hay e1RM por curva (sí por fórmulas PRG).',
-      (r) => r.rpe === null,
-    ),
+    gap('e1rm_table_rpe', 'Sin RPE real: no hay e1RM por curva (sí por fórmulas).', (r) => r.rpe === null),
     gap(
       'tonnage',
       'Carga total desconocida (mancuernas por lado, peso corporal o tipo de carga desconocido): excluida del tonelaje.',
@@ -413,7 +411,7 @@ export function previewHevy(
       (r) => r.lift === null,
     ),
   ].filter((g) => g.rows > 0);
-  const count = (f: (r: HevyRow) => string) =>
+  const count = (f: (r: CsvRow) => string) =>
     p.rows.reduce<Record<string, number>>((a, r) => ((a[f(r)] = (a[f(r)] ?? 0) + 1), a), {});
   const warnings: string[] = [];
   if (unmapped.size)
@@ -427,7 +425,7 @@ export function previewHevy(
       'El archivo no trae RPE real: no habrá e1RM por curva; sí por fórmulas, NL, series, tonelaje y récords.',
     );
   const token = fingerprintText(
-    `${HEVY_PARSER_VERSION}|${p.options.timeZone}|${JSON.stringify(opts.exerciseMap ?? {})}|${fresh
+    `${CSV_PARSER_VERSION}|${p.options.timeZone}|${JSON.stringify(opts.exerciseMap ?? {})}|${fresh
       .map((r) => r.externalKey)
       .sort()
       .join('\n')}`,

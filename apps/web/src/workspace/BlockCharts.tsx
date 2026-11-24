@@ -1,4 +1,5 @@
 import { useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import type { Annotation } from './OverviewChart';
 import { dateLabel, number } from './ui';
 
 /**
@@ -6,13 +7,19 @@ import { dateLabel, number } from './ui';
  * Color = DIRECCIÓN del cambio contra el bloque anterior (celeste sube, naranja baja, gris sin cambio): no es un juicio de «mejor/peor».
  * El máximo e1RM observado lleva su propio color y tipografía (clase `e1rm-max`, variable `--e1rm-max`).
  */
-export const DIR_COLOR = { up: '#4cc9f0', down: '#fb8f3c', flat: '#8a8d96' } as const;
+export const DIR_COLOR = { up: 'var(--c-steel)', down: 'var(--c-bone)', flat: 'var(--c-gray)' } as const;
 export type Dir = keyof typeof DIR_COLOR;
 export const dirOf = (n: number | null | undefined): Dir =>
   n == null || n === 0 ? 'flat' : n > 0 ? 'up' : 'down';
-export const arrowOf = (d: Dir) => (d === 'up' ? '↗' : d === 'down' ? '↘' : '→');
+export const arrowOf = (d: Dir) => (d === 'up' ? '↑' : d === 'down' ? '↓' : '=');
 const BLOCK_COLORS = ['var(--c-gray)', 'var(--c-steel)', 'var(--c-bone)', 'var(--c-steel-dk)'];
-const ZONE_COLORS = ['#4cc9f0', '#6d83f2', '#a07cf0', '#e879c6', '#fb8f3c'];
+const ZONE_COLORS = [
+  'var(--c-gray)',
+  'var(--c-steel-dk)',
+  'var(--c-steel)',
+  'var(--c-bone)',
+  'var(--accent)',
+];
 
 export interface CDelta {
   abs: number | null;
@@ -25,6 +32,8 @@ export interface CRow {
   unit: string;
   values: (number | null)[];
   deltas: CDelta[];
+  /** Semanas de cada bloque (rango, mediana y valores con fecha real). */
+  spread: (CSpread | null)[];
 }
 export interface CBlock {
   blockKey: string;
@@ -93,21 +102,87 @@ function niceScale(lo: number, hi: number, n = 4) {
 }
 const decimals = (id: string) => (id === 'tonnage_per_week' ? 0 : 1);
 
-/* ---------- 1) gráfico grande de una métrica entre bloques ---------- */
+/* ---------- 1) gráfico grande de una métrica entre bloques: velas de rango + línea de valores ---------- */
+/**
+ * Cada bloque es una «vela»: el trazo va del mínimo al máximo de sus semanas, la marca horizontal es la mediana semanal y el punto es el
+ * valor del bloque (el que usan los cambios entre bloques). Los puntos se unen con una línea coloreada por la dirección del cambio.
+ * Con 4–6 semanas por bloque no se dibujan cuartiles: sería precisión inventada. Bloque sin datos = marca «No observada», nunca cero.
+ */
+export interface CSpread {
+  points: { week: number; date: string; value: number | null }[];
+  n: number;
+  min: number | null;
+  median: number | null;
+  max: number | null;
+}
+const hasRange = (sp: CSpread | null | undefined): sp is CSpread =>
+  !!sp && sp.min !== null && sp.max !== null && sp.median !== null;
+
+/** Escala vertical que cubre los rangos semanales y los valores de bloque (no parte de cero: la posición, no el largo, comunica). */
+function fitScale(row: CRow) {
+  const all = [
+    ...row.values.filter((v): v is number => v !== null),
+    ...row.spread.flatMap((sp) => (hasRange(sp) ? [sp.min as number, sp.max as number] : [])),
+  ];
+  if (!all.length) return niceScale(0, 1);
+  const lo = Math.min(...all);
+  const hi = Math.max(...all);
+  const pad = (hi - lo || Math.abs(hi) || 1) * 0.18;
+  return niceScale(lo - pad, hi + pad);
+}
+
+function RangeTip({
+  b,
+  i,
+  row,
+  d,
+  dec,
+}: {
+  b: CBlock;
+  i: number;
+  row: CRow;
+  d: CDelta | undefined;
+  dec: number;
+}) {
+  const v = row.values[i] ?? null;
+  const sp = row.spread[i];
+  const dir = d && (d.status === 'ok' || d.status === 'nuevo') ? dirOf(d.abs) : 'flat';
+  return (
+    <>
+      <strong>
+        B{i} · {b.blockKey}
+      </strong>
+      <div>
+        {dateLabel(b.start)} a {dateLabel(b.end)} · {b.weeks} sem{b.closed ? '' : ' · en curso'}
+      </div>
+      <div className="tip-big">
+        {v === null ? 'No observada' : `${number(v, dec)} ${row.unit} (valor del bloque)`}
+      </div>
+      {hasRange(sp) && (
+        <div>
+          semanas: {number(sp.min as number, dec)} – {number(sp.max as number, dec)} · mediana{' '}
+          {number(sp.median as number, dec)} · {sp.n} con dato
+        </div>
+      )}
+      {d && (
+        <div style={{ color: DIR_COLOR[dir] }}>
+          {arrowOf(dir)} {deltaText(d)} vs B{i - 1}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function MetricChart({ row, label, blocks }: { row: CRow; label: string; blocks: CBlock[] }) {
   const t = useTip();
-  const [zoom, setZoom] = useState(false);
   const W = 960;
   const H = 380;
   const m = { l: 70, r: 24, t: 44, b: 96 };
-  const vals = row.values.filter((v): v is number => v !== null);
-  const hi = Math.max(...vals, 0);
-  const lo = zoom && vals.length > 1 ? Math.min(...vals) - (Math.max(...vals) - Math.min(...vals)) * 0.4 : 0;
-  const sc = niceScale(zoom ? lo : 0, hi * 1.08 || 1);
+  const sc = fitScale(row);
   const pw = W - m.l - m.r;
   const ph = H - m.t - m.b;
   const band = pw / Math.max(1, blocks.length);
-  const bw = Math.min(130, band * 0.5);
+  const cap = Math.min(46, band * 0.22);
   const x = (i: number) => m.l + band * (i + 0.5);
   const y = (v: number) => m.t + ph - ((v - sc.a) / (sc.b - sc.a)) * ph;
   const dec = decimals(row.metricId);
@@ -117,11 +192,8 @@ export function MetricChart({ row, label, blocks }: { row: CRow; label: string; 
       <div className="chart-head">
         <h4>{label}</h4>
         <span className="muted small">
-          {row.unit} · {zoom ? 'escala ajustada (no parte de cero)' : 'escala desde cero'}
+          {row.unit} · trazo = rango de las semanas · marca = mediana · punto = valor del bloque
         </span>
-        <label className="chart-toggle">
-          <input type="checkbox" checked={zoom} onChange={(e) => setZoom(e.target.checked)} /> Ajustar escala
-        </label>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg" role="img" aria-label={`${label} por bloque`}>
         {sc.ticks.map((tk) => (
@@ -132,76 +204,6 @@ export function MetricChart({ row, label, blocks }: { row: CRow; label: string; 
             </text>
           </g>
         ))}
-        {blocks.map((b, i) => {
-          const v = row.values[i] ?? null;
-          const d = i > 0 ? row.deltas[i - 1] : undefined;
-          const dir = d && (d.status === 'ok' || d.status === 'nuevo') ? dirOf(d.abs) : 'flat';
-          return (
-            <g
-              key={b.blockKey}
-              className="chart-hit"
-              onMouseMove={(e) =>
-                t.show(
-                  e,
-                  <>
-                    <strong>
-                      B{i} · {b.blockKey}
-                    </strong>
-                    <div>
-                      {dateLabel(b.start)} → {dateLabel(b.end)} · {b.weeks} sem
-                    </div>
-                    <div className="tip-big">
-                      {v === null ? 'No observada' : `${number(v, dec)} ${row.unit}`}
-                    </div>
-                    {d && (
-                      <div style={{ color: DIR_COLOR[dir] }}>
-                        {arrowOf(dir)} {deltaText(d)} vs B{i - 1}
-                      </div>
-                    )}
-                  </>,
-                )
-              }
-            >
-              <rect x={x(i) - band / 2} y={m.t} width={band} height={ph} className="chart-band" />
-              {v === null ? (
-                <>
-                  <rect x={x(i) - bw / 2} y={m.t + ph - 3} width={bw} height={3} className="chart-missing" />
-                  <text x={x(i)} y={m.t + ph - 12} textAnchor="middle" className="chart-note">
-                    No observada
-                  </text>
-                </>
-              ) : (
-                <>
-                  <rect
-                    x={x(i) - bw / 2}
-                    y={y(v)}
-                    width={bw}
-                    height={Math.max(2, m.t + ph - y(v))}
-                    rx={0}
-                    fill={BLOCK_COLORS[i % 4]}
-                    opacity={b.closed ? 1 : 0.55}
-                    strokeDasharray={b.closed ? undefined : '6 4'}
-                    stroke={b.closed ? undefined : BLOCK_COLORS[i % 4]}
-                  />
-                  <text x={x(i)} y={y(v) - 10} textAnchor="middle" className="chart-val">
-                    {number(v, dec)}
-                  </text>
-                </>
-              )}
-              <text x={x(i)} y={H - 62} textAnchor="middle" className="chart-xl">
-                B{i} · {b.blockKey}
-              </text>
-              <text x={x(i)} y={H - 46} textAnchor="middle" className="chart-note">
-                {dateLabel(b.start)}–{dateLabel(b.end)}
-              </text>
-              {d && (
-                <text x={x(i)} y={H - 20} textAnchor="middle" className="chart-delta" fill={DIR_COLOR[dir]}>
-                  {arrowOf(dir)} {deltaText(d)}
-                </text>
-              )}
-            </g>
-          );
-        })}
         {line.slice(1).map((p, k) => {
           const a = line[k]!;
           const d = row.deltas[p.i - 1];
@@ -220,135 +222,93 @@ export function MetricChart({ row, label, blocks }: { row: CRow; label: string; 
             />
           );
         })}
-        {line.map((p) => (
-          <circle key={p.i} cx={x(p.i)} cy={y(p.v)} r={5} className="chart-dot" />
-        ))}
-      </svg>
-      {t.view}
-    </div>
-  );
-}
-
-/* ---------- 2) todas las métricas, cada una como mini-gráfico clickeable ---------- */
-export function MetricGrid({
-  rows,
-  labels,
-  blocks,
-  selected,
-  onSelect,
-}: {
-  rows: CRow[];
-  labels: Record<string, string>;
-  blocks: CBlock[];
-  selected: string;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <div className="metric-grid">
-      {rows.map((r) => (
-        <MiniBars
-          key={r.metricId}
-          row={r}
-          label={labels[r.metricId] ?? r.metricId}
-          blocks={blocks}
-          on={selected === r.metricId}
-          onSelect={() => onSelect(r.metricId)}
-        />
-      ))}
-    </div>
-  );
-}
-function MiniBars({
-  row,
-  label,
-  blocks,
-  on,
-  onSelect,
-}: {
-  row: CRow;
-  label: string;
-  blocks: CBlock[];
-  on: boolean;
-  onSelect: () => void;
-}) {
-  const t = useTip();
-  const W = 320;
-  const H = 170;
-  const vals = row.values.filter((v): v is number => v !== null);
-  const hi = Math.max(...vals, 0) * 1.12 || 1;
-  const band = (W - 20) / Math.max(1, blocks.length);
-  const bw = band * 0.56;
-  const dec = decimals(row.metricId);
-  const last = row.deltas.at(-1);
-  const lastDir = last && (last.status === 'ok' || last.status === 'nuevo') ? dirOf(last.abs) : 'flat';
-  return (
-    <button
-      type="button"
-      className={`mini-card ${on ? 'on' : ''}`}
-      onClick={onSelect}
-      ref={t.ref as never}
-      onMouseLeave={t.hide}
-    >
-      <span className="mini-top">
-        <strong>{label}</strong>
-        <span className={`delta-tag d-${lastDir}`}>
-          <b>{arrowOf(lastDir)}</b> {last ? deltaText(last) : '—'}
-        </span>
-      </span>
-      <svg viewBox={`0 0 ${W} ${H}`} className="chart-svg">
         {blocks.map((b, i) => {
           const v = row.values[i] ?? null;
-          const cx = 10 + band * (i + 0.5);
-          const h = v === null ? 0 : ((v ?? 0) / hi) * (H - 62);
+          const sp = row.spread[i];
           const d = i > 0 ? row.deltas[i - 1] : undefined;
           const dir = d && (d.status === 'ok' || d.status === 'nuevo') ? dirOf(d.abs) : 'flat';
+          const color = BLOCK_COLORS[i % 4];
           return (
             <g
               key={b.blockKey}
-              onMouseMove={(e) =>
-                t.show(
-                  e as unknown as MouseEvent,
-                  <>
-                    <strong>
-                      B{i} · {b.blockKey}
-                    </strong>
-                    <div className="tip-big">
-                      {v === null ? 'No observada' : `${number(v, dec)} ${row.unit}`}
-                    </div>
-                    {d && (
-                      <div style={{ color: DIR_COLOR[dir] }}>
-                        {arrowOf(dir)} {deltaText(d)}
-                      </div>
-                    )}
-                  </>,
-                )
-              }
+              className="chart-hit"
+              onMouseMove={(e) => t.show(e, <RangeTip b={b} i={i} row={row} d={d} dec={dec} />)}
             >
-              <rect x={cx - band / 2} y={0} width={band} height={H} fill="transparent" />
+              <rect x={x(i) - band / 2} y={m.t} width={band} height={ph} className="chart-band" />
               {v === null ? (
-                <rect x={cx - bw / 2} y={H - 40} width={bw} height={2} className="chart-missing" />
+                <>
+                  <rect
+                    x={x(i) - cap}
+                    y={m.t + ph - 3}
+                    width={cap * 2}
+                    height={3}
+                    className="chart-missing"
+                  />
+                  <text x={x(i)} y={m.t + ph - 12} textAnchor="middle" className="chart-note">
+                    No observada
+                  </text>
+                </>
               ) : (
-                <rect
-                  x={cx - bw / 2}
-                  y={H - 40 - h}
-                  width={bw}
-                  height={Math.max(2, h)}
-                  rx={0}
-                  fill={BLOCK_COLORS[i % 4]}
-                  opacity={b.closed ? 1 : 0.55}
-                />
+                <>
+                  {hasRange(sp) && (
+                    <>
+                      <rect
+                        x={x(i) - 9}
+                        y={y(sp.max as number)}
+                        width={18}
+                        height={Math.max(2, y(sp.min as number) - y(sp.max as number))}
+                        fill={color}
+                        opacity={b.closed ? 0.32 : 0.16}
+                        stroke={color}
+                        strokeWidth={1.5}
+                        strokeDasharray={b.closed ? undefined : '5 3'}
+                      />
+                      <line
+                        x1={x(i) - cap * 0.5}
+                        x2={x(i) + cap * 0.5}
+                        y1={y(sp.max as number)}
+                        y2={y(sp.max as number)}
+                        stroke={color}
+                        strokeWidth={2}
+                      />
+                      <line
+                        x1={x(i) - cap * 0.5}
+                        x2={x(i) + cap * 0.5}
+                        y1={y(sp.min as number)}
+                        y2={y(sp.min as number)}
+                        stroke={color}
+                        strokeWidth={2}
+                      />
+                      <line
+                        x1={x(i) - cap}
+                        x2={x(i) + cap}
+                        y1={y(sp.median as number)}
+                        y2={y(sp.median as number)}
+                        stroke="var(--c-bone)"
+                        strokeWidth={3}
+                      />
+                    </>
+                  )}
+                  <circle cx={x(i)} cy={y(v)} r={6} className="chart-dot" />
+                  <text
+                    x={x(i)}
+                    y={y(hasRange(sp) ? (sp.max as number) : v) - 12}
+                    textAnchor="middle"
+                    className="chart-val"
+                  >
+                    {number(v, dec)}
+                  </text>
+                </>
               )}
-              {v !== null && (
-                <text x={cx} y={H - 46 - h} textAnchor="middle" className="chart-val sm">
-                  {number(v, dec)}
-                </text>
-              )}
-              <text x={cx} y={H - 22} textAnchor="middle" className="chart-note">
-                B{i}
+              <text x={x(i)} y={H - 62} textAnchor="middle" className="chart-xl">
+                B{i} · {b.blockKey}
+              </text>
+              <text x={x(i)} y={H - 46} textAnchor="middle" className="chart-note">
+                {dateLabel(b.start)}–{dateLabel(b.end)}
               </text>
               {d && (
-                <text x={cx} y={H - 6} textAnchor="middle" className="chart-delta sm" fill={DIR_COLOR[dir]}>
-                  {arrowOf(dir)} {d.pct === null ? '' : `${d.pct > 0 ? '+' : ''}${number(d.pct, 0)}%`}
+                <text x={x(i)} y={H - 20} textAnchor="middle" className="chart-delta" fill={DIR_COLOR[dir]}>
+                  {arrowOf(dir)} {deltaText(d)}
                 </text>
               )}
             </g>
@@ -356,7 +316,7 @@ function MiniBars({
         })}
       </svg>
       {t.view}
-    </button>
+    </div>
   );
 }
 
@@ -490,14 +450,12 @@ export interface CCompliance {
     sessionsWithWork: number;
   };
 }
-const C_DONE = '#4cc9f0';
-const C_SKIP = '#fb8f3c';
-const C_UNK = '#59606e';
+const C_DONE = 'var(--c-steel)';
+const C_SKIP = 'var(--c-bone)';
+const C_UNK = 'var(--c-gray)';
 export function ComplianceChart({ data, blocks }: { data: CCompliance[]; blocks: CBlock[] }) {
   const t = useTip();
   const pctOf = (a: number, b: number) => (b ? (100 * a) / b : 0);
-  const weeks = data.flatMap((c, bi) => c.weeks.map((w) => ({ ...w, bi, blockKey: c.blockKey })));
-  const H = 150;
   return (
     <div className="chart-box" ref={t.ref} onMouseLeave={t.hide}>
       <div className="chart-head">
@@ -584,65 +542,6 @@ export function ComplianceChart({ data, blocks }: { data: CCompliance[]; blocks:
           </div>
         );
       })}
-      <h5 className="chart-sub">Semana a semana (% de series hechas)</h5>
-      <svg viewBox={`0 0 960 ${H}`} className="chart-svg" role="img" aria-label="Cumplimiento semanal">
-        {[0, 50, 100].map((g) => (
-          <g key={g}>
-            <line
-              x1={40}
-              x2={950}
-              y1={H - 30 - (g / 100) * (H - 50)}
-              y2={H - 30 - (g / 100) * (H - 50)}
-              className="chart-grid"
-            />
-            <text x={32} y={H - 26 - (g / 100) * (H - 50)} className="chart-axis" textAnchor="end">
-              {g}
-            </text>
-          </g>
-        ))}
-        {weeks.map((w, i) => {
-          const bw = 910 / Math.max(1, weeks.length);
-          const x0 = 40 + i * bw;
-          const share = w.setsPlanned ? w.setsDone / w.setsPlanned : null;
-          const h = share === null ? 0 : share * (H - 50);
-          return (
-            <g
-              key={`${w.blockKey}${w.weekNo}`}
-              onMouseMove={(e) =>
-                t.show(
-                  e as unknown as MouseEvent,
-                  <>
-                    <strong>
-                      {w.blockKey} · S{w.weekNo}
-                    </strong>
-                    <div className="tip-big">
-                      {share === null ? '—' : `${number(100 * share, 0)}% hechas`}
-                    </div>
-                    <div>
-                      {w.setsDone}/{w.setsPlanned} · omitidas {w.setsSkipped} · sin registro {w.setsUnknown}
-                    </div>
-                  </>,
-                )
-              }
-            >
-              <rect x={x0} y={0} width={bw} height={H - 30} fill="transparent" />
-              <rect
-                x={x0 + bw * 0.12}
-                y={H - 30 - h}
-                width={bw * 0.76}
-                height={Math.max(h, 1.5)}
-                rx={0}
-                fill={BLOCK_COLORS[w.bi % 4]}
-              />
-              {(w.weekNo === 1 || weeks.length < 16) && (
-                <text x={x0 + bw / 2} y={H - 12} textAnchor="middle" className="chart-note">
-                  {w.weekNo === 1 ? `${w.blockKey} · S1` : `S${w.weekNo}`}
-                </text>
-              )}
-            </g>
-          );
-        })}
-      </svg>
       {t.view}
     </div>
   );
@@ -658,15 +557,25 @@ export interface CVariant {
   bestKg: number | null;
   bestWeek: number | null;
 }
-const LINE_COLORS = ['#6d83f2', '#e879c6', '#4cc9f0', '#fb8f3c', '#a07cf0', '#9aa4b8'];
+const LINE_COLORS = [
+  'var(--c-steel)',
+  'var(--c-bone)',
+  'var(--c-gray)',
+  'var(--c-steel-dk)',
+  'var(--accent)',
+  'var(--muted)',
+];
 export function E1rmChart({
   lift,
   variants,
   blocks,
+  marks = [],
 }: {
   lift: string;
   variants: CVariant[];
   blocks: CBlock[];
+  /** Cambios de plan: se ubican dentro del bloque que los contiene, por fecha. */
+  marks?: Annotation[];
 }) {
   const t = useTip();
   const mine = variants.filter((v) => v.lift === lift && v.weekly.length);
@@ -745,6 +654,34 @@ export function E1rmChart({
             </text>
           </g>
         ))}
+        {marks.flatMap((mk, k) => {
+          const bi = blocks.findIndex((b) => mk.date >= b.start && mk.date <= b.end);
+          if (bi < 0) return [];
+          const wk = (Date.parse(mk.date) - Date.parse(blocks[bi]!.start)) / (7 * 864e5);
+          const px = X(offsets[bi]! + Math.min(wk, Math.max(1, blocks[bi]!.weeks)) - 0.5);
+          return [
+            <g key={`mk${k}`}>
+              <title>{`${mk.label} · rige desde ${mk.date}`}</title>
+              <line
+                x1={px}
+                x2={px}
+                y1={m.t}
+                y2={H - m.b}
+                stroke="var(--accent)"
+                strokeWidth={1.4}
+                strokeDasharray="5 4"
+              />
+              <text
+                x={px + 4}
+                y={m.t + 14 + (k % 3) * 12}
+                className="chart-note"
+                style={{ fill: 'var(--accent)' }}
+              >
+                {mk.label}
+              </text>
+            </g>,
+          ];
+        })}
         {names.map((n, ni) => {
           const mineV = pts.filter((q) => q.v.variantKey === n).sort((a, b) => a.x - b.x);
           const segs: (typeof mineV)[] = [];

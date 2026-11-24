@@ -1,25 +1,25 @@
-import chart from '../data/rts-chart.json' with { type: 'json' };
+import chart from '../data/curva-rpe.json' with { type: 'json' };
 import original from '../data/rpe-table.json' with { type: 'json' };
-import prgOriginal from '../data/prg-rpe-table.json' with { type: 'json' };
-import measured from '../data/rts-si-measured.json' with { type: 'json' };
+import altOriginal from '../data/rpe-table-alt.json' with { type: 'json' };
+import measured from '../data/si-doble-medido.json' with { type: 'json' };
 
 /**
  * TABLAS RPE ↔ %1RM con el dominio MÁS AMPLIO respaldado por la fuente.
- *  - Curva única de RTS (99 valores, h = 1…50 en pasos de 0,5). Con h = reps + (10 − RPE): RPE 1–10 (pasos de 0,5) × reps 1–50, siempre que h ≤ 50.
- *    La equivalencia curva ↔ tabla se midió en la app real (154 combinaciones, RPE 1–10, reps 1–50, sin diferencias): [recuperado].
- *  - Origen por celda: 'medido-rts' (la app devolvió ese resultado para esa combinación) o 'derivado-curva' (misma curva en una combinación no medida).
+ *  - Curva única (99 valores, h = 1…50 en pasos de 0,5). Con h = reps + (10 − RPE): RPE 1–10 (pasos de 0,5) × reps 1–50, siempre que h ≤ 50.
+ *    La equivalencia curva ↔ tabla se midió (154 combinaciones, RPE 1–10, reps 1–50, sin diferencias): [recuperado].
+ *  - Origen por celda: 'medido' (la app devolvió ese resultado para esa combinación) o 'derivado-curva' (misma curva en una combinación no medida).
  *    Fuera de dominio (h > 50) = null.
- *  - La tabla ANTERIOR del proyecto (`rpe-proyecto-v1`, 1–15 × 4–10) coincidía con la curva solo hasta h = 10 y diverge por encima (error de copia heredado de PRG):
- *    se conserva como `legacyProyecto` para comparar, pero ya no se usa para calcular. Decisión del proyecto: la curva de RTS es la fuente correcta.
- *  - RPE < 6 o reps > 12 son zonas poco usadas: RTS recomienda % en vez de RPE bajo; se informan, no se ocultan.
+ *  - La tabla ANTERIOR del proyecto (`rpe-proyecto-v1`, 1–15 × 4–10) coincidía con la curva solo hasta h = 10 y diverge por encima (error de copia en una tabla alternativa):
+ *    se conserva como `legacyProyecto` para comparar, pero ya no se usa para calcular. Decisión del proyecto: la curva de referencia es la fuente correcta.
+ *  - RPE < 6 o reps > 12 son zonas poco usadas: se recomienda % en vez de RPE bajo; se informan, no se ocultan.
  */
-export const RPE_CURVE_VERSION = 'rts-curva-default-v1';
+export const RPE_CURVE_VERSION = 'curva-rpe-v1';
 export const CURVE = (chart as { values: number[] }).values;
 export const RPE_FULL = { repsMin: 1, repsMax: 50, rpeMin: 1, rpeMax: 10, rpeStep: 0.5, maxH: 50 } as const;
 export const RPE_VALUES: number[] = Array.from({ length: 19 }, (_, i) => 1 + i * 0.5);
 export const REPS_VALUES: number[] = Array.from({ length: 50 }, (_, i) => i + 1);
 
-export type CellOrigin = 'medido-rts' | 'derivado-curva';
+export type CellOrigin = 'medido' | 'derivado-curva';
 export interface PctCell {
   reps: number;
   rpe: number;
@@ -52,7 +52,7 @@ export function rpeCell(reps: number, rpe: number): PctCell {
   const pct = pctFromCurve(reps, rpe);
   const h = reps + 10 - rpe;
   const origin: CellOrigin | null =
-    pct === null ? null : MEAS.has(`${reps}|${rpe}`) ? 'medido-rts' : 'derivado-curva';
+    pct === null ? null : MEAS.has(`${reps}|${rpe}`) ? 'medido' : 'derivado-curva';
   const j = ORIG_COLS.indexOf(rpe);
   const lg = reps >= 1 && reps <= 15 && j >= 0 ? LEGACY[reps - 1]?.[j] : undefined;
   const cell: PctCell = { reps, rpe, h, pct, origin };
@@ -159,27 +159,27 @@ export function loadTable(
   };
 }
 
-/* ---------------- PRG ---------------- */
-const PRG = (prgOriginal as { values: Record<string, Record<string, number>> }).values;
-export const PRG_TABLE_VERSION = 'prg-tabla-rpe-v1';
-export interface PrgCell {
+/* ---------------- Tabla alternativa ---------------- */
+const ALT = (altOriginal as { values: Record<string, Record<string, number>> }).values;
+export const ALT_TABLE_VERSION = 'tabla-rpe-alt-v1';
+export interface AltCell {
   reps: number;
   rpe: number;
   pct: number | null;
-  /** Misma celda por la curva de RTS (referencia). */
-  rtsPct: number | null;
-  /** Diferencia PRG − RTS en puntos de %; PRG difiere de la curva en h ≥ 10,5 (error de copia documentado). */
+  /** Misma celda por la curva de referencia (referencia). */
+  doblePct: number | null;
+  /** Diferencia tabla alternativa − curva en puntos de %; difiere de la curva en h ≥ 10,5 (error de copia documentado). */
   diff: number | null;
-  origin: 'prg-original' | 'prg-extrapolado' | null;
+  origin: 'alt-original' | 'alt-extrapolado' | null;
 }
 const round1 = (x: number) => Math.round(x * 10) / 10;
 
-/** Extrapolación de PRG por debajo de RPE 6 [recuperado de la app]: continúa la pendiente de las filas 6,0/6,5/7,0. */
-function prgExtrapolated(rpe: number, reps: number): number | null {
+/** Extrapolación de la tabla alternativa por debajo de RPE 6: continúa la pendiente de las filas 6,0/6,5/7,0. */
+function altExtrapolated(rpe: number, reps: number): number | null {
   if (!(rpe >= 0.5 && rpe <= 10) || reps < 1) return null;
   const r = Math.round(rpe * 2) / 2;
   const n = Math.min(Math.max(Math.floor(reps + 0.5), 1), 12);
-  const p = (k: number) => PRG[k.toFixed(1)]?.[String(n)];
+  const p = (k: number) => ALT[k.toFixed(1)]?.[String(n)];
   if (r >= 6) return p(r) ?? null;
   const p6 = p(6);
   const p65 = p(6.5);
@@ -193,33 +193,33 @@ function prgExtrapolated(rpe: number, reps: number): number | null {
   return v > 0 ? v : null;
 }
 
-/** Tabla de PRG: reps 1–12 × RPE 0,5–10. RPE 6–10 son celdas originales; por debajo, la extrapolación de la app. */
-export function prgRpeTable(): {
+/** Tabla alternativa: reps 1–12 × RPE 0,5–10. RPE 6–10 son celdas originales; por debajo, la extrapolación de la app. */
+export function altRpeTable(): {
   version: string;
   rpes: number[];
   reps: number[];
-  rows: PrgCell[][];
+  rows: AltCell[][];
   divergentCells: number;
 } {
   const rpes = Array.from({ length: 20 }, (_, i) => 0.5 + i * 0.5);
   const reps = Array.from({ length: 12 }, (_, i) => i + 1);
   let div = 0;
   const rows = reps.map((n) =>
-    rpes.map((r): PrgCell => {
-      const pct = prgExtrapolated(r, n);
-      const rts = pctFromCurve(n, r);
-      const rtsPct = rts === null ? null : round1(rts * 100);
-      const diff = pct !== null && rtsPct !== null ? round1(pct - rtsPct) : null;
+    rpes.map((r): AltCell => {
+      const pct = altExtrapolated(r, n);
+      const curvePct = pctFromCurve(n, r);
+      const doblePct = curvePct === null ? null : round1(curvePct * 100);
+      const diff = pct !== null && doblePct !== null ? round1(pct - doblePct) : null;
       if (diff !== null && Math.abs(diff) > 0.15 && r >= 6) div++;
       return {
         reps: n,
         rpe: r,
         pct,
-        rtsPct,
+        doblePct,
         diff,
-        origin: pct === null ? null : r >= 6 ? 'prg-original' : 'prg-extrapolado',
+        origin: pct === null ? null : r >= 6 ? 'alt-original' : 'alt-extrapolado',
       };
     }),
   );
-  return { version: PRG_TABLE_VERSION, rpes, reps, rows, divergentCells: div };
+  return { version: ALT_TABLE_VERSION, rpes, reps, rows, divergentCells: div };
 }

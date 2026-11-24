@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { EXTERNAL_SOURCE } from '@coaching/engine';
 import { buildApp, buildContext, type AppContext } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
 import { openDb } from '../src/db/connection.js';
@@ -34,7 +35,7 @@ const HEAD =
   'title,start_time,end_time,description,exercise_title,superset_id,exercise_notes,set_index,set_type,weight_kg,reps,distance_km,duration_seconds,rpe';
 const hv = (start: string, ex: string, i: number, type: string, kg: string, reps: string, rpe = '') =>
   `Entreno,"${start}",,,${ex},,,${i},${type},${kg},${reps},,,${rpe}`;
-const HEVY = [
+const CSV_FIXTURE = [
   HEAD,
   hv('2 mar 2026, 18:00', 'Squat (Barbell)', 0, 'warmup', '60', '5'),
   hv('2 mar 2026, 18:00', 'Squat (Barbell)', 1, 'normal', '140', '5'),
@@ -200,9 +201,9 @@ describe('Migración 003: compatibilidad con datos del esquema anterior', () => 
   });
 });
 
-describe('Importación de Hevy: dry-run, confirmación e idempotencia', () => {
+describe('Importación CSV: dry-run, confirmación e idempotencia', () => {
   const imp = (body: Record<string, unknown>) =>
-    post(`/api/athletes/${C()}/imports/hevy`, { csv: HEVY, ...body });
+    post(`/api/athletes/${C()}/imports/csv`, { csv: CSV_FIXTURE, ...body });
   it('el dry-run no escribe nada y describe qué se importaría', async () => {
     const r = (await imp({ mode: 'dry_run' })).json();
     expect(r.mode).toBe('dry_run');
@@ -234,7 +235,7 @@ describe('Importación de Hevy: dry-run, confirmación e idempotencia', () => {
     await imp({ mode: 'apply', confirmToken: t });
     const again = (await imp({ mode: 'dry_run' })).json();
     expect(again.preview).toMatchObject({ newRows: 0, duplicatesExisting: 7 });
-    const more = HEVY + '\n' + hv('6 mar 2026, 18:00', 'Squat (Barbell)', 1, 'normal', '150', '5');
+    const more = CSV_FIXTURE + '\n' + hv('6 mar 2026, 18:00', 'Squat (Barbell)', 1, 'normal', '150', '5');
     const d2 = (await imp({ csv: more, mode: 'dry_run' })).json();
     expect(d2.preview.newRows).toBe(1);
     const a2 = (await imp({ csv: more, mode: 'apply', confirmToken: d2.preview.token })).json();
@@ -250,23 +251,26 @@ describe('Importación de Hevy: dry-run, confirmación e idempotencia', () => {
     expect((await ctx.records.listPlanned(C())).length).toBe(plannedBefore);
     expect((await ctx.history.listVersions(C())).length).toBe(versionsBefore);
   });
-  it('un archivo que no es de Hevy falla con mensaje claro y 404 si el atleta no existe', async () => {
+  it('un archivo que no es un export válido falla con mensaje claro y 404 si el atleta no existe', async () => {
     const r = await imp({ csv: 'a,b\n1,2', mode: 'apply', confirmToken: 'x' });
     expect(r.statusCode).toBe(422);
     expect(JSON.stringify(r.json())).toMatch(/Faltan columnas obligatorias/);
-    expect((await post('/api/athletes/zzz/imports/hevy', { csv: HEVY })).statusCode).toBe(404);
+    expect((await post('/api/athletes/zzz/imports/csv', { csv: CSV_FIXTURE })).statusCode).toBe(404);
   });
   it('lo importado alimenta métricas y récords SIN RPE: NL, series, tonelaje, e1RM por fórmulas; e1RM por curva se abstiene', async () => {
     const t = (await imp({ mode: 'dry_run' })).json().preview.token;
     await imp({ mode: 'apply', confirmToken: t });
-    const m = (await get(`/api/athletes/${C()}/metrics?from=2026-03-01&to=2026-03-31&lift=SQ&source=hevy`))
-      .metrics;
+    const m = (
+      await get(
+        `/api/athletes/${C()}/metrics?from=2026-03-01&to=2026-03-31&lift=SQ&source=${EXTERNAL_SOURCE}`,
+      )
+    ).metrics;
     expect(m.nl).toMatchObject({ status: 'available', value: 5 + 5 + 5 + 3 + 1 }); // sin calentamiento
     expect(m.tonnage.value).toBe(140 * 10 + 145 * 5 + 145 * 3 + 185);
-    expect(m.e1rm_prg_formulas.status).toBe('available');
+    expect(m.e1rm_formulas.status).toBe('available');
     expect(m.e1rm_table_rpe).toMatchObject({ status: 'unavailable', value: null });
     expect(m.e1rm_table_rpe.missing).toContain('RPE real');
-    const rec = (await get(`/api/athletes/${C()}/records?source=hevy`)).records;
+    const rec = (await get(`/api/athletes/${C()}/records?source=${EXTERNAL_SOURCE}`)).records;
     expect(
       rec.find((r: { type: string; key: string }) => r.type === 'single' && r.key === 'reps=1').value,
     ).toBe(185);
@@ -275,7 +279,9 @@ describe('Importación de Hevy: dry-run, confirmación e idempotencia', () => {
         .filter((r: { type: string }) => r.type === 'best_e1rm')
         .every((r: { isRealPR: boolean }) => !r.isRealPR),
     ).toBe(true);
-    const mus = await get(`/api/athletes/${C()}/weekly-muscles?from=2026-03-02&to=2026-03-08&source=hevy`);
+    const mus = await get(
+      `/api/athletes/${C()}/weekly-muscles?from=2026-03-02&to=2026-03-08&source=${EXTERNAL_SOURCE}`,
+    );
     // 'Row (Dumbbell)' ya está en la convención v2 (remo: dorsales y espalda alta directos)
     expect(mus.unmappedExercises).toEqual([]);
     expect(mus.rows.some((r: { muscle: string }) => r.muscle === 'dorsales')).toBe(true);
@@ -284,9 +290,9 @@ describe('Importación de Hevy: dry-run, confirmación e idempotencia', () => {
 
 describe('Referencias de fuerza fechadas', () => {
   it('el cálculo original usa la referencia vigente a cada fecha; el retrospectivo se rotula y no reescribe', async () => {
-    const t = (await post(`/api/athletes/${C()}/imports/hevy`, { csv: HEVY, mode: 'dry_run' })).json().preview
-      .token;
-    await post(`/api/athletes/${C()}/imports/hevy`, { csv: HEVY, mode: 'apply', confirmToken: t });
+    const t = (await post(`/api/athletes/${C()}/imports/csv`, { csv: CSV_FIXTURE, mode: 'dry_run' })).json()
+      .preview.token;
+    await post(`/api/athletes/${C()}/imports/csv`, { csv: CSV_FIXTURE, mode: 'apply', confirmToken: t });
     expect(
       (
         await post(`/api/athletes/${C()}/references`, {
@@ -304,7 +310,7 @@ describe('Referencias de fuerza fechadas', () => {
       asOf: '2026-03-04',
     });
     const q = (mode: string) =>
-      `/api/athletes/${C()}/metrics?from=2026-03-01&to=2026-03-31&lift=SQ&source=hevy&referenceMode=${mode}`;
+      `/api/athletes/${C()}/metrics?from=2026-03-01&to=2026-03-31&lift=SQ&source=${EXTERNAL_SOURCE}&referenceMode=${mode}`;
     const orig = (await get(q('original'))).metrics.intensity_rel;
     const retro = (await get(q('retrospective'))).metrics.intensity_rel;
     expect(orig.method.version).toBe('v1');
@@ -666,6 +672,52 @@ describe('Operaciones de programación', () => {
     expect(
       ex.sessions.find((s: { sessionKey: string }) => s.sessionKey === 'a-sq-ACUM-1-6').location.slotKey,
     ).toBe('squat-comp|D2');
+  });
+});
+
+describe('Orden de los ejercicios dentro de la sesión (arrastrar)', () => {
+  it('reorder_exercises persiste el orden: lo devuelve /sessions y sobrevive a otras ediciones', async () => {
+    const id = (await post('/api/athletes', { name: 'Orden' })).json().id as string;
+    const mk = (name: string, lift: 'SQ' | 'BP' | null, slot: number, n: number) => ({
+      id: `${name}-${n}`,
+      sessionKey: 'S1',
+      slotKey: `B1:w1:d1:e${slot}`,
+      exposureId: `x-${name}`,
+      exerciseName: name,
+      lift,
+      plannedDate: '2026-03-02',
+      setNo: n,
+      reps: 5,
+      targetRpe: 8,
+      plannedKg: 100,
+      blockKey: 'B1',
+      weekNo: 1,
+      dayNo: 1,
+      familyKey: 'F1',
+    });
+    const sets = [mk('A', 'SQ', 0, 1), mk('A', 'SQ', 0, 2), mk('B', 'BP', 1, 1), mk('C', null, 2, 1)];
+    expect((await post(`/api/athletes/${id}/plan`, { sets })).statusCode).toBe(200);
+    const names = async () =>
+      (await get(`/api/athletes/${id}/sessions`))[0].exercises.map(
+        (e: { exerciseName: string }) => e.exerciseName,
+      );
+    expect(await names()).toEqual(['A', 'B', 'C']);
+    const r = await post(`/api/athletes/${id}/program`, {
+      mode: 'apply',
+      op: { type: 'reorder_exercises', sessionKey: 'S1', order: ['C', 'A', 'B'] },
+    });
+    expect(r.statusCode).toBe(200);
+    expect(await names()).toEqual(['C', 'A', 'B']);
+    // ids y exposureId intactos
+    const planned = await ctx.records.listActivePlanned(id);
+    expect(planned.map((x) => x.id).sort()).toEqual(sets.map((x) => x.id).sort());
+    expect(planned.find((x) => x.id === 'C-1')!.exposureId).toBe('x-C');
+    // sesión inexistente → 422 explícito
+    const bad = await post(`/api/athletes/${id}/program`, {
+      mode: 'preview',
+      op: { type: 'reorder_exercises', sessionKey: 'nope', order: ['A'] },
+    });
+    expect(bad.statusCode).toBe(422);
   });
 });
 

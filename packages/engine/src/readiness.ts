@@ -9,7 +9,7 @@ export interface CheckInAnswers {
   pain: number | null;
 }
 
-/** Disposición 1–10 PROPIA (no es TRAC de RTS): promedio de sueño, energía, ganas, (11−estrés) y (10−dolor). Requiere los 5 campos. */
+/** Disposición 1–10 PROPIA (medida propia): promedio de sueño, energía, ganas, (11−estrés) y (10−dolor). Requiere los 5 campos. */
 export function readinessOf(c: CheckInAnswers): number | null {
   const { sleep, energy, motivation, stress, pain } = c;
   if (sleep === null || energy === null || motivation === null || stress === null || pain === null)

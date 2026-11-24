@@ -1,4 +1,10 @@
-import { suggestProgression, type ActualSet, type PlannedSet, type ProgSuggestion } from '@coaching/engine';
+import {
+  slotIndex,
+  suggestProgression,
+  type ActualSet,
+  type PlannedSet,
+  type ProgSuggestion,
+} from '@coaching/engine';
 import { modeFrom, type AccountsRepo, type ViewMode } from '../repositories/accounts.js';
 import type { AthletesRepo } from '../repositories/athletes.js';
 import type { HistoryRepo } from '../repositories/history.js';
@@ -88,7 +94,7 @@ const repsMaxOf = (p: PlannedSet): number | null => {
   return typeof m === 'number' ? m : null;
 };
 
-/** Lo que el atleta ve y hace: sus sesiones, su próximo entreno, el registro de series y el TRAC. Todo se filtra por atleta y por modo de vista. */
+/** Lo que el atleta ve y hace: sus sesiones, su próximo entreno, el registro de series y el check-in. Todo se filtra por atleta y por modo de vista. */
 type Loaded = {
   planned: PlannedSet[];
   actual: Map<string, ActualSet>;
@@ -297,7 +303,7 @@ export class PortalService {
       block: current
         ? await this.block(athleteId, current.blockKey, current.weekNo, { planned: loaded.planned, mesos })
         : null,
-      trac: { doneToday: !!todayCheck, today: todayCheck, recent: checks.slice(-14) },
+      checkin: { doneToday: !!todayCheck, today: todayCheck, recent: checks.slice(-14) },
     };
   }
   async plan(athleteId: string) {
@@ -342,7 +348,8 @@ export class PortalService {
     const past = loaded.planned.filter((p) => p.plannedDate < meta.date);
     const myNotes = new Map(notes.map((n) => [n.exerciseName, n.note]));
     const groups = new Map<string, PlannedSet[]>();
-    for (const s of sets) groups.set(s.exposureId, [...(groups.get(s.exposureId) ?? []), s]);
+    for (const s of [...sets].sort((a, b) => slotIndex(a.slotKey) - slotIndex(b.slotKey)))
+      groups.set(s.exposureId, [...(groups.get(s.exposureId) ?? []), s]);
     const prog = new Map(
       (await this.progression(athleteId, key, loaded)).map((x) => [x.exposureId, x.suggestion]),
     );

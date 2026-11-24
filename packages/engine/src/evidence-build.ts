@@ -82,7 +82,7 @@ function readinessItem(env: EvidenceEnv): EvidenceItem | null {
   return {
     id: 'checkin',
     origin: 'cuestionario',
-    label: `Disposición del check-in (propia, no TRAC) del ${rd.date}`,
+    label: `Disposición del check-in (propia) del ${rd.date}`,
     value: rd.value,
     unit: '/10',
     refs: [{ kind: 'checkin', id: rd.date, date: rd.date }],

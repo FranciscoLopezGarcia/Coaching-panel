@@ -8,20 +8,20 @@ Es **solo lectura** (no escribe nada). Todo valor es un _indicador de rendimient
 
 `GET /api/athletes/:id/performance-projection`
 
-| Query                                    | Tipo                                | Default          | Notas                                                                                                                                                          |
-| ---------------------------------------- | ----------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lift`                                   | `SQ\|BP\|DL`                        | —                | Alguno de `lift`/`exercise`/`exposureId` es obligatorio                                                                                                        |
-| `exercise`                               | string                              | —                | nombre del ejercicio (p. ej. `Squat comp`)                                                                                                                     |
-| `exposureId`                             | string                              | —                | resuelve ejercicio+variante de esa exposición                                                                                                                  |
-| `variantKey`                             | string                              | —                | Si hay varias variantes y no se indica, **no se elige una**: `status:"unavailable"`, `reason:"variant_required"` y `selection.availableVariants`               |
-| `variable`                               | `e1rm_table_rpe\|e1rm_prg_formulas` | `e1rm_table_rpe` | Métodos **separados**; nunca se mezclan ni se cambia de uno a otro en silencio                                                                                 |
-| `source`                                 | string                              | todas            | filtra por origen (`plan`, `hevy`)                                                                                                                             |
-| `cutoff`                                 | `AAAA-MM-DD`                        | hoy              | Nada posterior al corte entra en la serie, el ajuste ni la validación                                                                                          |
-| `horizonDays`                            | int 1–365                           | 28               | horizonte pedido (puede ser limitado: ver `horizon`)                                                                                                           |
-| `macroId` / `blockKey` / `from`+`to`     |                                     |                  | Vista (qué se dibuja). No cambian el entrenamiento salvo `scope=view`                                                                                          |
-| `scope`                                  | `history\|view`                     | `history`        | `history`: ajusta con TODA la historia ≤ corte (incluye lo previo al meso, identificado en `periods.training`); `view`: ajusta solo con el período de la vista |
-| `aggregate`                              | `best\|median`                      | `best`           | Resumen de varias series de una exposición (ver DOMAIN abajo)                                                                                                  |
-| `levelK`, `halfLifeDays`, `rangeNominal` |                                     | ver `config`     | Anulaciones de decisiones operativas                                                                                                                           |
+| Query                                    | Tipo                            | Default          | Notas                                                                                                                                                          |
+| ---------------------------------------- | ------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lift`                                   | `SQ\|BP\|DL`                    | —                | Alguno de `lift`/`exercise`/`exposureId` es obligatorio                                                                                                        |
+| `exercise`                               | string                          | —                | nombre del ejercicio (p. ej. `Squat comp`)                                                                                                                     |
+| `exposureId`                             | string                          | —                | resuelve ejercicio+variante de esa exposición                                                                                                                  |
+| `variantKey`                             | string                          | —                | Si hay varias variantes y no se indica, **no se elige una**: `status:"unavailable"`, `reason:"variant_required"` y `selection.availableVariants`               |
+| `variable`                               | `e1rm_table_rpe\|e1rm_formulas` | `e1rm_table_rpe` | Métodos **separados**; nunca se mezclan ni se cambia de uno a otro en silencio                                                                                 |
+| `source`                                 | string                          | todas            | filtra por origen (`plan` o el origen importado)                                                                                                               |
+| `cutoff`                                 | `AAAA-MM-DD`                    | hoy              | Nada posterior al corte entra en la serie, el ajuste ni la validación                                                                                          |
+| `horizonDays`                            | int 1–365                       | 28               | horizonte pedido (puede ser limitado: ver `horizon`)                                                                                                           |
+| `macroId` / `blockKey` / `from`+`to`     |                                 |                  | Vista (qué se dibuja). No cambian el entrenamiento salvo `scope=view`                                                                                          |
+| `scope`                                  | `history\|view`                 | `history`        | `history`: ajusta con TODA la historia ≤ corte (incluye lo previo al meso, identificado en `periods.training`); `view`: ajusta solo con el período de la vista |
+| `aggregate`                              | `best\|median`                  | `best`           | Resumen de varias series de una exposición (ver DOMAIN abajo)                                                                                                  |
+| `levelK`, `halfLifeDays`, `rangeNominal` |                                 | ver `config`     | Anulaciones de decisiones operativas                                                                                                                           |
 
 Errores: `400` parámetros inválidos o incoherentes (zod): ningún filtro, más de un selector de vista, `scope=view` sin vista, `from > to`, valores fuera de rango; `404` atleta, macro o meso inexistente; `422` `exposureId` inexistente para el atleta. La falta de datos **no es error**: devuelve `200` con `status` `descriptive_only` o `unavailable` y el motivo.
 
@@ -71,8 +71,8 @@ Tendencia descriptiva ≠ proyección condicional a continuidad del patrón ≠ 
 
 Un **indicador de rendimiento**: e1RM por exposición del ejercicio/variante elegido, con UN método a la vez.
 
-- `e1rm_table_rpe` — curva reps×RPE (`rts-curva-default-v1`). Una serie sin RPE real **se excluye** (no se completa con el objetivo; no se convierte en test máximo).
-- `e1rm_prg_formulas` — promedio de 6 fórmulas de repeticiones (reps 2–10, sin RPE). Una serie submáxima subestima la fuerza en una magnitud desconocida; se advierte en `dataQuality.warnings`.
+- `e1rm_table_rpe` — curva reps×RPE (`curva-rpe-v1`). Una serie sin RPE real **se excluye** (no se completa con el objetivo; no se convierte en test máximo).
+- `e1rm_formulas` — promedio de 6 fórmulas de repeticiones (reps 2–10, sin RPE). Una serie submáxima subestima la fuerza en una magnitud desconocida; se advierte en `dataQuality.warnings`.
   Las marcas reales (`realMarks`) y la referencia de fuerza para prescripción (`reference`) son entidades aparte y **no entran en el ajuste**. Variantes distintas no son equivalentes: no se elige una por el usuario ni se extrapola entre ellas (`variant_required`).
 
 ### Protocolo de agregación `exposure-agg-v1`
@@ -129,7 +129,7 @@ npm run seed:synthetic -w @coaching/api -- ./data/demo-proyeccion.sqlite --with-
 PORT=3119 DB_PATH=./data/demo-proyeccion.sqlite npm run dev -w @coaching/api
 curl -s "localhost:3119/api/athletes" | head -c 300           # tomar el id de "DEMO H · serie larga (sintético)"
 curl -s "localhost:3119/api/athletes/$ID/performance-projection?lift=SQ"
-curl -s "localhost:3119/api/athletes/$ID/performance-projection?lift=SQ&variable=e1rm_prg_formulas&blockKey=LARGA-2&scope=view"
+curl -s "localhost:3119/api/athletes/$ID/performance-projection?lift=SQ&variable=e1rm_formulas&blockKey=LARGA-2&scope=view"
 ```
 
 ## Ejemplos (salida real sobre la demo sintética; recortados solo por longitud)
@@ -171,7 +171,7 @@ curl -s "localhost:3119/api/athletes/$ID/performance-projection?lift=SQ&variable
     "unit": "kg",
     "method": {
       "id": "table-rpe",
-      "version": "rts-curva-default-v1"
+      "version": "curva-rpe-v1"
     },
     "indicator": "e1RM por curva RPE (requiere RPE real)"
   },
@@ -188,7 +188,7 @@ curl -s "localhost:3119/api/athletes/$ID/performance-projection?lift=SQ&variable
         "lift": "SQ",
         "exposures": {
           "e1rm_table_rpe": 24,
-          "e1rm_prg_formulas": 30
+          "e1rm_formulas": 30
         }
       }
     ]
@@ -636,7 +636,7 @@ curl -s "localhost:3119/api/athletes/$ID/performance-projection?lift=SQ&variable
   "reasons": [
     {
       "code": "no_rpe",
-      "message": "Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_prg_formulas (otro método, no comparable)."
+      "message": "Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_formulas (otro método, no comparable)."
     }
   ],
   "exclusions": [
@@ -655,12 +655,12 @@ curl -s "localhost:3119/api/athletes/$ID/performance-projection?lift=SQ&variable
       "spanDays": null
     },
     "projection": null,
-    "limitation": "Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_prg_formulas (otro método, no comparable).",
-    "text": "No hay una serie utilizable para describir una tendencia. No disponible: Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_prg_formulas (otro método, no comparable). Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_prg_formulas (otro método, no comparable).",
+    "limitation": "Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_formulas (otro método, no comparable).",
+    "text": "No hay una serie utilizable para describir una tendencia. No disponible: Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_formulas (otro método, no comparable). Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_formulas (otro método, no comparable).",
     "lines": [
       "No hay una serie utilizable para describir una tendencia.",
-      "No disponible: Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_prg_formulas (otro método, no comparable).",
-      "Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_prg_formulas (otro método, no comparable)."
+      "No disponible: Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_formulas (otro método, no comparable).",
+      "Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_formulas (otro método, no comparable)."
     ]
   }
 }
@@ -705,7 +705,7 @@ curl -s "localhost:3119/api/athletes/$ID/performance-projection?lift=SQ&variable
 
 ## Resultados con datos reales (solo lectura, en memoria)
 
-Medido sobre el export personal de Hevy del coach (579 sesiones, 2023-06 a 2026-04), **sin importarlo, sin guardarlo y sin copiarlo al proyecto**; solo agregados. Horizonte 28 días, corte 2026-04-03, variante barra de mayor historia por movimiento:
+Medido sobre el export personal de entrenamientos del coach (579 sesiones, 2023-06 a 2026-04), **sin importarlo, sin guardarlo y sin copiarlo al proyecto**; solo agregados. Horizonte 28 días, corte 2026-04-03, variante barra de mayor historia por movimiento:
 
 | Movimiento   | Método    | Exposiciones    | Estado                                                           | Evaluaciones | MAE baseline (kg) | MAE selector − baseline (kg) | Veredicto    | Cobertura observada (nominal 0,8) |
 | ------------ | --------- | --------------- | ---------------------------------------------------------------- | ------------ | ----------------- | ---------------------------- | ------------ | --------------------------------- |

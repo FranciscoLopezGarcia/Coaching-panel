@@ -1,9 +1,9 @@
 import { RPE_CURVE_VERSION, pctFromCurve } from './tables/rpe.js';
 
 /**
- * %1RM por (reps, RPE) con la curva única de RTS (h = reps + 10 − RPE) [recuperado y medido en la app real].
+ * %1RM por (reps, RPE) con la curva única de referencia (h = reps + 10 − RPE) [recuperado y medido].
  * Versión 2 del cálculo: reemplaza la tabla anterior del proyecto (`rpe-proyecto-v1`), que divergía de la curva por encima de h = 10
- * (107 de 195 celdas; error de copia heredado de PRG). Decisión del proyecto: usar la curva de RTS.
+ * (107 de 195 celdas; error de copia en una tabla alternativa). Decisión del proyecto: usar la curva de referencia.
  *
  * Dominio RECOMENDADO (decisión operativa, el que usan las reglas por defecto): reps 1–15 y RPE 4–10 en pasos de 0,5.
  * Dominio AMPLIO (respaldado por la fuente): reps 1–50, RPE 1–10, h ≤ 50. Se puede pedir explícitamente; fuera del recomendado se advierte.

@@ -35,7 +35,7 @@ export const RULE_NAMES: Record<string, string> = {
   'R-END': 'Fin de respuesta (R-END)',
   'B-TECNICA': 'Bloqueo por técnica no comparable',
   'R-PR': 'Candidato a récord (R-PR)',
-  'R-EXPRESSION-A': 'Expresión · modo A (PRG reconstruido)',
+  'R-EXPRESSION-A': 'Expresión · modo A (reglas de ventana)',
   'R-EXPRESSION-B': 'Expresión · modo B (motor propio)',
   'R-VOLUME': 'Ensayo de volumen (R-VOLUME)',
   'R-FREQUENCY': 'Frecuencia (R-FREQUENCY)',
@@ -69,4 +69,4 @@ export const fmt = (x: number | null | undefined, d = 1): string =>
 
 /** Texto aclaratorio fijo: el sistema informa y propone, el coach decide. */
 export const DISCLAIMER =
-  'El sistema informa, explica y propone. No modifica la programación ni intenta máximos: la decisión es del coach. Las reglas son una propuesta operativa V0.1, no algoritmos de RTS/PRG ni predicciones validadas.';
+  'El sistema informa, explica y propone. No modifica la programación ni intenta máximos: la decisión es del coach. Las reglas son una propuesta operativa V0.1, no algoritmos de terceros ni predicciones validadas.';

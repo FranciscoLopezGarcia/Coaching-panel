@@ -1,13 +1,13 @@
 import type { FastifyInstance } from 'fastify';
-import { loadTableQuerySchema, prgSiTableQuerySchema } from '@coaching/contracts';
+import { loadTableQuerySchema, relSiTableQuerySchema } from '@coaching/contracts';
 import {
   CORE_VERSION,
   FORMULA_TABLE_VERSION,
-  PRG_TABLE_VERSION,
+  ALT_TABLE_VERSION,
   RPE_CURVE_VERSION,
   SI_TABLE_VERSION,
-  efortCurveTable,
-  efortXlTable,
+  effortCurveTable,
+  effortLoadTable,
   formulaTable,
   DIRECT_WEIGHT,
   INDIRECT_WEIGHT,
@@ -20,30 +20,30 @@ import {
   musclesFor,
   patternFor,
   loadTable,
-  prgRpeTable,
-  prgSiTable,
+  altRpeTable,
+  relSiTable,
   repsAtPct,
   rmTable,
   rpeTableFull,
-  rtsSiTable,
+  doubleSiTable,
 } from '@coaching/engine';
 import { z } from 'zod';
 import { parse } from './http.js';
 
-/** Tablas de referencia (no dependen de ningún atleta): RPE↔%1RM, nRM, cargas, fórmulas de PRG y tablas de SI. Solo lectura. */
+/** Tablas de referencia (no dependen de ningún atleta): RPE↔%1RM, nRM, cargas, fórmulas de repeticiones y tablas de SI. Solo lectura. */
 export function registerTableRoutes(app: FastifyInstance): void {
   app.get('/api/tables', async () => ({
     versions: {
       rpe: RPE_CURVE_VERSION,
       formulas: FORMULA_TABLE_VERSION,
-      prgRpe: PRG_TABLE_VERSION,
+      altRpe: ALT_TABLE_VERSION,
       si: SI_TABLE_VERSION,
       core: CORE_VERSION,
     },
     tables: [
       {
         path: '/api/tables/rpe',
-        what: '%1RM por reps (1–50) × RPE (1–10, pasos de 0,5); curva única de RTS; origen por celda y comparación con la tabla anterior del proyecto',
+        what: '%1RM por reps (1–50) × RPE (1–10, pasos de 0,5); curva única de referencia; origen por celda y comparación con la tabla anterior del proyecto',
       },
       { path: '/api/tables/rm', what: '%1RM para n repeticiones al fallo (nRM), n = 1–50' },
       {
@@ -53,21 +53,21 @@ export function registerTableRoutes(app: FastifyInstance): void {
       { path: '/api/tables/load?e1rm=&stepKg=', what: 'cargas (kg) para cada reps × RPE dado un e1RM' },
       {
         path: '/api/tables/formulas',
-        what: '%1RM por fórmula (Epley, Brzycki, Lander, Lombardi, Mayhew, O’Conner) y promedio de PRG, reps 1–36',
+        what: '%1RM por fórmula (Epley, Brzycki, Lander, Lombardi, Mayhew, O’Conner) y promedio de las seis, reps 1–36',
       },
       {
-        path: '/api/tables/prg-rpe',
-        what: 'tabla RPE×reps de PRG (RPE 0,5–10, reps 1–12) con su diferencia frente a RTS',
+        path: '/api/tables/rpe-alt',
+        what: 'tabla RPE×reps alternativa (RPE 0,5–10, reps 1–12) con su diferencia frente a la curva única',
       },
       {
-        path: '/api/tables/si/rts',
-        what: 'SI de RTS (central, periférico, total) reps 1–50 × RPE 1–10; 170 celdas medidas en la app y el resto aproximado',
+        path: '/api/tables/si/doble',
+        what: 'SI doble (central, periférico, total) reps 1–50 × RPE 1–10; 170 celdas medidas y el resto aproximado',
       },
-      { path: '/api/tables/si/efort', what: 'XL de eFort por kg, reps 1–50 × RPE 1–10' },
-      { path: '/api/tables/si/efort-curve', what: 'curva continua de eFort (%1RM por h = reps + RIR)' },
+      { path: '/api/tables/si/esfuerzo', what: 'XL por kg, reps 1–50 × RPE 1–10' },
+      { path: '/api/tables/si/esfuerzo-curva', what: 'curva continua de esfuerzo (%1RM por h = reps + RIR)' },
       {
-        path: '/api/tables/si/prg?pctFrom=&pctTo=&pctStep=&repsMax=',
-        what: 'SI de PRG por % de la referencia × reps × RPE',
+        path: '/api/tables/si/carga-rel?pctFrom=&pctTo=&pctStep=&repsMax=',
+        what: 'SI relativo por % de la referencia × reps × RPE',
       },
     ],
     note: 'Los modelos de SI tienen escalas propias y no se comparan entre sí.',
@@ -87,10 +87,10 @@ export function registerTableRoutes(app: FastifyInstance): void {
     return loadTable(q.e1rm, q.stepKg);
   });
   app.get('/api/tables/formulas', async () => formulaTable());
-  app.get('/api/tables/prg-rpe', async () => prgRpeTable());
-  app.get('/api/tables/si/rts', async () => rtsSiTable());
-  app.get('/api/tables/si/efort', async () => efortXlTable());
-  app.get('/api/tables/si/efort-curve', async () => efortCurveTable());
+  app.get('/api/tables/rpe-alt', async () => altRpeTable());
+  app.get('/api/tables/si/doble', async () => doubleSiTable());
+  app.get('/api/tables/si/esfuerzo', async () => effortLoadTable());
+  app.get('/api/tables/si/esfuerzo-curva', async () => effortCurveTable());
   app.get('/api/tables/muscles', async () => ({
     muscles: {
       version: MUSCLE_CONVENTION_VERSION,
@@ -119,5 +119,5 @@ export function registerTableRoutes(app: FastifyInstance): void {
       mapped: musclesFor(id, exercise) !== null,
     };
   });
-  app.get('/api/tables/si/prg', async (req) => prgSiTable(parse(prgSiTableQuerySchema, req.query)));
+  app.get('/api/tables/si/carga-rel', async (req) => relSiTable(parse(relSiTableQuerySchema, req.query)));
 }

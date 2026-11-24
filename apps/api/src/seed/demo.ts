@@ -2,7 +2,7 @@ import type { ActualSet, CoachReview, PlannedSet, SessionFeedback } from '@coach
 import type { CheckInInput, ParamsInput } from '@coaching/contracts';
 
 /**
- * DATOS 100 % SINTÉTICOS para desarrollo y demo. No provienen de ningún atleta real ni del export de Hevy.
+ * DATOS 100 % SINTÉTICOS para desarrollo y demo. No provienen de ningún atleta real ni de ningún export externo.
  * Las fechas son relativas a "hoy" para que el dashboard se vea siempre con datos recientes.
  */
 export interface DemoAthlete {

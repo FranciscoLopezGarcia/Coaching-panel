@@ -78,6 +78,42 @@ export function registerHistoryRoutes(app: FastifyInstance, ctx: AppContext): vo
     if (!out) throw new NotFoundError('No hay bloques para analizar (o el bloque pedido no existe)');
     return out;
   });
+  // Analizar: una sola respuesta con períodos (semana o sesión), bloques, distribución, récords y TTP. Solo lectura.
+  app.get('/api/athletes/:id/analysis', async (req) => {
+    const { id } = parse(idParam, req.params);
+    await must(id);
+    const q = parse(
+      z.object({
+        asOf: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        from: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        to: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        block: z.string().min(1).optional(),
+        lift: z.enum(['SQ', 'BP', 'DL', 'ALL']).default('ALL'),
+        granularity: z.enum(['week', 'session']).default('week'),
+        /** Origen de la comparación de bloques: lo previsto o lo realizado. */
+        source: z.enum(['planned', 'actual']).default('actual'),
+      }),
+      req.query,
+    );
+    return await ctx.analysis.build(id, {
+      asOf: q.asOf ?? ctx.today(),
+      from: q.from,
+      to: q.to,
+      block: q.block,
+      lift: q.lift,
+      granularity: q.granularity,
+      blocksSource: q.source,
+    });
+  });
   app.get('/api/athletes/:id/compare', async (req) => {
     const { id } = parse(idParam, req.params);
     await must(id);

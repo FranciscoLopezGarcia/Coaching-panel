@@ -501,6 +501,37 @@ export function moveSession(
   );
 }
 
+/* ---------------- Orden de los ejercicios dentro de una sesión ---------------- */
+
+/** Posición del ejercicio dentro de la sesión, guardada en el sufijo `:e<N>` de `slotKey`. Sin sufijo → al final. */
+export function slotIndex(slotKey: string): number {
+  const m = /:e(\d+)$/.exec(slotKey);
+  return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+/**
+ * Fija el orden de los ejercicios de una sesión (por nombre). Solo cambia `slotKey` (ubicación): ids, series y exposureId quedan igual.
+ * Los ejercicios que no aparezcan en `order` van al final en su orden actual; los nombres que no existan se ignoran.
+ */
+export function reorderExercises(
+  sets: PlannedSet[],
+  o: { sessionKey: string; order: string[] },
+): PlannedSet[] {
+  const mine = sets.filter((s) => s.sessionKey === o.sessionKey);
+  if (!mine.length) throw new ProgramError(`No existe la sesión ${o.sessionKey}.`);
+  const present: string[] = [];
+  for (const s of [...mine].sort((a, b) => slotIndex(a.slotKey) - slotIndex(b.slotKey) || a.setNo - b.setNo))
+    if (!present.includes(s.exerciseName)) present.push(s.exerciseName);
+  const wanted = o.order.filter((n, i) => present.includes(n) && o.order.indexOf(n) === i);
+  const finalOrder = [...wanted, ...present.filter((n) => !wanted.includes(n))];
+  return sets.map((s) => {
+    if (s.sessionKey !== o.sessionKey) return s;
+    const i = finalOrder.indexOf(s.exerciseName);
+    const base = s.slotKey.replace(/:e\d+$/, '');
+    return { ...s, slotKey: `${base}:e${i}` };
+  });
+}
+
 /* ---------------- Vista previa ---------------- */
 
 export interface PlannedAvailability {
@@ -544,7 +575,7 @@ export function plannedAvailability(sets: PlannedSet[]): PlannedAvailability[] {
           missing: noKg + noRef ? [`${noKg + noRef} serie(s) sin carga o sin referencia de fuerza`] : [],
         },
         {
-          id: 'si_rts_total',
+          id: 'si_doble_total',
           status: st(noRpe, v.length),
           missing: noRpe
             ? [`${noRpe} serie(s) sin RPE objetivo: el SI planificado no se completa con supuestos`]

@@ -5,16 +5,17 @@ import { pendingEvaluation } from '../laboratory/freshness';
 import { useEffect, useState } from 'react';
 import type { DecisionRow, Lift } from '@coaching/contracts';
 import { api } from '../api/client';
-import { useLoad } from '../hooks';
+import { useLoad, watchAthlete } from '../hooks';
+import { PlanMarksProvider } from '../workspace/planMarks';
 import { Async } from '../components/Async';
 import { StatusBadge } from '../components/StatusBadge';
 import { LIFT_NAMES } from '../labels';
 import { workspaceApi as w } from '../workspace/api';
 import { WeekOverview } from '../workspace/WeekOverview';
 import { Programming } from '../workspace/Programming';
-import { Analysis } from '../workspace/Analysis';
+import { AnalysisPage } from '../analysis/AnalysisPage';
 import { Registration } from '../workspace/Registration';
-import { EvidenceDialog } from '../workspace/FollowUp';
+import { EvidenceDialog } from '../workspace/EvidenceDialog';
 import { Settings } from '../workspace/Settings';
 import { AthleteAccess } from '../workspace/AthleteAccess';
 import { DeleteAthleteDialog, EditAthleteDialog } from '../workspace/AthleteAdmin';
@@ -90,6 +91,7 @@ export function AthletePage({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => watchAthlete(id), [id]);
   const [pending, setPending] = useState(() => pendingEvaluation(id));
   const [resultVersion, setResultVersion] = useState(0);
   useEffect(() => {
@@ -162,426 +164,424 @@ export function AthletePage({ id }: { id: string }) {
     context.data?.macros.find((m) => m.id === macro)?.name ??
     (macro ? 'Macro seleccionado' : 'Sin macro');
   return (
-    <Async state={data}>
-      {(athlete) => (
-        <section className={`athlete-page ${tab === 'registro' ? 'recording' : ''}`}>
-          {dialog === 'edit' && (
-            <EditAthleteDialog
-              id={id}
-              name={athlete.name}
-              competition={athlete.competitionExercises}
-              onClose={() => setDialog('')}
-              onSaved={refresh}
-            />
-          )}
-          {dialog === 'delete' && (
-            <DeleteAthleteDialog
-              id={id}
-              name={athlete.name}
-              onClose={() => setDialog('')}
-              onDeleted={() => {
-                setDialog('');
-                window.location.hash = '#/?focus=plantel';
-              }}
-            />
-          )}
-          <div className="row between">
-            <a className="back-link" href="#/">
-              ← Volver al plantel
-            </a>
-            <button onClick={() => select({ tab: tab === 'registro' ? 'resumen' : 'registro' })}>
-              {tab === 'registro' ? 'Volver al coach' : 'Vista atleta · demo local ↗'}
-            </button>
-          </div>
-          <div className="row between athlete-heading">
-            <div className="row">
-              <span className="avatar">
-                {athlete.name
-                  .split(' ')
-                  .map((x) => x[0])
-                  .slice(0, 2)
-                  .join('')}
-              </span>
-              <div>
-                <h1>{athlete.name}</h1>
-                <p className="small muted">
-                  {athlete.evaluation
-                    ? `Evaluado al ${athlete.evaluation.cutoff} · ${athlete.evaluation.rulesVersion}`
-                    : 'Sin evaluación disponible'}
-                </p>
-                <div className="row">
-                  <button type="button" onClick={() => setDialog('edit')}>
-                    Editar perfil
-                  </button>
-                  <button type="button" className="danger" onClick={() => setDialog('delete')}>
-                    Eliminar atleta
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="row">
-              <label>
-                Fecha de análisis
-                <input
-                  type="date"
-                  value={cutoff}
-                  onChange={(e) =>
-                    e.target.value &&
-                    select({
-                      cutoff: e.target.value,
-                      to: e.target.value,
-                      ...(from > e.target.value ? { from: shift(e.target.value, -55) } : {}),
-                    })
-                  }
-                />
-              </label>
-              <button
-                disabled={busy}
-                onClick={async () => {
-                  setBusy(true);
-                  setError('');
-                  try {
-                    await api.evaluate(id, cutoff || undefined);
-                    refresh();
-                  } catch (e) {
-                    setError((e as Error).message);
-                  } finally {
-                    setBusy(false);
-                  }
-                }}
-              >
-                {busy ? 'Evaluando…' : 'Actualizar evaluación'}
-              </button>
-            </div>
-          </div>
-          <div className="athlete-actions" aria-label="Acciones del atleta">
-            {[
-              ['plan', 'PROGRAMAR', 'Distribución y protocolos'],
-              ['analisis', 'ANALIZAR', 'Evolución y evidencia'],
-            ].map(([key, label, hint]) => (
-              <button
-                key={key}
-                className={tab === key ? 'selected' : ''}
-                onClick={() => select({ tab: key ?? 'resumen' })}
-              >
-                <span>{label}</span>
-                <small>{hint}</small>
-                <b>↗</b>
-              </button>
-            ))}
-          </div>
-          <div className="context-strip">
-            <button
-              title="Historial de macros"
-              onClick={() => select({ tab: 'plan', block: null, week: null, session: null, context: '1' })}
-            >
-              <small>MACRO ↗</small>
-              <strong>{context.loading && !context.data ? 'Cargando…' : effectiveMacro}</strong>
-            </button>
-            <button onClick={() => select({ tab: 'plan', week: null, session: null, context: '1' })}>
-              <small>MESO ↗</small>
-              <strong>
-                {context.loading && !context.data ? 'Cargando…' : (meso?.name ?? (block || 'Sin meso'))}
-              </strong>
-            </button>
-            <button onClick={() => select({ tab: 'plan', session: null })}>
-              <small>SEMANA ↗</small>
-              <strong>
-                {context.loading && !context.data ? 'Cargando…' : week ? `S${week}` : 'Sin selección'}
-              </strong>
-            </button>
-            <div className="period-picker">
-              <small>PERÍODO DE ANÁLISIS</small>
-              <div className="row">
-                <input
-                  type="date"
-                  aria-label="Período desde"
-                  value={from}
-                  max={to}
-                  onChange={(e) => e.target.value && select({ from: e.target.value })}
-                />
-                <span aria-hidden>→</span>
-                <input
-                  type="date"
-                  aria-label="Período hasta"
-                  value={to}
-                  min={from}
-                  onChange={(e) => e.target.value && select({ to: e.target.value })}
-                />
-                <select
-                  aria-label="Atajos de período"
-                  value=""
-                  onChange={(e) => {
-                    const p = periodPresets(context.data?.mesos ?? [], cutoff).find(
-                      (x) => x.id === e.target.value,
-                    );
-                    if (p) select({ from: p.from, to: p.to });
-                  }}
-                >
-                  <option value="">Atajos…</option>
-                  {periodPresets(context.data?.mesos ?? [], cutoff).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-          {!!context.data?.active?.otherActiveMacros?.length && (
-            <Message>
-              Hay varios macros activos. La API seleccionó «{context.data.active.name}». Podés elegir otro
-              desde el macro (arriba).
-            </Message>
-          )}
-          {context.error && (
-            <Message error>
-              Contexto de programación: {context.error}
-              <button onClick={context.reload}>Reintentar</button>
-            </Message>
-          )}
-          {error && <Message error>{error}</Message>}
-          {(state.data?.freshness?.inputsChangedSinceEvaluation ?? !!pending) ? (
-            <Message>
-              Datos guardados · evaluación pendiente de actualizar. Elegí la fecha y pulsá «Actualizar
-              evaluación». Las conclusiones anteriores pueden estar desactualizadas.
-            </Message>
-          ) : (
-            athlete.evaluation && (
-              <p className="small muted" role="status">
-                Evaluación guardada al {athlete.evaluation.cutoff}
-                {athlete.evaluation.cutoff !== cutoff ? ' · La fecha seleccionada aún no fue evaluada.' : ''}
-              </p>
-            )
-          )}
-          {pending && state.data?.freshness?.inputsChangedSinceEvaluation === false && (
-            <p role="status" className="small muted">
-              Datos guardados. Las entradas de la evaluación al corte {state.data.freshness.evaluatedCutoff}{' '}
-              no cambiaron. Para analizar registros posteriores, elegí otra fecha y actualizá.
-            </p>
-          )}
-          {state.data?.freshness?.inputsChangedSinceEvaluation === null && (
-            <p className="small muted">
-              La evaluación guardada no tiene huella de vigencia. Actualizala para verificar cambios entre
-              clientes.
-            </p>
-          )}
-          {tab !== 'registro' && (
-            <nav className="athlete-tabs" aria-label="Secciones del atleta">
-              {tabs.map(([key, label]) => (
-                <button
-                  key={key}
-                  className={tab === key ? 'on' : ''}
-                  aria-current={tab === key ? 'page' : undefined}
-                  onClick={() => select({ tab: key })}
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
-          )}
-          {tab === 'resumen' && (
-            <>
-              <AgendaCard
+    <PlanMarksProvider id={id}>
+      <Async state={data}>
+        {(athlete) => (
+          <section className={`athlete-page ${tab === 'registro' ? 'recording' : ''}`}>
+            {dialog === 'edit' && (
+              <EditAthleteDialog
                 id={id}
-                onOpen={(sessionKey) => select({ tab: 'plan', session: sessionKey, context: '1' })}
+                name={athlete.name}
+                competition={athlete.competitionExercises}
+                onClose={() => setDialog('')}
+                onSaved={refresh}
               />
-              <section className="summary-cta">
+            )}
+            {dialog === 'delete' && (
+              <DeleteAthleteDialog
+                id={id}
+                name={athlete.name}
+                onClose={() => setDialog('')}
+                onDeleted={() => {
+                  setDialog('');
+                  window.location.hash = '#/?focus=plantel';
+                }}
+              />
+            )}
+            <div className="row between">
+              <a className="back-link" href="#/">
+                ← Volver al plantel
+              </a>
+              <button onClick={() => select({ tab: tab === 'registro' ? 'resumen' : 'registro' })}>
+                {tab === 'registro' ? 'Volver al coach' : 'Vista atleta · demo local ↗'}
+              </button>
+            </div>
+            <div className="row between athlete-heading">
+              <div className="row">
+                <span className="avatar">
+                  {athlete.name
+                    .split(' ')
+                    .map((x) => x[0])
+                    .slice(0, 2)
+                    .join('')}
+                </span>
                 <div>
-                  <h2>Resultado de los bloques</h2>
+                  <h1>{athlete.name}</h1>
                   <p className="small muted">
-                    NL, SI, tonelaje, e1RM, comparativas y detalle por semana están en un solo lugar:
-                    Analizar.
+                    {athlete.evaluation
+                      ? `Evaluado al ${athlete.evaluation.cutoff} · ${athlete.evaluation.rulesVersion}`
+                      : 'Sin evaluación disponible'}
                   </p>
-                </div>
-                <button className="primary" onClick={() => select({ tab: 'analisis' })}>
-                  Ir a Analizar →
-                </button>
-              </section>
-              <details className="coach-context" open>
-                <summary>Estado del atleta, recomendaciones y semana actual</summary>
-                <div className="section-heading row between">
-                  <div>
-                    <h2>Qué está pasando</h2>
-                    <p className="small muted">Rendimiento y próximas decisiones</p>
+                  <div className="row">
+                    <button type="button" onClick={() => setDialog('edit')}>
+                      Editar perfil
+                    </button>
+                    <button type="button" className="danger" onClick={() => setDialog('delete')}>
+                      Eliminar atleta
+                    </button>
                   </div>
                 </div>
-                {!athlete.evaluation && (
-                  <Empty title="Todavía no hay conclusiones">
-                    Actualizá la evaluación para consultar hallazgos y evidencia.
-                  </Empty>
-                )}
-                <div className="lift-grid">
-                  {(['SQ', 'BP', 'DL'] as Lift[]).map((l) => {
-                    const lift = state.data?.lifts[l];
-                    const last = performance.data?.[l]?.exposures.filter((e) => e.e !== null).at(-1);
-                    const row =
-                      athlete.decisions.find((d) => d.key === lift?.principal?.key) ??
-                      athlete.decisions.find(
-                        (d) => d.lift === l && d.isPrincipal && d.validity === 'vigente',
-                      );
-                    return (
-                      <article className="lift-card" data-lift={l} key={l}>
-                        <div className="row between">
-                          <span className="lift-symbol">{l}</span>
-                          <StatusBadge status={lift?.principal?.status ?? row?.status} />
-                        </div>
-                        <h3>{LIFT_NAMES[l]}</h3>
-                        <div className="lift-reading">
-                          <small>ÚLTIMO e1RM · CURVA RPE</small>
-                          <strong className="lift-value">
-                            {last ? number(last.e) + ' kg' : '—'}{' '}
-                            <span>
-                              {last
-                                ? dateLabel(last.date)
-                                : performance.loading
-                                  ? 'Calculando…'
-                                  : performance.error
-                                    ? 'No se pudo calcular'
-                                    : 'Sin estimación'}
-                            </span>
-                          </strong>
-                        </div>
-                        <p
-                          className={
-                            row?.status === 'revision_coach' ? 'brief-signal critical' : 'brief-signal'
-                          }
-                        >
-                          {lift?.principal?.headline ??
-                            row?.summary ??
-                            'Completá los registros para analizar la evolución.'}
-                        </p>
-                        <details className="conclusion-detail" open={row?.status === 'revision_coach'}>
-                          <summary>Qué pasa</summary>
-                          <p className="principal-conclusion">
-                            {lift?.principal?.headline ??
-                              row?.summary ??
-                              'Sin datos suficientes para una conclusión.'}
-                          </p>
-                          {row?.proposal && <p className="proposal">{row.proposal}</p>}
-                        </details>
-                        {row ? (
-                          <button className="text-button" onClick={() => setEvidence(row)}>
-                            Por qué · abrir evidencia →
-                          </button>
-                        ) : (
-                          <p className="small muted">Evaluá o completá los registros.</p>
-                        )}
-                        <details>
-                          <summary>Rendimiento, recuperación y respuesta</summary>
-                          {lift?.dimensions.map((d) => (
-                            <div key={d.id} className="dimension">
-                              <strong>{d.id.replaceAll('_', ' ')}</strong>
-                              <span className="chip">{d.status.replaceAll('_', ' ')}</span>
-                              <p>{d.summary}</p>
-                              {row && (
-                                <button onClick={() => setEvidence(row)}>
-                                  Evidencia de la conclusión principal
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                          {lift?.sequence.map((x, i) => (
-                            <p className="small muted" key={i}>
-                              {x}
-                            </p>
-                          ))}
-                          {!lift && <p>Estado multidimensional no disponible.</p>}
-                        </details>
-                      </article>
-                    );
-                  })}
-                </div>
-                {state.error && <Message error>{state.error}</Message>}
-                {state.data?.legacyEvaluation && (
-                  <Message>
-                    Resultado obsoleto: la evaluación requiere actualización con la versión actual del motor.
-                  </Message>
-                )}
-                {!!state.data?.missingConfig.length && (
-                  <details className="message">
-                    <summary>
-                      Interpretaciones limitadas · falta configuración ({state.data.missingConfig.length})
-                    </summary>
-                    {state.data.missingConfig.map((m, i) => (
-                      <p key={i}>
-                        {m.lift} · {m.label}. Interpretaciones suspendidas: {m.suspends.join(', ')}.
-                      </p>
-                    ))}
-                    <button onClick={() => select({ tab: 'config' })}>Completar parámetros</button>
-                  </details>
-                )}
-                <WeekOverview
-                  sessions={
-                    context.data?.sessions.filter((s) => s.blockKey === block && s.weekNo === week) ?? []
-                  }
-                  week={week}
-                  loading={context.loading && !context.data}
-                  onSelect={select}
-                />
-                <details className="recent-changes">
-                  <summary>Cambios recientes del plan</summary>
-                  <RecentChanges id={id} />
-                </details>
-              </details>
-              <details className="card" open={recovery}>
-                <summary
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setRecovery(!recovery);
+              </div>
+              <div className="row">
+                <label>
+                  Fecha de análisis
+                  <input
+                    type="date"
+                    value={cutoff}
+                    onChange={(e) =>
+                      e.target.value &&
+                      select({
+                        cutoff: e.target.value,
+                        to: e.target.value,
+                        ...(from > e.target.value ? { from: shift(e.target.value, -55) } : {}),
+                      })
+                    }
+                  />
+                </label>
+                <button
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    setError('');
+                    try {
+                      await api.evaluate(id, cutoff || undefined);
+                      refresh();
+                    } catch (e) {
+                      setError((e as Error).message);
+                    } finally {
+                      setBusy(false);
+                    }
                   }}
                 >
-                  Recuperación y revisión técnica
-                </summary>
-                {recovery && (
-                  <>
-                    <RecoveryTab id={id} />
-                    <SessionsTab id={id} onChanged={refresh} />
-                  </>
-                )}
-              </details>
-            </>
-          )}
-          {tab === 'plan' && (
-            <Programming
-              id={id}
-              macro={macro}
-              block={block}
-              week={week}
-              session={session}
-              onSelect={select}
-              onChanged={refresh}
-            />
-          )}
-          {tab === 'analisis' && (
-            <Analysis
-              key={resultVersion + cutoff}
-              cutoff={cutoff}
-              id={id}
-              from={from}
-              to={to}
-              onPeriod={(f, t) => select({ from: f, to: t })}
-            />
-          )}
-          {tab === 'perfil' && <ProfilePanel id={id} />}
-          {tab === 'competencias' && <CompetitionsPanel id={id} />}
-          {tab === 'config' && (
-            <>
-              <Settings id={id} athlete={athlete} onChanged={refresh} />
-              <LibraryPanel />
-              <section className="card" id="acceso-atleta">
-                <h2>Acceso del atleta</h2>
-                <AthleteAccess id={id} />
-              </section>
-            </>
-          )}
-          {tab === 'registro' && (
-            <Registration id={id} session={session} onSelect={select} onChanged={refresh} />
-          )}
-          {evidence && <EvidenceDialog id={id} row={evidence} onClose={() => setEvidence(null)} />}
-        </section>
-      )}
-    </Async>
+                  {busy ? 'Evaluando…' : 'Actualizar evaluación'}
+                </button>
+              </div>
+            </div>
+            <div className="athlete-actions" aria-label="Acciones del atleta">
+              {[
+                ['plan', 'PROGRAMAR', 'Distribución y protocolos'],
+                ['analisis', 'ANALIZAR', 'Evolución y evidencia'],
+              ].map(([key, label, hint]) => (
+                <button
+                  key={key}
+                  className={tab === key ? 'selected' : ''}
+                  onClick={() => select({ tab: key ?? 'resumen' })}
+                >
+                  <span>{label}</span>
+                  <small>{hint}</small>
+                  <b>↗</b>
+                </button>
+              ))}
+            </div>
+            <div className="context-strip">
+              <button
+                title="Historial de macros"
+                onClick={() => select({ tab: 'plan', block: null, week: null, session: null, context: '1' })}
+              >
+                <small>MACRO ↗</small>
+                <strong>{context.loading && !context.data ? 'Cargando…' : effectiveMacro}</strong>
+              </button>
+              <button onClick={() => select({ tab: 'plan', week: null, session: null, context: '1' })}>
+                <small>MESO ↗</small>
+                <strong>
+                  {context.loading && !context.data ? 'Cargando…' : (meso?.name ?? (block || 'Sin meso'))}
+                </strong>
+              </button>
+              <button onClick={() => select({ tab: 'plan', session: null })}>
+                <small>SEMANA ↗</small>
+                <strong>
+                  {context.loading && !context.data ? 'Cargando…' : week ? `S${week}` : 'Sin selección'}
+                </strong>
+              </button>
+              <div className="period-picker">
+                <small>PERÍODO DE ANÁLISIS</small>
+                <div className="row">
+                  <input
+                    type="date"
+                    aria-label="Período desde"
+                    value={from}
+                    max={to}
+                    onChange={(e) => e.target.value && select({ from: e.target.value })}
+                  />
+                  <span aria-hidden>→</span>
+                  <input
+                    type="date"
+                    aria-label="Período hasta"
+                    value={to}
+                    min={from}
+                    onChange={(e) => e.target.value && select({ to: e.target.value })}
+                  />
+                  <select
+                    aria-label="Atajos de período"
+                    value=""
+                    onChange={(e) => {
+                      const p = periodPresets(context.data?.mesos ?? [], cutoff).find(
+                        (x) => x.id === e.target.value,
+                      );
+                      if (p) select({ from: p.from, to: p.to });
+                    }}
+                  >
+                    <option value="">Atajos…</option>
+                    {periodPresets(context.data?.mesos ?? [], cutoff).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+            {!!context.data?.active?.otherActiveMacros?.length && (
+              <Message>
+                Hay varios macros activos. La API seleccionó «{context.data.active.name}». Podés elegir otro
+                desde el macro (arriba).
+              </Message>
+            )}
+            {context.error && (
+              <Message error>
+                Contexto de programación: {context.error}
+                <button onClick={context.reload}>Reintentar</button>
+              </Message>
+            )}
+            {error && <Message error>{error}</Message>}
+            {(state.data?.freshness?.inputsChangedSinceEvaluation ?? !!pending) ? (
+              <Message>
+                Datos guardados · evaluación pendiente de actualizar. Elegí la fecha y pulsá «Actualizar
+                evaluación». Las conclusiones anteriores pueden estar desactualizadas.
+              </Message>
+            ) : (
+              athlete.evaluation && (
+                <p className="small muted" role="status">
+                  Evaluación guardada al {athlete.evaluation.cutoff}
+                  {athlete.evaluation.cutoff !== cutoff
+                    ? ' · La fecha seleccionada aún no fue evaluada.'
+                    : ''}
+                </p>
+              )
+            )}
+            {pending && state.data?.freshness?.inputsChangedSinceEvaluation === false && (
+              <p role="status" className="small muted">
+                Datos guardados. Las entradas de la evaluación al corte {state.data.freshness.evaluatedCutoff}{' '}
+                no cambiaron. Para analizar registros posteriores, elegí otra fecha y actualizá.
+              </p>
+            )}
+            {state.data?.freshness?.inputsChangedSinceEvaluation === null && (
+              <p className="small muted">
+                La evaluación guardada no tiene huella de vigencia. Actualizala para verificar cambios entre
+                clientes.
+              </p>
+            )}
+            {tab !== 'registro' && (
+              <nav className="athlete-tabs" aria-label="Secciones del atleta">
+                {tabs.map(([key, label]) => (
+                  <button
+                    key={key}
+                    className={tab === key ? 'on' : ''}
+                    aria-current={tab === key ? 'page' : undefined}
+                    onClick={() => select({ tab: key })}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+            )}
+            {tab === 'resumen' && (
+              <>
+                <AgendaCard
+                  id={id}
+                  onOpen={(sessionKey) => select({ tab: 'plan', session: sessionKey, context: '1' })}
+                />
+                <section className="summary-cta">
+                  <div>
+                    <h2>Resultado de los bloques</h2>
+                    <p className="small muted">
+                      NL, SI, tonelaje, e1RM, comparativas y detalle por semana están en un solo lugar:
+                      Analizar.
+                    </p>
+                  </div>
+                  <button className="primary" onClick={() => select({ tab: 'analisis' })}>
+                    Ir a Analizar →
+                  </button>
+                </section>
+                <details className="coach-context" open>
+                  <summary>Estado del atleta, recomendaciones y semana actual</summary>
+                  <div className="section-heading row between">
+                    <div>
+                      <h2>Qué está pasando</h2>
+                      <p className="small muted">Rendimiento y próximas decisiones</p>
+                    </div>
+                  </div>
+                  {!athlete.evaluation && (
+                    <Empty title="Todavía no hay conclusiones">
+                      Actualizá la evaluación para consultar hallazgos y evidencia.
+                    </Empty>
+                  )}
+                  <div className="lift-grid">
+                    {(['SQ', 'BP', 'DL'] as Lift[]).map((l) => {
+                      const lift = state.data?.lifts[l];
+                      const last = performance.data?.[l]?.exposures.filter((e) => e.e !== null).at(-1);
+                      const row =
+                        athlete.decisions.find((d) => d.key === lift?.principal?.key) ??
+                        athlete.decisions.find(
+                          (d) => d.lift === l && d.isPrincipal && d.validity === 'vigente',
+                        );
+                      return (
+                        <article className="lift-card" data-lift={l} key={l}>
+                          <div className="row between">
+                            <span className="lift-symbol">{l}</span>
+                            <StatusBadge status={lift?.principal?.status ?? row?.status} />
+                          </div>
+                          <h3>{LIFT_NAMES[l]}</h3>
+                          <div className="lift-reading">
+                            <small>ÚLTIMO e1RM · CURVA RPE</small>
+                            <strong className="lift-value">
+                              {last ? number(last.e) + ' kg' : '—'}{' '}
+                              <span>
+                                {last
+                                  ? dateLabel(last.date)
+                                  : performance.loading
+                                    ? 'Calculando…'
+                                    : performance.error
+                                      ? 'No se pudo calcular'
+                                      : 'Sin estimación'}
+                              </span>
+                            </strong>
+                          </div>
+                          <p
+                            className={
+                              row?.status === 'revision_coach' ? 'brief-signal critical' : 'brief-signal'
+                            }
+                          >
+                            {lift?.principal?.headline ??
+                              row?.summary ??
+                              'Completá los registros para analizar la evolución.'}
+                          </p>
+                          <details className="conclusion-detail" open={row?.status === 'revision_coach'}>
+                            <summary>Qué pasa</summary>
+                            <p className="principal-conclusion">
+                              {lift?.principal?.headline ??
+                                row?.summary ??
+                                'Sin datos suficientes para una conclusión.'}
+                            </p>
+                            {row?.proposal && <p className="proposal">{row.proposal}</p>}
+                          </details>
+                          {row ? (
+                            <button className="text-button" onClick={() => setEvidence(row)}>
+                              Por qué · abrir evidencia →
+                            </button>
+                          ) : (
+                            <p className="small muted">Evaluá o completá los registros.</p>
+                          )}
+                          <details>
+                            <summary>Rendimiento, recuperación y respuesta</summary>
+                            {lift?.dimensions.map((d) => (
+                              <div key={d.id} className="dimension">
+                                <strong>{d.id.replaceAll('_', ' ')}</strong>
+                                <span className="chip">{d.status.replaceAll('_', ' ')}</span>
+                                <p>{d.summary}</p>
+                                {row && (
+                                  <button onClick={() => setEvidence(row)}>
+                                    Evidencia de la conclusión principal
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {lift?.sequence.map((x, i) => (
+                              <p className="small muted" key={i}>
+                                {x}
+                              </p>
+                            ))}
+                            {!lift && <p>Estado multidimensional no disponible.</p>}
+                          </details>
+                        </article>
+                      );
+                    })}
+                  </div>
+                  {state.error && <Message error>{state.error}</Message>}
+                  {state.data?.legacyEvaluation && (
+                    <Message>
+                      Resultado obsoleto: la evaluación requiere actualización con la versión actual del
+                      motor.
+                    </Message>
+                  )}
+                  {!!state.data?.missingConfig.length && (
+                    <details className="message">
+                      <summary>
+                        Interpretaciones limitadas · falta configuración ({state.data.missingConfig.length})
+                      </summary>
+                      {state.data.missingConfig.map((m, i) => (
+                        <p key={i}>
+                          {m.lift} · {m.label}. Interpretaciones suspendidas: {m.suspends.join(', ')}.
+                        </p>
+                      ))}
+                      <button onClick={() => select({ tab: 'config' })}>Completar parámetros</button>
+                    </details>
+                  )}
+                  <WeekOverview
+                    sessions={
+                      context.data?.sessions.filter((s) => s.blockKey === block && s.weekNo === week) ?? []
+                    }
+                    week={week}
+                    loading={context.loading && !context.data}
+                    onSelect={select}
+                  />
+                  <details className="recent-changes">
+                    <summary>Cambios recientes del plan</summary>
+                    <RecentChanges id={id} />
+                  </details>
+                </details>
+                <details className="card" open={recovery}>
+                  <summary
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setRecovery(!recovery);
+                    }}
+                  >
+                    Recuperación y revisión técnica
+                  </summary>
+                  {recovery && (
+                    <>
+                      <RecoveryTab id={id} />
+                      <SessionsTab id={id} onChanged={refresh} />
+                    </>
+                  )}
+                </details>
+              </>
+            )}
+            {tab === 'plan' && (
+              <Programming
+                id={id}
+                macro={macro}
+                block={block}
+                week={week}
+                session={session}
+                onSelect={select}
+                onChanged={refresh}
+              />
+            )}
+            {tab === 'analisis' && (
+              <AnalysisPage key={resultVersion + cutoff} cutoff={cutoff} id={id} from={from} to={to} />
+            )}
+            {tab === 'perfil' && <ProfilePanel id={id} />}
+            {tab === 'competencias' && <CompetitionsPanel id={id} />}
+            {tab === 'config' && (
+              <>
+                <Settings id={id} athlete={athlete} onChanged={refresh} />
+                <LibraryPanel />
+                <section className="card" id="acceso-atleta">
+                  <h2>Acceso del atleta</h2>
+                  <AthleteAccess id={id} />
+                </section>
+              </>
+            )}
+            {tab === 'registro' && (
+              <Registration id={id} session={session} onSelect={select} onChanged={refresh} />
+            )}
+            {evidence && <EvidenceDialog id={id} row={evidence} onClose={() => setEvidence(null)} />}
+          </section>
+        )}
+      </Async>
+    </PlanMarksProvider>
   );
 }
 

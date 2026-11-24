@@ -3,6 +3,7 @@ import {
   applyBlockTemplate,
   applyTemplate,
   removeSets,
+  reorderExercises,
   resolvePlannedKg,
   segmentKeyOf,
   changeProtocol,
@@ -110,6 +111,9 @@ export class ProgrammingService {
           break;
         case 'move_session':
           after = moveSession(current, op);
+          break;
+        case 'reorder_exercises':
+          after = reorderExercises(current, op);
           break;
         case 'remove_sets': {
           const r = removeSets(current, op.selection);

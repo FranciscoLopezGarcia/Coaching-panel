@@ -1,6 +1,7 @@
 import { blockCompliance } from './compliance.js';
 import { intensityZones } from './zones.js';
-import { blockMetrics, type BlockMetrics } from '../metrics.js';
+import { median } from '../format.js';
+import { blockMetrics, type BlockMetrics, type WeekMetrics } from '../metrics.js';
 import { SI_MODEL } from '../si.js';
 import type { ActualSet, Lift, PlannedSet } from '../types.js';
 import { toViews, type SetView } from '../views.js';
@@ -12,6 +13,7 @@ import {
   type ExerciseChange,
   type MetricRow,
   type MetricSource,
+  type Spread,
 } from './contracts.js';
 import { delta } from './delta.js';
 import { selectRecentBlocks } from './select.js';
@@ -35,32 +37,77 @@ interface Spec {
   pp?: boolean;
   family?: string;
   get: (m: BlockMetrics) => number | null;
+  /** Valor de una semana (misma magnitud y unidad que `get`). */
+  week: (w: WeekMetrics) => number | null;
 }
 
 const SPECS: Spec[] = [
-  { id: 'nl_per_week', unit: 'reps/sem', get: (m) => m.perWeek.nl },
-  { id: 'sets_per_week', unit: 'series/sem', get: (m) => m.perWeek.sets },
+  { id: 'nl_per_week', unit: 'reps/sem', get: (m) => m.perWeek.nl, week: (w) => w.nl },
+  { id: 'sets_per_week', unit: 'series/sem', get: (m) => m.perWeek.sets, week: (w) => w.sets },
   {
     id: 'tonnage_per_week',
     unit: 'kg·rep/sem',
     get: (m) => (m.totals.tonnage === null ? null : m.totals.tonnage / m.weeks.length),
+    week: (w) => w.tonnage,
   },
-  { id: 'frequency_per_week', unit: 'sesiones/sem', get: (m) => m.perWeek.frequency },
+  {
+    id: 'frequency_per_week',
+    unit: 'sesiones/sem',
+    get: (m) => m.perWeek.frequency,
+    week: (w) => w.frequency,
+  },
   {
     id: 'intensity_pct_sets',
     unit: '%1RM',
     pp: true,
     get: (m) => (m.perWeek.meanPct === null ? null : 100 * m.perWeek.meanPct),
+    week: (w) => (w.meanPct === null ? null : 100 * w.meanPct),
   },
   {
     id: 'intensity_pct_reps',
     unit: '%1RM',
     pp: true,
     get: (m) => (m.perWeek.meanPctByReps === null ? null : 100 * m.perWeek.meanPctByReps),
+    week: (w) => (w.meanPctByReps === null ? null : 100 * w.meanPctByReps),
   },
-  { id: 'rpe_mean', unit: 'RPE', get: (m) => m.perWeek.meanRpe },
-  { id: 'si_total_per_week', unit: 'SI/sem', family: SI_MODEL, get: (m) => m.perWeek.si?.total ?? null },
+  { id: 'rpe_mean', unit: 'RPE', get: (m) => m.perWeek.meanRpe, week: (w) => w.meanRpe },
+  {
+    id: 'si_total_per_week',
+    unit: 'SI/sem',
+    family: SI_MODEL,
+    get: (m) => m.perWeek.si?.total ?? null,
+    week: (w) => w.si?.total ?? null,
+  },
+  {
+    id: 'si_central_per_week',
+    unit: 'SI/sem',
+    family: SI_MODEL,
+    get: (m) => m.perWeek.si?.central ?? null,
+    week: (w) => w.si?.central ?? null,
+  },
+  {
+    id: 'si_peripheral_per_week',
+    unit: 'SI/sem',
+    family: SI_MODEL,
+    get: (m) => m.perWeek.si?.peripheral ?? null,
+    week: (w) => w.si?.peripheral ?? null,
+  },
 ];
+
+/** Rango y mediana de los valores semanales conocidos de un bloque. Sin semanas con dato: min/mediana/máx = null. */
+export function spreadOf(m: BlockMetrics, week: (w: WeekMetrics) => number | null): Spread {
+  const points = m.weekly.flatMap((w) =>
+    w.date === null ? [] : [{ week: w.weekNo, date: w.date, value: week(w) }],
+  );
+  const known = points.flatMap((p) => (p.value === null ? [] : [p.value]));
+  return {
+    points,
+    n: known.length,
+    min: known.length ? Math.min(...known) : null,
+    median: known.length ? median(known) : null,
+    max: known.length ? Math.max(...known) : null,
+  };
+}
 
 /**
  * Comparación de la ventana móvil (actual + 3 anteriores), solo bloques VECINOS. `planned` y `actual` nunca se mezclan.
@@ -79,6 +126,7 @@ export function compareAdjacentBlocks(inp: BlockComparisonInput): BlockCompariso
       unit: sp.unit,
       values,
       deltas: values.slice(1).map((v, i) => delta(v, values[i] as number | null, sp.unit, { pp: sp.pp })),
+      spread: per.map((m) => (m ? spreadOf(m, sp.week) : null)),
       modelFamily: sp.family ?? null,
     };
   });
@@ -88,6 +136,7 @@ export function compareAdjacentBlocks(inp: BlockComparisonInput): BlockCompariso
       metricId: 'adherence_sets',
       unit: '%',
       modelFamily: null,
+      spread: quality.map(() => null),
       values: quality.map((q) => (q.adherence === null ? null : 100 * q.adherence)),
       deltas: quality
         .slice(1)

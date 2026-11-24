@@ -295,11 +295,11 @@ try {
     await page.until(`document.body.innerText.includes('Hola, Ana')`, 8000, 'Home');
   });
 
-  await test('home: sesión de hoy, bloque y TRAC', async () => {
+  await test('home: sesión de hoy, bloque y check-in', async () => {
     await page.until(`document.body.innerText.includes('ENTRENAMIENTO DE HOY')`, 5000, 'tarjeta de hoy');
     const txt = await page.eval('document.body.innerText');
     assert(/Squat comp/.test(txt), 'falta la sesión de hoy');
-    assert(/TRAC|Sueño|sueño/i.test(txt), 'falta el TRAC');
+    assert(/Check-in|Sueño|sueño/i.test(txt), 'falta el check-in');
   });
 
   await test('abrir el entreno desde el Home', async () => {

@@ -14,7 +14,7 @@
     "lab:create": "tsx --env-file-if-exists=../../.env src/seed/lab-run.ts",
     "import:plan": "tsx --env-file-if-exists=../../.env src/cli/import-plan.ts",
     "pilot:check": "tsx --env-file-if-exists=../../.env src/cli/pilot-check.ts",
-    "import:hevy": "tsx --env-file-if-exists=../../.env src/cli/import-hevy.ts",
+    "import:csv": "tsx --env-file-if-exists=../../.env src/cli/import-csv.ts",
     "replay": "tsx --env-file-if-exists=../../.env src/cli/replay.ts",
     "db:backup": "tsx --env-file-if-exists=../../.env scripts/backup-db.ts",
     "db:copy": "tsx --env-file-if-exists=../../.env scripts/copy-db.ts",

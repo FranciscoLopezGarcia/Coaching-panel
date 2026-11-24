@@ -4,8 +4,8 @@ import {
   abQuerySchema,
   coreQuerySchema,
   exposureLinkSchema,
-  hevyExerciseMapSchema,
-  hevyImportSchema,
+  externalExerciseMapSchema,
+  csvImportSchema,
   interventionCreateSchema,
   interventionTransitionSchema,
   macroSchema,
@@ -286,10 +286,10 @@ export function registerConsolidationRoutes(app: FastifyInstance, ctx: AppContex
   });
 
   /* ----- importaciones ----- */
-  app.post('/api/athletes/:id/imports/hevy', async (req) => {
+  app.post('/api/athletes/:id/imports/csv', async (req) => {
     const { id } = parse(idParam, req.params);
     await must(id);
-    return await ctx.imports.hevy(id, parse(hevyImportSchema, req.body));
+    return await ctx.imports.csv(id, parse(csvImportSchema, req.body));
   });
   app.post('/api/athletes/:id/imports/plan-csv', async (req) => {
     const { id } = parse(idParam, req.params);
@@ -302,20 +302,20 @@ export function registerConsolidationRoutes(app: FastifyInstance, ctx: AppContex
     return await ctx.observed.batches(id);
   });
 
-  /* ----- mapeo de ejercicios de Hevy (persistente y revisable) ----- */
-  app.get('/api/athletes/:id/imports/hevy/exercise-map', async (req) => {
+  /* ----- mapeo de ejercicios importados (persistente y revisable) ----- */
+  app.get('/api/athletes/:id/imports/csv/exercise-map', async (req) => {
     const { id } = parse(idParam, req.params);
     await must(id);
     return await ctx.exerciseMap.list(id);
   });
-  app.put('/api/athletes/:id/imports/hevy/exercise-map', async (req) => {
+  app.put('/api/athletes/:id/imports/csv/exercise-map', async (req) => {
     const { id } = parse(idParam, req.params);
     await must(id);
-    const { title, ...m } = parse(hevyExerciseMapSchema, req.body);
+    const { title, ...m } = parse(externalExerciseMapSchema, req.body);
     await ctx.exerciseMap.put(id, title, m, new Date().toISOString());
     return { ok: true, map: await ctx.exerciseMap.list(id) };
   });
-  app.delete('/api/athletes/:id/imports/hevy/exercise-map', async (req) => {
+  app.delete('/api/athletes/:id/imports/csv/exercise-map', async (req) => {
     const { id } = parse(idParam, req.params);
     await must(id);
     const { title } = parse(z.object({ title: z.string().min(1) }), req.query);

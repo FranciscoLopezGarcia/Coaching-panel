@@ -83,7 +83,7 @@ function RestBar({
   );
 }
 
-/** Pantalla de entreno al estilo Hevy: tarjeta por ejercicio, tabla de series con anterior / kg / reps / RPE y un tilde por serie. */
+/** Pantalla de entreno al estilo de las apps de registro: tarjeta por ejercicio, tabla de series con anterior / kg / reps / RPE y un tilde por serie. */
 export function Workout({ keyName, go }: { keyName: string; go: (hash: string) => void }) {
   const [data, setData] = useState<SessionData | null>(null);
   const [vals, setVals] = useState<Vals>({});
@@ -201,7 +201,7 @@ export function Workout({ keyName, go }: { keyName: string; go: (hash: string) =
   };
   const toggle = (s: SetView) => {
     const cur = valsRef.current[s.id] as Vals[string];
-    // al marcar con campos vacíos, se completa con lo previsto (como en Hevy)
+    // al marcar con campos vacíos, se completa con lo previsto (como en las apps de registro)
     const next = cur.done
       ? { ...cur, done: false }
       : {

@@ -407,11 +407,11 @@ describe('GET /performance-projection', () => {
     const id = await weeklyAthlete(10, (i) => 100 + i, { rpe: null });
     const curve = await get(`/api/athletes/${id}/performance-projection?lift=SQ&cutoff=${day(70)}`);
     expect(curve).toMatchObject({ status: 'unavailable', reasons: [{ code: 'no_rpe' }] });
-    const prg = await get(
-      `/api/athletes/${id}/performance-projection?lift=SQ&variable=e1rm_prg_formulas&cutoff=${day(70)}`,
+    const formulas = await get(
+      `/api/athletes/${id}/performance-projection?lift=SQ&variable=e1rm_formulas&cutoff=${day(70)}`,
     );
-    expect(prg.target.method.id).toBe('prg-6-formulas');
-    expect(prg.observedPoints).toHaveLength(10);
+    expect(formulas.target.method.id).toBe('prom-6-formulas');
+    expect(formulas.observedPoints).toHaveLength(10);
   });
 
   it('descriptive_only con pocas exposiciones y horizonte excesivo; rango no disponible sin muestra', async () => {

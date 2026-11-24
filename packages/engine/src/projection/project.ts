@@ -396,7 +396,7 @@ export function projectPerformance(input: ProjectionInput): PerformanceProjectio
         ? {
             code: 'no_rpe',
             message:
-              'Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_prg_formulas (otro método, no comparable).',
+              'Ninguna serie tiene RPE real: no hay e1RM por curva. Probá e1rm_formulas (otro método, no comparable).',
           }
         : { code: 'no_data', message: 'Ninguna serie elegible para este método.' },
     );
@@ -478,7 +478,7 @@ export function projectPerformance(input: ProjectionInput): PerformanceProjectio
     },
     outliers: { ...out.dataQuality.outliers, count: flagged },
     warnings: [
-      ...(variable === 'e1rm_prg_formulas'
+      ...(variable === 'e1rm_formulas'
         ? [
             'Método por fórmulas sin RPE: una serie submáxima subestima la fuerza máxima en una magnitud desconocida; no se interpreta como test máximo.',
           ]

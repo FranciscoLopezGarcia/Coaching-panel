@@ -100,8 +100,18 @@ describe('sesión como texto', () => {
         : s,
     );
     const p = planSessionEdit(base(done), segs('1° Squat comp 4x5@6\n3° Bench tyg 2x7x80@7'));
-    expect(p.ops.map((o) => o.kind)).toEqual(['remove', 'add']);
+    expect(p.ops.map((o) => o.kind)).toEqual(['remove', 'add', 'reorder']);
     expect(p.warnings[0]).toMatch(/3 serie\(s\) con ejecución/);
+  });
+  it('si el texto no cambia el orden de los ejercicios, no se emite reordenamiento', () => {
+    const a = [set('Squat comp', 1, 1, 5, 100), set('Bench', 1, 1, 5, 80)];
+    expect(planSessionEdit(base(a), segs(setsToText(a))).ops).toEqual([]);
+  });
+  it('el orden escrito en el texto se guarda como orden de la sesión', () => {
+    const a = [set('Squat comp', 1, 1, 5, 100), set('Bench', 1, 1, 5, 80)];
+    const p = planSessionEdit(base(a), segs(setsToText(a).split('\n').reverse().join('\n')));
+    const r = p.ops.find((o) => o.kind === 'reorder');
+    expect(r && r.kind === 'reorder' ? r.order : null).toEqual(['Bench', 'Squat comp']);
   });
   it('ejercicio nuevo se agrega y el que falta se quita', () => {
     const p = planSessionEdit(base(sets), segs('1° Squat comp 3x5@4-5-6\nCurl 3x10@8'));

@@ -35,12 +35,12 @@ describe('GET /athletes/:id/core', () => {
       2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3,
     ]);
     expect(r.weeks[0].totals.tonnage.value).toBeGreaterThan(0);
-    expect(r.weeks[0].totals.si.rts.total.status).toBe('available');
+    expect(r.weeks[0].totals.si.doble.total.status).toBe('available');
     expect(
       r.weeks[0].muscles.rows.find((m: { muscle: string }) => m.muscle === 'cuadriceps').directSets,
     ).toBe(10);
     expect(r.totals.nl.value).toBe(600);
-    expect(JSON.stringify(r.totals.si)).toContain('efort-xl-v1');
+    expect(JSON.stringify(r.totals.si)).toContain('carga-esfuerzo-v1');
   });
   it('B · fatiga entre series (deriva de RPE) y entre sesiones (cambio vs la anterior, fatiga reportada, razón agudo/crónico)', async () => {
     const r = await get(
@@ -65,7 +65,7 @@ describe('GET /athletes/:id/core', () => {
       `/api/athletes/${ids['D']}/core?from=${LAB_DEFAULT_START}&to=${wk(10)}&cutoff=${wk(10)}`,
     );
     expect(r.totals.nl.status).not.toBe('unavailable');
-    expect(r.totals.si.rts.total.status).toBe('partial');
+    expect(r.totals.si.doble.total.status).toBe('partial');
     expect(r.warnings.join(' ')).toMatch(/sin RPE real/);
     const w8 = r.weeks.find(
       (w: { week: { from: string } }) => w.week.from === addDays(LAB_DEFAULT_START, 49),
@@ -99,7 +99,7 @@ describe('GET /athletes/:id/core', () => {
 describe('GET /tables/*', () => {
   it('índice con versiones y todas las tablas responden', async () => {
     const idx = await get('/api/tables');
-    expect(idx.versions.rpe).toBe('rts-curva-default-v1');
+    expect(idx.versions.rpe).toBe('curva-rpe-v1');
     expect(idx.tables.length).toBeGreaterThanOrEqual(9);
     const rpe = await get('/api/tables/rpe');
     expect(rpe.rows).toHaveLength(50);
@@ -110,13 +110,13 @@ describe('GET /tables/*', () => {
     const load = await get('/api/tables/load?e1rm=200&stepKg=2.5');
     expect(load.kg[4][load.rpes.indexOf(8)]).toBe(160);
     expect((await get('/api/tables/formulas')).rows).toHaveLength(36);
-    expect((await get('/api/tables/prg-rpe')).divergentCells).toBe(38);
-    expect((await get('/api/tables/si/rts')).validation.measuredCells).toBe(170);
-    expect((await get('/api/tables/si/efort')).xlPerKg).toHaveLength(50);
-    expect((await get('/api/tables/si/efort-curve')).rows[0].pct).toBe(100);
-    const prg = await get('/api/tables/si/prg?pctFrom=50&pctTo=100&pctStep=25&repsMax=3');
-    expect(prg.pcts).toEqual([50, 75, 100]);
-    expect(prg.si[0]).toHaveLength(3);
+    expect((await get('/api/tables/rpe-alt')).divergentCells).toBe(38);
+    expect((await get('/api/tables/si/doble')).validation.measuredCells).toBe(170);
+    expect((await get('/api/tables/si/esfuerzo')).xlPerKg).toHaveLength(50);
+    expect((await get('/api/tables/si/esfuerzo-curva')).rows[0].pct).toBe(100);
+    const rel = await get('/api/tables/si/carga-rel?pctFrom=50&pctTo=100&pctStep=25&repsMax=3');
+    expect(rel.pcts).toEqual([50, 75, 100]);
+    expect(rel.si[0]).toHaveLength(3);
   });
   it('validaciones', async () => {
     expect(await status('/api/tables/load')).toBe(400);

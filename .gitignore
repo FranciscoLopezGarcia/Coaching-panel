@@ -8,6 +8,6 @@ coverage
 *.sqlite-shm
 .env
 /apps/api/data/
-# Datos personales: nunca versionar exports de Hevy ni CSV de entrenamientos
+# Datos personales: nunca versionar exports externos ni CSV de entrenamientos
 *.csv
 /apps/api/backups/

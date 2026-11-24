@@ -55,7 +55,7 @@ function SessionCard({
   );
 }
 
-const TRAC: {
+const CHECKIN: {
   k: 'sleep' | 'energy' | 'motivation' | 'stress' | 'pain';
   n: string;
   lo: string;
@@ -68,8 +68,8 @@ const TRAC: {
   { k: 'pain', n: 'Molestias', lo: 'Ninguna', hi: 'Muchas' },
 ];
 
-function Trac({ home, onSaved }: { home: HomeData; onSaved: () => void }) {
-  const t = home.trac.today;
+function Checkin({ home, onSaved }: { home: HomeData; onSaved: () => void }) {
+  const t = home.checkin.today;
   const [v, setV] = useState({
     sleep: t?.sleep ?? 7,
     energy: t?.energy ?? 7,
@@ -86,7 +86,7 @@ function Trac({ home, onSaved }: { home: HomeData; onSaved: () => void }) {
   });
   const num = (x: string) =>
     x.trim() === '' || !Number.isFinite(Number(x.replace(',', '.'))) ? null : Number(x.replace(',', '.'));
-  const [edit, setEdit] = useState(!home.trac.doneToday);
+  const [edit, setEdit] = useState(!home.checkin.doneToday);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const avg =
@@ -95,7 +95,7 @@ function Trac({ home, onSaved }: { home: HomeData; onSaved: () => void }) {
     <section className="ath-card">
       <div className="ath-row">
         <h2>¿Cómo llegás hoy?</h2>
-        <span className="ath-tag">TRAC</span>
+        <span className="ath-tag">Check-in</span>
       </div>
       {!edit ? (
         <>
@@ -130,7 +130,7 @@ function Trac({ home, onSaved }: { home: HomeData; onSaved: () => void }) {
             }
           }}
         >
-          {TRAC.map((q) => (
+          {CHECKIN.map((q) => (
             <label key={q.k} className="ath-slider">
               <span>
                 {q.n} <b>{v[q.k]}</b>
@@ -294,7 +294,7 @@ export function HomeScreen({ go }: { go: (hash: string) => void }) {
           </p>
         </section>
       )}
-      <Trac home={home} onSaved={() => void load()} />
+      <Checkin home={home} onSaved={() => void load()} />
       <button className="ath-ghost big" onClick={() => go('#/atleta/entrenos')}>
         Elegir otro entrenamiento
       </button>

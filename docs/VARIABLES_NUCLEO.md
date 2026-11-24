@@ -1,11 +1,11 @@
 # Variables núcleo: NL, SI, tonelaje, volumen por grupo muscular y fatiga
 
-Versión `nucleo-v1` (fatiga `fatiga-v2`, músculos `musculos-v2`, patrones `patrones-v1`, SI de RTS revisión `rts-si-r2`, tablas `rts-curva-default-v1` / `si-tablas-v1` / `prg-formulas-v1`).
+Versión `nucleo-v1` (fatiga `fatiga-v2`, músculos `musculos-v2`, patrones `patrones-v1`, SI doble revisión `si-doble-r2`, tablas `curva-rpe-v1` / `si-tablas-v1` / `formulas-v1`).
 Todo se calcula en el motor (`packages/engine`), sin I/O, y se expone por la API. **Solo lectura.** Todo es descriptivo: no hay umbrales inventados ni conclusiones; lo que no se puede calcular se informa como faltante y **no se rellena**.
 
 ## 1. Endpoint principal
 
-`GET /api/athletes/:id/core?from=AAAA-MM-DD&to=AAAA-MM-DD[&cutoff=][&lift=SQ|BP|DL][&source=plan|hevy][&domain=recomendado|amplio][&view=weeks|sessions|all]`
+`GET /api/athletes/:id/core?from=AAAA-MM-DD&to=AAAA-MM-DD[&cutoff=][&lift=SQ|BP|DL][&source=plan|<origen importado>][&domain=recomendado|amplio][&view=weeks|sessions|all]`
 
 | Parámetro        | Notas                                                                                                                                                   |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -19,21 +19,21 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
 
 ### Qué trae cada nivel
 
-| Nivel                                                                                 | Contenido                                                                                                                                                            |
-| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `totals`, `sessions[].totals`, `weeks[].totals`, `exercises[].metrics` (`CoreBundle`) | `nl`, `sets`, `tonnage`, `si.rts{total,central,peripheral}`, `si.prg`, `si.efort`, `e1rm.curve`, `e1rm.prg`. Cada uno `{value, unit, status, missing[], warnings[]}` |
-| `muscles` / `…muscles` (`MuscleVolume`)                                               | por grupo: `directSets`, `indirectSets`, `equivalentSets`, `equivalentReps`, `equivalentTonnage`, `exercises`; más `unmappedExercises`                               |
-| `sessions[].exercises[]`                                                              | un bloque por ejercicio+variante: métricas, `bestE1rm` (curva y fórmulas, separados), `medianRpe`, `topKg`, **`fatigueBetweenSets`**, **`vsPrevious`**               |
-| `sessions[].fatigue`                                                                  | **fatiga entre sesiones**: `endFatigue`, `endFatigueDelta`, `readiness`, `daysSincePreviousSession`, `rolling`                                                       |
-| `weeks[].fatigue`                                                                     | `endFatigue{mean,max,n}`, `meanDaysBetweenSessions`, `vsPreviousWeek`, `meanRpeDriftPerSession`                                                                      |
+| Nivel                                                                                 | Contenido                                                                                                                                                                           |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `totals`, `sessions[].totals`, `weeks[].totals`, `exercises[].metrics` (`CoreBundle`) | `nl`, `sets`, `tonnage`, `si.doble{total,central,peripheral}`, `si.cargaRel`, `si.esfuerzo`, `e1rm.curve`, `e1rm.formulas`. Cada uno `{value, unit, status, missing[], warnings[]}` |
+| `muscles` / `…muscles` (`MuscleVolume`)                                               | por grupo: `directSets`, `indirectSets`, `equivalentSets`, `equivalentReps`, `equivalentTonnage`, `exercises`; más `unmappedExercises`                                              |
+| `sessions[].exercises[]`                                                              | un bloque por ejercicio+variante: métricas, `bestE1rm` (curva y fórmulas, separados), `medianRpe`, `topKg`, **`fatigueBetweenSets`**, **`vsPrevious`**                              |
+| `sessions[].fatigue`                                                                  | **fatiga entre sesiones**: `endFatigue`, `endFatigueDelta`, `readiness`, `daysSincePreviousSession`, `rolling`                                                                      |
+| `weeks[].fatigue`                                                                     | `endFatigue{mean,max,n}`, `meanDaysBetweenSessions`, `vsPreviousWeek`, `meanRpeDriftPerSession`                                                                                     |
 
 ## 2. Definiciones (también en `definitions` de la respuesta)
 
 - **NL** = Σ repeticiones de las series de trabajo (calentamiento excluido). No es la cantidad de series (`sets`).
 - **Tonelaje** = Σ kg × reps de series con carga total interpretable. Mancuernas por lado, peso corporal sin carga añadida, asistidos y carga desconocida se **excluyen y se informan** (estado `partial`).
-- **SI**: tres modelos con escala propia que **nunca se suman ni se comparan**: `rts-aprox-v1` (central/periférico/total; aproximación de RTS), `prg-si-v1` (requiere referencia de fuerza fechada) y `efort-xl-v1` (XL, RIR = 10 − RPE). Todos requieren **RPE real**; sin RPE el valor es parcial o no disponible, nunca se completa con el objetivo.
+- **SI**: tres modelos con escala propia que **nunca se suman ni se comparan**: `si-doble-v1` (central/periférico/total; aproximación ajustada a mediciones propias), `si-carga-rel-v1` (requiere referencia de fuerza fechada) y `carga-esfuerzo-v1` (XL, RIR = 10 − RPE). Todos requieren **RPE real**; sin RPE el valor es parcial o no disponible, nunca se completa con el objetivo.
 - **Patrón de movimiento** (`patrones-v1`, otra dimensión): sentadilla, bisagra de cadera, unilateral de pierna, empuje horizontal / vertical, tracción horizontal / vertical, aislamiento de pierna / brazos / hombro-espalda, core, transporte-olímpico. **Cada ejercicio pertenece a un solo patrón**, así que series, NL y tonelaje por patrón **sí suman** (a diferencia de los músculos). Viene en `patterns` (totales, sesión y semana) y en `exercises[].pattern`. Consulta de un ejercicio: `GET /api/tables/muscles/lookup?exercise=`.
-- **Volumen por grupo muscular**: series directas ×1,0 e indirectas ×0,5 (`musculos-v2`, convención del proyecto, no la de Hevy). Se informan series equivalentes, repeticiones equivalentes y tonelaje equivalente por grupo. **No hay total entre músculos** (los grupos se superponen). 17 grupos y 80+ reglas por nombre (inglés, español y abreviaturas de powerlifting); un ejercicio sin regla queda sin mapear y se lista.
+- **Volumen por grupo muscular**: series directas ×1,0 e indirectas ×0,5 (`musculos-v2`, convención del proyecto, no una convención externa). Se informan series equivalentes, repeticiones equivalentes y tonelaje equivalente por grupo. **No hay total entre músculos** (los grupos se superponen). 17 grupos y 80+ reglas por nombre (inglés, español y abreviaturas de powerlifting); un ejercicio sin regla queda sin mapear y se lista.
 - **Fatiga entre series** (`fatiga-v2`; dentro de un ejercicio y una sesión; requiere el orden de las series). Cada serie se compara con las demás y con lo previsto:
   - **RPE**: `rpeVsPrevious`, `rpeVsFirst` y `rpeVsTarget` (RPE real − RPE objetivo de esa serie); resumen con `values`, `pattern` (solo el signo de los pasos: ascendente / estable / descendente / mixto), `maxStepUp`, pendiente por serie y cuántas series quedaron sobre / en / bajo el objetivo.
   - **Repeticiones**: `repsVsPrevious`, `repsVsFirst`, `repsLostVsBest` y, si la prescripción es un rango (`repsMax`), `repsVsTarget` (`sobre_rango` / `en_rango` / `bajo_rango` y la distancia). Resumen con `values`, `pattern`, `lostBestToLast`, rango previsto y recuento sobre / dentro / bajo. Con **carga fija** (`constantLoad`) la caída es fatiga pura y se informa `dropPct`; si la carga cambia se muestran igual pero marcadas.
@@ -296,29 +296,29 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
       "warnings": []
     },
     "si": {
-      "rts": {
+      "doble": {
         "total": {
           "value": 4.14,
-          "unit": "SI (rts-aprox-v1)",
+          "unit": "SI (si-doble-v1)",
           "status": "available",
           "missing": [],
           "warnings": [
-            "Modelo rts-aprox-v1: aproximación experimental de RTS, no su fórmula exacta; no comparable con otros SI.",
+            "Modelo si-doble-v1: aproximación experimental, no una fórmula exacta publicada; no comparable con otros SI.",
             "Componente: total."
           ]
         },
-        "model": "rts-aprox-v1"
+        "model": "si-doble-v1"
       },
-      "prg": {
+      "cargaRel": {
         "value": 3.106315740045079,
         "status": "available",
         "missing": [],
-        "model": "prg-si-v1"
+        "model": "si-carga-rel-v1"
       },
-      "efort": {
+      "esfuerzo": {
         "value": 1169.6232042431322,
         "status": "available",
-        "model": "efort-xl-v1"
+        "model": "carga-esfuerzo-v1"
       }
     }
   },
@@ -327,7 +327,7 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
     "pattern": "sentadilla",
     "bestE1rm": {
       "curve": 150,
-      "prg": 147
+      "formulas": 147
     },
     "medianRpe": 9.5,
     "topKg": 127.5,
@@ -449,11 +449,11 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
       "previousDate": "2026-07-27",
       "daysSince": 7,
       "e1rmCurvePct": -1.9230769230769211,
-      "e1rmPrgPct": -2,
+      "e1rmFormulasPct": -2,
       "topKgDelta": -2.5,
       "medianRpeDelta": 0,
       "nlDelta": 0,
-      "siRtsTotalRatio": 1
+      "siDobleTotalRatio": 1
     }
   },
   "muscles": {
@@ -511,18 +511,18 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
       "acute7": {
         "nl": 39,
         "tonnage": 4410,
-        "siRtsTotal": 6.58908938176602,
+        "siDobleTotal": 6.58908938176602,
         "sessions": 2
       },
       "chronicWeeklyMean28": {
         "nl": 39,
         "tonnage": 4453.125,
-        "siRtsTotal": 6.073503131092423
+        "siDobleTotal": 6.073503131092423
       },
       "ratio": {
         "nl": 1,
         "tonnage": 0.9903157894736843,
-        "siRtsTotal": 1.0848910817274675
+        "siDobleTotal": 1.0848910817274675
       },
       "coverage": "historia previa ≥ 28 días"
     }
@@ -558,29 +558,29 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
       "warnings": []
     },
     "si": {
-      "rts": {
+      "doble": {
         "total": {
           "value": 6.75,
-          "unit": "SI (rts-aprox-v1)",
+          "unit": "SI (si-doble-v1)",
           "status": "available",
           "missing": [],
           "warnings": [
-            "Modelo rts-aprox-v1: aproximación experimental de RTS, no su fórmula exacta; no comparable con otros SI.",
+            "Modelo si-doble-v1: aproximación experimental, no una fórmula exacta publicada; no comparable con otros SI.",
             "Componente: total."
           ]
         },
-        "model": "rts-aprox-v1"
+        "model": "si-doble-v1"
       },
-      "prg": {
+      "cargaRel": {
         "value": 3.106315740045079,
         "status": "partial",
         "missing": [],
-        "model": "prg-si-v1"
+        "model": "si-carga-rel-v1"
       },
-      "efort": {
+      "esfuerzo": {
         "value": 2091.7305856628286,
         "status": "available",
-        "model": "efort-xl-v1"
+        "model": "carga-esfuerzo-v1"
       }
     }
   },
@@ -603,7 +603,7 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
     "vsPreviousWeek": {
       "nl": 1,
       "tonnage": 0.9778911564625851,
-      "siRtsTotal": 1.0244207672579562,
+      "siDobleTotal": 1.0244207672579562,
       "comparable": true,
       "reason": null
     },
@@ -616,29 +616,29 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
 
 Índice: `GET /api/tables`. Todas son de solo lectura y no dependen de un atleta.
 
-| Ruta                                               | Contenido y rango                                                                                                                                                                                                                                                     |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/api/tables/rpe`                                  | %1RM por **reps 1–50 × RPE 1–10 (pasos de 0,5)**; 860 de 950 celdas (las demás tendrían reps + 10 − RPE > 50, fuera de la curva). Origen por celda: `medido-rts` (170 combinaciones medidas en la app) o `derivado-curva`; compara con la tabla anterior del proyecto |
-| `/api/tables/rm`                                   | nRM: %1RM para n = 1–50 repeticiones al fallo; `/rm/inverse?pct=` da las repeticiones posibles para un %1RM                                                                                                                                                           |
-| `/api/tables/load?e1rm=&stepKg=`                   | kg para cada reps × RPE dado un e1RM, redondeado hacia abajo al paso de carga                                                                                                                                                                                         |
-| `/api/tables/formulas`                             | %1RM de cada fórmula de PRG (Epley, Brzycki, Lander, Lombardi, Mayhew, O’Conner) y del promedio, **reps 1–36**; 2–10 es el dominio de la app PRG, el resto se rotula `extrapolacion-matematica` (Brzycki y Lander se acercan a su singularidad en 37)                 |
-| `/api/tables/prg-rpe`                              | tabla RPE×reps de PRG (reps 1–12) con **RPE 0,5–10** (6–10 originales, por debajo la extrapolación de la app) y su diferencia frente a RTS (38 celdas divergen)                                                                                                       |
-| `/api/tables/si/rts`                               | SI de RTS (central, periférico, total), reps 1–50 × RPE 1–10; **170 celdas medidas** y el resto aproximado; error de la aproximación en las medidas                                                                                                                   |
-| `/api/tables/si/efort` , `/si/efort-curve`         | XL por kg (reps 1–50 × RPE 1–10) y curva continua de eFort (h = 1–50)                                                                                                                                                                                                 |
-| `/api/tables/si/prg?pctFrom&pctTo&pctStep&repsMax` | SI de PRG por % de la referencia × reps (1–50) × RPE 1–10; default 30–110 % en pasos de 5 y reps 1–30                                                                                                                                                                 |
+| Ruta                                                     | Contenido y rango                                                                                                                                                                                                                                                 |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/tables/rpe`                                        | %1RM por **reps 1–50 × RPE 1–10 (pasos de 0,5)**; 860 de 950 celdas (las demás tendrían reps + 10 − RPE > 50, fuera de la curva). Origen por celda: `medido` (170 combinaciones medidas en la app) o `derivado-curva`; compara con la tabla anterior del proyecto |
+| `/api/tables/rm`                                         | nRM: %1RM para n = 1–50 repeticiones al fallo; `/rm/inverse?pct=` da las repeticiones posibles para un %1RM                                                                                                                                                       |
+| `/api/tables/load?e1rm=&stepKg=`                         | kg para cada reps × RPE dado un e1RM, redondeado hacia abajo al paso de carga                                                                                                                                                                                     |
+| `/api/tables/formulas`                                   | %1RM de cada fórmula (Epley, Brzycki, Lander, Lombardi, Mayhew, O’Conner) y del promedio, **reps 1–36**; 2–10 es el dominio base, el resto se rotula `extrapolacion-matematica` (Brzycki y Lander se acercan a su singularidad en 37)                             |
+| `/api/tables/rpe-alt`                                    | tabla RPE×reps alternativa (reps 1–12) con **RPE 0,5–10** (6–10 originales, por debajo una extrapolación) y su diferencia frente a la curva única (38 celdas divergen)                                                                                            |
+| `/api/tables/si/doble`                                   | SI doble (central, periférico, total), reps 1–50 × RPE 1–10; **170 celdas medidas** y el resto aproximado; error de la aproximación en las medidas                                                                                                                |
+| `/api/tables/si/esfuerzo` , `/si/esfuerzo-curva`         | XL por kg (reps 1–50 × RPE 1–10) y curva continua de esfuerzo (h = 1–50)                                                                                                                                                                                          |
+| `/api/tables/si/carga-rel?pctFrom&pctTo&pctStep&repsMax` | SI relativo por % de la referencia × reps (1–50) × RPE 1–10; default 30–110 % en pasos de 5 y reps 1–30                                                                                                                                                           |
 
 ### Muestras reales de las tablas
 
 ```json
 {
   "rpe": {
-    "version": "rts-curva-default-v1",
+    "version": "curva-rpe-v1",
     "stats": {
       "cells": 950,
       "available": 860,
       "byOrigin": {
         "derivado-curva": 690,
-        "medido-rts": 170
+        "medido": 170
       }
     },
     "legacyTable": {
@@ -654,7 +654,7 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
         "rpe": 7,
         "h": 8,
         "pct": 0.786,
-        "origin": "medido-rts",
+        "origin": "medido",
         "legacyProyecto": 0.7859999999999999,
         "legacyDiff": 0
       },
@@ -663,7 +663,7 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
         "rpe": 7.5,
         "h": 7.5,
         "pct": 0.798,
-        "origin": "medido-rts",
+        "origin": "medido",
         "legacyProyecto": 0.799,
         "legacyDiff": -0.001
       },
@@ -672,7 +672,7 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
         "rpe": 8,
         "h": 7,
         "pct": 0.811,
-        "origin": "medido-rts",
+        "origin": "medido",
         "legacyProyecto": 0.8109999999999999,
         "legacyDiff": 0
       },
@@ -681,14 +681,14 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
         "rpe": 8.5,
         "h": 6.5,
         "pct": 0.824,
-        "origin": "medido-rts",
+        "origin": "medido",
         "legacyProyecto": 0.8240000000000001,
         "legacyDiff": 0
       }
     ]
   },
-  "siRts": {
-    "model": "rts-aprox-v1",
+  "siDoble": {
+    "model": "si-doble-v1",
     "validation": {
       "measuredCells": 170,
       "maxAbsError": {
@@ -708,7 +708,7 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
       "central": 0.34,
       "peripheral": 0.75,
       "total": 0.54,
-      "origin": "medido-rts",
+      "origin": "medido",
       "approx": {
         "central": 0.34,
         "peripheral": 0.75,
@@ -730,10 +730,10 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
     }
   },
   "formulas": {
-    "version": "prg-formulas-v1",
+    "version": "formulas-v1",
     "row reps 5": {
       "reps": 5,
-      "origin": "app-prg",
+      "origin": "dominio-base",
       "pct": {
         "epley": 85.71,
         "brzycki": 88.89,
@@ -763,26 +763,26 @@ Respuesta (`CoreResult`): `version, fatigueVersion, cutoff, period, scope, domai
 }
 ```
 
-## 4b. SI de RTS: revisión `rts-si-r2`
+## 4b. SI doble: revisión `si-doble-r2`
 
-El SI de RTS no es una fórmula publicada: RTS lo calcula en su servidor. Se mantiene el id `rts-aprox-v1` y ahora se reproduce así: **si (reps, RPE) es una de las 170 combinaciones medidas en la app real, se devuelve el valor medido tal cual (exacto a 2 decimales)**; fuera de ellas rige la fórmula, corregida: el periférico dejaba de decaer mal a RPE bajo (acotando el RIR en 5, el error en RPE < 5 pasó de 0,30 a ≈ 0,006). Error de la fórmula contra las 170 mediciones: central ≤ 0,016, periférico ≤ 0,006, total ≤ 0,010. Es lo más cerca de RTS que se puede llegar sin su código; ampliar las mediciones (por ejemplo, otras repeticiones intermedias) reduce el uso de la fórmula.
+El SI doble no es una fórmula publicada: se ajusta contra mediciones propias. Se mantiene el id `si-doble-v1` y ahora se reproduce así: **si (reps, RPE) es una de las 170 combinaciones medidas, se devuelve el valor medido tal cual (exacto a 2 decimales)**; fuera de ellas rige la fórmula, corregida: el periférico dejaba de decaer mal a RPE bajo (acotando el RIR en 5, el error en RPE < 5 pasó de 0,30 a ≈ 0,006). Error de la fórmula contra las 170 mediciones: central ≤ 0,016, periférico ≤ 0,006, total ≤ 0,010. Ampliar las mediciones (por ejemplo, otras repeticiones intermedias) reduce el uso de la fórmula.
 
 ## 5. Corrección importante de la curva RPE
 
-La tabla que usaba el motor (`rpe-proyecto-v1`, reps 1–15 × RPE 4–10) **coincidía con la curva de RTS solo hasta h = reps + 10 − RPE = 10**; en 107 de sus 195 celdas por encima de ese valor divergía (por ejemplo 12 reps @10: 68,0 % contra 70,7 %), un error de copia heredado de PRG. `LEEME_DECISIONES` ya decía "se usa la curva real de RTS". Ahora **`rts-curva-default-v1`** usa la curva (verificada contra 170 mediciones de la app). Efecto: el e1RM por curva cambia solo en series con h > 10 (por ejemplo muchas repeticiones con RPE bajo); el resto es idéntico. La tabla anterior se conserva solo para comparar (`legacyProyecto` por celda).
+La tabla que usaba el motor (`rpe-proyecto-v1`, reps 1–15 × RPE 4–10) **coincidía con la curva de referencia solo hasta h = reps + 10 − RPE = 10**; en 107 de sus 195 celdas por encima de ese valor divergía (por ejemplo 12 reps @10: 68,0 % contra 70,7 %), un error de copia en una tabla alternativa. Ahora **`curva-rpe-v1`** usa la curva (verificada contra 170 mediciones). Efecto: el e1RM por curva cambia solo en series con h > 10 (por ejemplo muchas repeticiones con RPE bajo); el resto es idéntico. La tabla anterior se conserva solo para comparar (`legacyProyecto` por celda).
 
 ## 6. Validación
 
-- **Sintética** (tests): tablas (monotonía, dimensiones, celdas medidas contra la curva, fórmulas contra los valores verificados de PRG, SI contra mediciones), núcleo (NL/tonelaje/SI/músculos/fatiga con casos construidos) y API sobre el laboratorio ficticio (NL semanal 50 en E; deterioro en B; faltantes en D; corte sin fuga).
-- **Datos reales (solo lectura, en memoria, sin importar ni copiar):** el export personal de Hevy (579 sesiones, 2023–2026) se calcula completo en ~2 s, sin NaN; NL 82 064 `available`, tonelaje `partial` (cargas por lado y peso corporal excluidas), SI parcial (solo series con RPE); la convención muscular mapea los 188 ejercicios (12 107 series, 0 sin mapear); 2 267 de 2 560 bloques ejercicio-sesión tienen fatiga entre series disponible (los demás tienen una sola serie).
-- **Aproximación de SI de RTS:** error absoluto máximo en las celdas medidas — central 0,02, periférico 0,30, total 0,15 (error medio ≤ 0,01).
+- **Sintética** (tests): tablas (monotonía, dimensiones, celdas medidas contra la curva, fórmulas contra valores verificados, SI contra mediciones), núcleo (NL/tonelaje/SI/músculos/fatiga con casos construidos) y API sobre el laboratorio ficticio (NL semanal 50 en E; deterioro en B; faltantes en D; corte sin fuga).
+- **Datos reales (solo lectura, en memoria, sin importar ni copiar):** un export personal de entrenamientos (579 sesiones, 2023–2026) se calcula completo en ~2 s, sin NaN; NL 82 064 `available`, tonelaje `partial` (cargas por lado y peso corporal excluidas), SI parcial (solo series con RPE); la convención muscular mapea los 188 ejercicios (12 107 series, 0 sin mapear); 2 267 de 2 560 bloques ejercicio-sesión tienen fatiga entre series disponible (los demás tienen una sola serie).
+- **Aproximación del SI doble:** error absoluto máximo en las celdas medidas — central 0,02, periférico 0,30, total 0,15 (error medio ≤ 0,01).
 
 ## 7. Límites
 
-- La convención muscular es del proyecto y no está verificada contra el mapeo interno de Hevy; ante un nombre desconocido el ejercicio queda sin mapear.
-- El SI de RTS fuera de las 170 celdas medidas es una aproximación; PRG y eFort son fórmulas recuperadas del código.
+- La convención muscular es del proyecto y no está verificada contra el ningún mapeo externo; ante un nombre desconocido el ejercicio queda sin mapear.
+- El SI doble fuera de las 170 celdas medidas es una aproximación; el SI relativo y la carga de esfuerzo son fórmulas propias documentadas.
 - No hay velocidad de barra ni duración/descanso entre series: la fatiga entre series es descriptiva a partir de RPE, repeticiones, carga y e1RM. Sin umbrales validados no se clasifica.
-- El orden de las series de Hevy viene de `set_index`; en datos sin orden la fatiga entre series no se calcula.
+- El orden de las series de un CSV importado viene de `set_index`; en datos sin orden la fatiga entre series no se calcula.
 - La razón agudo/crónico es descriptiva (no es un umbral ni una predicción); CTL/ATL siguen sin implementarse por evidencia contradictoria.
 
 ## 8. Para el frontend (coordinación)

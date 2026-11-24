@@ -12,8 +12,8 @@ export interface Bundle {
   nl: CoreValue;
   sets: CoreValue;
   tonnage: CoreValue;
-  si: { rts: { total: CoreValue; model: string } };
-  e1rm: { curve: CoreValue; prg: CoreValue };
+  si: { doble: { total: CoreValue; model: string } };
+  e1rm: { curve: CoreValue; formulas: CoreValue };
   intensity?: { simple: CoreValue; byReps: CoreValue };
 }
 export interface PatternVolume {

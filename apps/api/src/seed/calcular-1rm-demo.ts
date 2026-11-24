@@ -7,7 +7,7 @@ import { pctFromTable } from '@coaching/engine';
  * Orden de prioridad por ejercicio:
  *   1) marcas/1RM reales que informó el coach (los tres movimientos de competencia ya están cargados: no se tocan);
  *   2) 1RM estimado que el coach escribió en su planilla Excel para ese mismo ejercicio (si coincide el nombre);
- *   3) e1RM calculado con la curva RTS (kg ÷ %1RM de reps y RPE) de las mejores series ejecutadas, o del plan si aún no hay ejecución.
+ *   3) e1RM calculado con la curva (kg ÷ %1RM de reps y RPE) de las mejores series ejecutadas, o del plan si aún no hay ejecución.
  * Cada referencia queda con su origen y la nota de cómo se obtuvo. Repetible: no duplica lo ya cargado.
  *   tsx src/seed/calcular-1rm-demo.ts [rm-excel.json] [--today AAAA-MM-DD]
  */
@@ -105,7 +105,7 @@ for (const a of athletes) {
       if (pool.length < 2) continue;
       const top = [...pool].sort((x, y) => y - x).slice(0, Math.min(3, pool.length));
       kg = Math.round(median(top) * 2) / 2;
-      note = `e1RM por curva RTS (mediana de las ${top.length} mejores series ${e.actual.length >= 3 ? 'ejecutadas' : 'del plan'}) · aproximado`;
+      note = `e1RM por curva (mediana de las ${top.length} mejores series ${e.actual.length >= 3 ? 'ejecutadas' : 'del plan'}) · aproximado`;
     }
     if (!(kg > 0 && kg <= 1000)) {
       console.log(`   (omitido ${name}: ${Math.round(kg)} kg no es plausible)`);

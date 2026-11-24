@@ -6,6 +6,8 @@ import {
   changeProtocol,
   duplicateSession,
   moveSession,
+  reorderExercises,
+  slotIndex,
   plannedAvailability,
   previewChange,
   repeatStructure,
@@ -443,7 +445,7 @@ describe('Vista previa de diferencias y métricas previstas', () => {
     const av = plannedAvailability(p);
     const bp = av.find((a) => a.lift === 'BP')!;
     expect(bp.metrics.find((m) => m.id === 'tonnage')).toMatchObject({ status: 'unavailable' });
-    expect(bp.metrics.find((m) => m.id === 'si_rts_total')!.missing.join()).toMatch(
+    expect(bp.metrics.find((m) => m.id === 'si_doble_total')!.missing.join()).toMatch(
       /no se completa con supuestos/,
     );
     const sq = av.find((a) => a.lift === 'SQ')!;
@@ -452,5 +454,44 @@ describe('Vista previa de diferencias y métricas previstas', () => {
     expect(mixed.find((a) => a.lift === 'SQ')!.metrics.find((m) => m.id === 'tonnage')!.status).toBe(
       'partial',
     );
+  });
+});
+
+describe('Orden de los ejercicios dentro de la sesión', () => {
+  const mk = (id: string, name: string, slotKey: string, setNo: number) =>
+    ({ ...plan()[0]!, id, sessionKey: 'S1', exerciseName: name, slotKey, setNo }) as PlannedSet;
+  const base = [
+    mk('a1', 'Sentadilla', 'B1:w1:d1:e0', 1),
+    mk('a2', 'Sentadilla', 'B1:w1:d1:e0', 2),
+    mk('b1', 'Banca', 'B1:w1:d1:e1', 1),
+    mk('c1', 'Remo', 'B1:w1:d1:e2', 1),
+  ];
+  it('lee la posición del sufijo :eN; sin sufijo va al final', () => {
+    expect(slotIndex('B1:w1:d1:e3')).toBe(3);
+    expect(slotIndex('squat-comp|D2')).toBeGreaterThan(1000);
+  });
+  it('reordena por nombre, conserva ids/exposureId/series y deja un índice por ejercicio', () => {
+    const m = reorderExercises(base, { sessionKey: 'S1', order: ['Remo', 'Sentadilla', 'Banca'] });
+    expect(m.map((s) => [s.id, slotIndex(s.slotKey)])).toEqual([
+      ['a1', 1],
+      ['a2', 1],
+      ['b1', 2],
+      ['c1', 0],
+    ]);
+    expect(m.map((s) => s.exposureId)).toEqual(base.map((s) => s.exposureId));
+  });
+  it('los ejercicios omitidos van al final y los nombres inexistentes se ignoran', () => {
+    const m = reorderExercises(base, { sessionKey: 'S1', order: ['Fantasma', 'Banca'] });
+    expect(m.map((s) => slotIndex(s.slotKey))).toEqual([1, 1, 0, 2]);
+  });
+  it('agrega el sufijo si el slot no lo tenía y no toca otras sesiones', () => {
+    const other = { ...mk('z1', 'Banca', 'B1:w1:d2:e0', 1), sessionKey: 'S2' };
+    const legacy = { ...mk('l1', 'Peso muerto', 'dl|D1', 1) };
+    const m = reorderExercises([...base, other, legacy], { sessionKey: 'S1', order: ['Peso muerto'] });
+    expect(m.find((s) => s.id === 'l1')!.slotKey).toBe('dl|D1:e0');
+    expect(m.find((s) => s.id === 'z1')).toBe(other);
+  });
+  it('sesión inexistente: error explícito', () => {
+    expect(() => reorderExercises(base, { sessionKey: 'nope', order: ['x'] })).toThrow();
   });
 });

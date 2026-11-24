@@ -45,7 +45,7 @@ describe('Mejoras del coach', () => {
     expect(new Set(fino.rows.map((r: { muscle: string }) => r.muscle)).size).toBeGreaterThan(keys.size);
     expect(grueso.rows.every((r: { label: string }) => typeof r.label === 'string')).toBe(true);
   });
-  it('TRAC ampliado: se guarda aparte y NO cambia la disposición', async () => {
+  it('check-in ampliado: se guarda aparte y NO cambia la disposición', async () => {
     const base = { date: '2026-11-07', sleep: 7, energy: 7, motivation: 7, stress: 4, pain: 2 };
     expect((await call('POST', `/api/athletes/${id}/checkins`, base)).statusCode).toBe(200);
     const sinExtras = (await call('GET', `/api/athletes/${id}/checkins`))

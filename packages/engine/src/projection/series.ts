@@ -1,12 +1,18 @@
-import { estimateCurve, estimatePrg, METHOD_CURVE, METHOD_PRG, type Estimate } from '../e1rm-methods.js';
+import {
+  estimateCurve,
+  estimateFormulas,
+  METHOD_CURVE,
+  METHOD_FORMULAS,
+  type Estimate,
+} from '../e1rm-methods.js';
 import type { ObservedSet } from '../observed.js';
 import { AGGREGATION_VERSION, type AggregateMode } from './config.js';
 import { median } from './models.js';
 
-export type Variable = 'e1rm_table_rpe' | 'e1rm_prg_formulas';
+export type Variable = 'e1rm_table_rpe' | 'e1rm_formulas';
 export const VARIABLE_METHOD = {
   e1rm_table_rpe: METHOD_CURVE,
-  e1rm_prg_formulas: METHOD_PRG,
+  e1rm_formulas: METHOD_FORMULAS,
 } as const;
 
 export interface ExposurePoint {
@@ -34,7 +40,7 @@ export interface VariantInfo {
   exercise: string;
   variantKey: string;
   lift: string | null;
-  exposures: { e1rm_table_rpe: number; e1rm_prg_formulas: number };
+  exposures: { e1rm_table_rpe: number; e1rm_formulas: number };
 }
 
 export interface SeriesFilters {
@@ -77,7 +83,7 @@ export function availableVariants(obs: ObservedSet[], f: SeriesFilters, cutoff: 
       lift: sets[0]?.lift ?? null,
       exposures: {
         e1rm_table_rpe: days((s) => estimateCurve(s.kg, s.reps, s.rpe)),
-        e1rm_prg_formulas: days((s) => estimatePrg(s.kg, s.reps)),
+        e1rm_formulas: days((s) => estimateFormulas(s.kg, s.reps)),
       },
     };
   });
@@ -106,7 +112,7 @@ export function buildExposureSeries(
     excl.set(reason, c);
   };
   const est = (s: ObservedSet): Estimate =>
-    variable === 'e1rm_table_rpe' ? estimateCurve(s.kg, s.reps, s.rpe) : estimatePrg(s.kg, s.reps);
+    variable === 'e1rm_table_rpe' ? estimateCurve(s.kg, s.reps, s.rpe) : estimateFormulas(s.kg, s.reps);
   const groups = new Map<
     string,
     { vals: { v: number; id: string }[]; seen: number; date: string; source: string }

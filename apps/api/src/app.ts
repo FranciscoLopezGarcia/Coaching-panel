@@ -21,6 +21,7 @@ import { LiveBus } from './services/live.js';
 import { registerPortalRoutes } from './routes/portal.js';
 import { registerAdminRoutes } from './routes/admin.js';
 import { BlockAdmin } from './services/blocks.js';
+import { AnalysisService } from './services/analysis.js';
 import { BlockAnalysisService } from './services/block-analysis.js';
 import { registerAthleteRoutes } from './routes/athletes.js';
 import { registerConsolidationRoutes } from './routes/consolidation.js';
@@ -71,6 +72,7 @@ export interface AppContext {
   coaches: CoachesRepo;
   blocks: BlockAdmin;
   blockAnalysis: BlockAnalysisService;
+  analysis: AnalysisService;
   live: LiveBus;
   today: () => string;
 }
@@ -104,6 +106,9 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
     programmingRepo,
   );
   const plans = new PlanService(db, records, history, clock);
+  const blockAnalysis = new BlockAnalysisService(loader, history);
+  const historyService = new HistoryService(loader, history);
+  const queries = new QueryService(loader, decisions, history, programmingRepo, records, extrasRepo);
   return {
     config,
     instance: loadInstance(config.dbPath),
@@ -119,7 +124,8 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
     accounts,
     coaches,
     blocks: new BlockAdmin(db, records, programmingRepo, plans),
-    blockAnalysis: new BlockAnalysisService(loader, history),
+    blockAnalysis,
+    analysis: new AnalysisService(loader, history, blockAnalysis, queries, historyService),
     live,
     interventionsRepo,
     programmingRepo,
@@ -128,12 +134,12 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
     evaluation: new EvaluationService(db, loader, decisions, history),
     extrasRepo,
     coachExtras: new CoachExtrasService(athletes, records, history, extrasRepo, clock, nowIso),
-    historyService: new HistoryService(loader, history),
+    historyService,
     dashboard: new DashboardService(athletes, records, decisions, history),
     imports: new ImportService(observed, plans, config.timeZone, nowIso, exerciseMap),
     interventions: new InterventionService(interventionsRepo, decisions, loader, clock, nowIso),
     programming: new ProgrammingService(records, programmingRepo, plans, nowIso, history),
-    queries: new QueryService(loader, decisions, history, programmingRepo, records, extrasRepo),
+    queries,
     replay: new ReplayService(loader, history),
     projection: new ProjectionService(loader, db, clock),
     today: clock,

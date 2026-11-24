@@ -353,7 +353,7 @@ Diferencias clasificadas + disponibilidad de métricas previstas. `saved: null`.
             },
             {
               "variable": "SI total",
-              "unit": "SI (rts-aprox-v1)",
+              "unit": "SI (si-doble-v1)",
               "before": 2.745723533771134,
   // … recortado para el documento
 ```
@@ -868,11 +868,11 @@ Dimensiones + principal + conflictos/diferidas (recortado).
 }
 ```
 
-## 11. Importación Hevy (dry-run) — CSV SINTÉTICO de 4 filas
+## 11. Importación CSV (dry-run) — CSV SINTÉTICO de 4 filas
 
 Rechazos con motivo, válidos con huecos y ejercicios revisables, todo separado.
 
-`POST /api/athletes/:id/imports/hevy`
+`POST /api/athletes/:id/imports/csv`
 
 ```json
 {
@@ -925,7 +925,7 @@ Rechazos con motivo, válidos con huecos y ejercicios revisables, todo separado.
     "validWithGaps": [
       {
         "metric": "e1rm_table_rpe",
-        "reason": "Sin RPE real: no hay e1RM por curva (sí por fórmulas PRG).",
+        "reason": "Sin RPE real: no hay e1RM por curva (sí por fórmulas).",
         "rows": 2
       },
       {

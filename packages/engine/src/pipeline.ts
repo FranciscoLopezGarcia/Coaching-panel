@@ -298,7 +298,7 @@ export function evaluateLift(input: LiftInput): LiftEvaluation {
       if (Bs.some(fired) !== fired(exprA)) {
         const note = fired(exprA)
           ? 'El modo B (motor propio) no confirma la ventana: ver sus condiciones.'
-          : 'El modo A (reglas de PRG reconstruidas) no confirma la ventana: ver sus condiciones.';
+          : 'El modo A (reglas de ventana reconstruidas) no confirma la ventana: ver sus condiciones.';
         for (const x of [exprA, ...Bs].filter(fired))
           x.alternatives.push(`Discrepancia entre modos: ${note}`);
       }

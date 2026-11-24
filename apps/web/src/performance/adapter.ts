@@ -38,6 +38,6 @@ export async function fetchProjection(id: string, values: Record<string, string>
 
 export function projectionVariable(method: string) {
   if (method === 'table-rpe') return 'e1rm_table_rpe';
-  if (method === 'prg-6-formulas') return 'e1rm_prg_formulas';
+  if (method === 'prom-6-formulas') return 'e1rm_formulas';
   return null;
 }

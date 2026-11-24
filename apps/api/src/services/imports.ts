@@ -1,14 +1,15 @@
 import {
-  HEVY_PARSER_VERSION,
+  CSV_PARSER_VERSION,
+  EXTERNAL_SOURCE,
   fingerprintText,
   parseCanonicalPlan,
-  parseHevyCsv,
+  parseCsvExport,
   plannedAvailability,
-  previewHevy,
-  type HevyOptions,
+  previewCsv,
+  type CsvImportOptions,
   type PlannedSet,
 } from '@coaching/engine';
-import type { HevyImportInput, ImportPreviewResponse, PlanCsvImportInput } from '@coaching/contracts';
+import type { CsvImportInput, ImportPreviewResponse, PlanCsvImportInput } from '@coaching/contracts';
 import type { ExerciseMapRepo } from '../repositories/revisions.js';
 import type { ObservedRepo } from '../repositories/observed.js';
 import { UnprocessableError } from './errors.js';
@@ -27,18 +28,18 @@ export class ImportService {
     private exerciseMap?: ExerciseMapRepo,
   ) {}
 
-  async hevy(athleteId: string, input: HevyImportInput): Promise<ImportPreviewResponse> {
-    const opts: HevyOptions = {
+  async csv(athleteId: string, input: CsvImportInput): Promise<ImportPreviewResponse> {
+    const opts: CsvImportOptions = {
       timeZone: input.timeZone ?? this.timeZone,
       // mapeo guardado del atleta; lo enviado en la solicitud tiene prioridad
       exerciseMap: {
         ...((await this.exerciseMap?.list(athleteId)) ?? {}),
         ...(input.exerciseMap ?? {}),
-      } as HevyOptions['exerciseMap'],
+      } as CsvImportOptions['exerciseMap'],
     };
-    const parsed = parseHevyCsv(input.csv, opts);
-    const existing = await this.observed.existingKeys(athleteId, 'hevy');
-    const preview = previewHevy(parsed, existing, opts);
+    const parsed = parseCsvExport(input.csv, opts);
+    const existing = await this.observed.existingKeys(athleteId, EXTERNAL_SOURCE);
+    const preview = previewCsv(parsed, existing, opts);
     if (input.mode === 'dry_run') return { mode: 'dry_run', preview, applied: null };
     if (preview.fatal.length)
       throw new UnprocessableError('El archivo no se puede importar', { fatal: preview.fatal });
@@ -52,9 +53,9 @@ export class ImportService {
     const applied = await this.observed.insertBatch(
       athleteId,
       {
-        source: 'hevy',
+        source: EXTERNAL_SOURCE,
         kind: 'observaciones',
-        parserVersion: HEVY_PARSER_VERSION,
+        parserVersion: CSV_PARSER_VERSION,
         timeZone: opts.timeZone as string,
         token: preview.token,
         summary: { ...preview, sample: undefined },

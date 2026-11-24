@@ -66,11 +66,11 @@ export * from './records.js';
 export * from './muscles.js';
 export * from './exercise-library.js';
 export * from './metrics-observed.js';
-export { stressIndexPrg, exertionLoadEfort, SI_MODEL_PRG, SI_MODEL_EFORT } from './si.js';
+export { stressIndexRel, effortLoad, SI_MODEL_REL, SI_MODEL_EFFORT } from './si.js';
 export * from './program.js';
 export * from './queries.js';
 export { parseCsv, csvRecords } from './import/csv.js';
-export * from './import/hevy.js';
+export * from './import/export-csv.js';
 export * from './import/plan-canonical.js';
 export { fingerprintText } from './import/hash.js';
 export * from './replay.js';
@@ -82,3 +82,4 @@ export * from './fatigue.js';
 export * from './progression.js';
 
 export * from './block-analysis/index.js';
+export * from './analysis/index.js';

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { ObservedSet } from '@coaching/engine';
+import { EXTERNAL_SOURCE, type ObservedSet } from '@coaching/engine';
 import type { Db } from '../db/connection.js';
 
 type ORaw = {
@@ -19,9 +19,9 @@ type ORaw = {
   external_key: string;
 };
 
-/** El índice de serie de Hevy viaja en la clave externa (`inicio|ejercicio|set_index|tipo|kg|reps|rpe`): se lee desde el final para tolerar `|` en el título. */
+/** El índice de serie viaja en la clave externa (`inicio|ejercicio|set_index|tipo|kg|reps|rpe`): se lee desde el final para tolerar `|` en el título. */
 function setNoOf(source: string, key: string): number | null {
-  if (source !== 'hevy') return null;
+  if (source !== EXTERNAL_SOURCE) return null;
   const parts = key.split('|');
   const v = Number(parts[parts.length - 5]);
   return Number.isInteger(v) && v >= 0 ? v + 1 : null;
@@ -38,7 +38,7 @@ export interface BatchInfo {
   createdAt: string;
 }
 
-/** Lo ejecutado SIN prescripción vinculada (p. ej. Hevy). La reimportación es idempotente por (atleta, fuente, clave externa). */
+/** Lo ejecutado SIN prescripción vinculada (p. ej. un CSV importado). La reimportación es idempotente por (atleta, fuente, clave externa). */
 export class ObservedRepo {
   constructor(private db: Db) {}
 

@@ -1,6 +1,6 @@
-import { inolPrg } from './prg.js';
+import { inolOf } from './carga-ventana.js';
 import type { CurveDomain } from './e1rm.js';
-import { estimateCurve, estimatePrg, METHOD_CURVE, METHOD_PRG } from './e1rm-methods.js';
+import { estimateCurve, estimateFormulas, METHOD_CURVE, METHOD_FORMULAS } from './e1rm-methods.js';
 import {
   metricResult,
   periodOf,
@@ -10,14 +10,7 @@ import {
 } from './metric-result.js';
 import { isWorkSet, type ObservedSet } from './observed.js';
 import { referenceAt, toInfo, type ReferenceInfo, type StrengthReference } from './references.js';
-import {
-  SI_MODEL,
-  SI_MODEL_EFORT,
-  SI_MODEL_PRG,
-  exertionLoadEfort,
-  stressIndexPrg,
-  stressOfSet,
-} from './si.js';
+import { SI_MODEL, SI_MODEL_EFFORT, SI_MODEL_REL, effortLoad, stressIndexRel, stressOfSet } from './si.js';
 
 export interface ObservedMetricsInput {
   obs: ObservedSet[];
@@ -152,7 +145,7 @@ export function computeObservedMetrics(inp: ObservedMetricsInput): Record<string
       warnings: u.warn,
     });
   }
-  // --- intensidad relativa e INOL / SI PRG (requieren referencia fechada)
+  // --- intensidad relativa e INOL / SI relativo (requieren referencia fechada)
   const refs = inp.references ?? [];
   const retro = inp.referenceMode === 'retrospective';
   const refFor = (s: ObservedSet): { kg: number; info: ReferenceInfo | null } | null => {
@@ -241,12 +234,12 @@ export function computeObservedMetrics(inp: ObservedMetricsInput): Record<string
     });
     const inol = ok
       .filter((x) => (x.s.reps as number) > 0)
-      .map((x) => ({ x, v: inolPrg(x.s.reps as number, x.s.kg as number, x.ref) }));
+      .map((x) => ({ x, v: inolOf(x.s.reps as number, x.s.kg as number, x.ref) }));
     const inolOk = inol.filter((i) => i.v !== null);
-    out.inol_prg = metricResult({
-      metricId: 'inol_prg',
+    out.inol = metricResult({
+      metricId: 'inol',
       unit: 'INOL',
-      method: { id: 'prg-inol', version: refVersion },
+      method: { id: 'inol', version: refVersion },
       ...base,
       value: inolOk.length ? inolOk.reduce((a, i) => a + (i.v as number), 0) : null,
       status: !inolOk.length ? 'unavailable' : bad.length ? 'partial' : 'available',
@@ -259,29 +252,29 @@ export function computeObservedMetrics(inp: ObservedMetricsInput): Record<string
     const withRpe = ok.filter((x) => x.s.rpe !== null);
     const noRpe = ok
       .filter((x) => x.s.rpe === null)
-      .map((x) => ({ s: x.s, reason: 'sin RPE real (no se usa el RPE implícito de PRG)' }));
-    const siPrg = withRpe
-      .map((x) => stressIndexPrg(x.s.kg as number, x.s.reps as number, x.s.rpe as number, x.ref))
+      .map((x) => ({ s: x.s, reason: 'sin RPE real (no se usa un RPE implícito)' }));
+    const siCargaRel = withRpe
+      .map((x) => stressIndexRel(x.s.kg as number, x.s.reps as number, x.s.rpe as number, x.ref))
       .filter((v): v is number => v !== null);
-    out.si_prg = metricResult({
-      metricId: 'si_prg',
-      unit: `SI (${SI_MODEL_PRG})`,
-      method: { id: SI_MODEL_PRG, version: refVersion },
+    out.si_carga_rel = metricResult({
+      metricId: 'si_carga_rel',
+      unit: `SI (${SI_MODEL_REL})`,
+      method: { id: SI_MODEL_REL, version: refVersion },
       ...base,
-      value: siPrg.length ? siPrg.reduce((a, b) => a + b, 0) : null,
-      status: !siPrg.length ? 'unavailable' : bad.length || noRpe.length ? 'partial' : 'available',
+      value: siCargaRel.length ? siCargaRel.reduce((a, b) => a + b, 0) : null,
+      status: !siCargaRel.length ? 'unavailable' : bad.length || noRpe.length ? 'partial' : 'available',
       usedRecords: used(withRpe.map((x) => x.s)).refs,
       excluded: [...exclusions(bad), ...exclusions(noRpe)],
-      missing: siPrg.length ? [] : ['RPE real', 'referencia de fuerza'],
+      missing: siCargaRel.length ? [] : ['RPE real', 'referencia de fuerza'],
       reference: sameRef,
       warnings: [
         ...refWarn,
-        'Escala propia de PRG: no se suma ni se compara con el SI de RTS ni con el XL de eFort.',
+        'Escala propia: no se suma ni se compara con otros SI ni con el XL.',
         ...(noRpe.length ? ['Valor parcial: solo series con RPE real.'] : []),
       ],
     });
   }
-  // --- SI aproximado de RTS y XL de eFort (requieren RPE real)
+  // --- SI doble aproximado y XL (requieren RPE real)
   {
     const withRpe = work.filter((s) => s.reps !== null && s.reps > 0 && s.rpe !== null);
     const noRpe = work
@@ -298,15 +291,15 @@ export function computeObservedMetrics(inp: ObservedMetricsInput): Record<string
     const u = used(withRpe);
     const warn = [
       ...u.warn,
-      `Modelo ${SI_MODEL}: aproximación experimental de RTS, no su fórmula exacta; no comparable con otros SI.`,
+      `Modelo ${SI_MODEL}: aproximación experimental, no una fórmula exacta publicada; no comparable con otros SI.`,
       ...(noRpe.length
         ? ['Valor PARCIAL: suma solo las series con RPE real; no es el SI total del período.']
         : []),
     ];
     for (const [id, v, label] of [
-      ['si_rts_total', sums.t, 'total'],
-      ['si_rts_central', sums.c, 'central'],
-      ['si_rts_peripheral', sums.p, 'periférico'],
+      ['si_doble_total', sums.t, 'total'],
+      ['si_doble_central', sums.c, 'central'],
+      ['si_doble_peripheral', sums.p, 'periférico'],
     ] as const) {
       out[id] = metricResult({
         metricId: id,
@@ -322,13 +315,13 @@ export function computeObservedMetrics(inp: ObservedMetricsInput): Record<string
       });
     }
     const okXl = withRpe.filter((s) => !loadProblem(s));
-    out.si_efort_xl = metricResult({
-      metricId: 'si_efort_xl',
-      unit: `XL (${SI_MODEL_EFORT})`,
-      method: { id: SI_MODEL_EFORT, version: SI_MODEL_EFORT },
+    out.carga_esfuerzo = metricResult({
+      metricId: 'carga_esfuerzo',
+      unit: `XL (${SI_MODEL_EFFORT})`,
+      method: { id: SI_MODEL_EFFORT, version: SI_MODEL_EFFORT },
       ...base,
       value: okXl.length
-        ? okXl.reduce((a, s) => a + exertionLoadEfort(s.kg as number, s.reps as number, s.rpe as number), 0)
+        ? okXl.reduce((a, s) => a + effortLoad(s.kg as number, s.reps as number, s.rpe as number), 0)
         : null,
       status: !okXl.length
         ? 'unavailable'
@@ -338,7 +331,7 @@ export function computeObservedMetrics(inp: ObservedMetricsInput): Record<string
       usedRecords: used(okXl).refs,
       excluded: exclusions(noRpe),
       missing: okXl.length ? [] : ['RPE real', 'carga total'],
-      warnings: ['Escala propia de eFort (RIR = 10 − RPE): no se suma ni se compara con SI.'],
+      warnings: ['Escala propia (RIR = 10 − RPE): no se suma ni se compara con SI.'],
     });
   }
   // --- e1RM: dos métodos SEPARADOS
@@ -346,7 +339,7 @@ export function computeObservedMetrics(inp: ObservedMetricsInput): Record<string
     const eligible = work.filter((s) => s.setType !== 'dropset');
     for (const [id, fn, method] of [
       ['e1rm_table_rpe', (s: ObservedSet) => estimateCurve(s.kg, s.reps, s.rpe, inp.domain), METHOD_CURVE],
-      ['e1rm_prg_formulas', (s: ObservedSet) => estimatePrg(s.kg, s.reps), METHOD_PRG],
+      ['e1rm_formulas', (s: ObservedSet) => estimateFormulas(s.kg, s.reps), METHOD_FORMULAS],
     ] as const) {
       let best: { s: ObservedSet; v: number } | null = null;
       const bad: { s: ObservedSet; reason: string }[] = [];

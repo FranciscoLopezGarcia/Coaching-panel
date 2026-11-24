@@ -86,7 +86,7 @@ export interface ActualSet {
 
 export interface Readiness {
   date: string;
-  /** Disposición 1–10 (promedio propio del check-in; NO es TRAC). */
+  /** Disposición 1–10 (promedio propio del check-in; no es un cuestionario estándar). */
   value: number;
 }
 

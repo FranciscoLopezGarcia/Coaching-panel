@@ -304,7 +304,7 @@ describe('Comparativas A/B', () => {
   it('SI planificado solo con RPE objetivo completo; el modelo queda nombrado', () => {
     const c = compareBlocks(input(twoBlocks()), sideA, sideB, 'planned', 'full');
     expect(rowOf(c, 'si_total').a).not.toBeNull();
-    expect(rowOf(c, 'si_total').note).toMatch(/rts-aprox-v1/);
+    expect(rowOf(c, 'si_total').note).toMatch(/si-doble-v1/);
     const fx = new Fixture()
       .session('2026-03-02', [{ reps: 5, kg: 100, rpe: null, target: null }], { block: 'A' })
       .session('2026-03-09', [{ reps: 5, kg: 100, rpe: null, target: null }], { block: 'B' });

@@ -5,6 +5,8 @@ import type { SetView } from './views.js';
 
 export interface WeekMetrics {
   weekNo: number;
+  /** Primera fecha con series en la semana (calendario real); null si no hay series. */
+  date: string | null;
   sets: number;
   /** NL = Σ repeticiones. NO es la cantidad de series. */
   nl: number;
@@ -29,7 +31,14 @@ export interface WeekMetrics {
 }
 
 export function weekMetrics(views: SetView[], weekNo: number): WeekMetrics {
-  const v = views.filter((x) => x.weekNo === weekNo);
+  return groupMetrics(
+    views.filter((x) => x.weekNo === weekNo),
+    weekNo,
+  );
+}
+
+/** Métricas de un grupo de series ya filtrado (una semana, una sesión…). Mismas reglas en cualquier escala. */
+export function groupMetrics(v: SetView[], weekNo: number): WeekMetrics {
   const sessions = new Set(v.map((x) => x.sessionKey));
   const days = [...new Set(v.map((x) => x.dayNo))].sort((a, b) => a - b);
   const nlByDay: Record<number, number> = {};
@@ -49,8 +58,10 @@ export function weekMetrics(views: SetView[], weekNo: number): WeekMetrics {
   let si: Stress | null = null;
   if (v.length && withRpe.length === v.length)
     si = v.reduce((acc, x) => addStress(acc, stressOfSet(x.reps, x.rpe as number)), zeroStress());
+  const dates = v.map((x) => x.date).sort();
   return {
     weekNo,
+    date: dates[0] ?? null,
     sets: v.length,
     nl: v.reduce((s, x) => s + x.reps, 0),
     tonnage: allKg ? v.reduce((s, x) => s + (x.kg as number) * x.reps, 0) : null,

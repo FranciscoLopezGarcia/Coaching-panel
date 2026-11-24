@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { usePlanMarks } from './planMarks';
 import { number } from './ui';
 export interface Trace {
   label: string;
@@ -6,6 +7,22 @@ export interface Trace {
   points: { date: string; value: number | null }[];
   dashed?: boolean;
   dotsOnly?: boolean;
+  /** Texto de la leyenda para una serie punteada (por defecto «total»). */
+  legend?: string;
+}
+/** Marca vertical punteada en una fecha (p. ej. un cambio de plan). */
+export interface Annotation {
+  date: string;
+  label: string;
+  /** La fecha de vigencia es una estimación. */
+  estimated?: boolean;
+}
+/** Banda horizontal de referencia (p. ej. desde el umbral configurado hacia arriba). */
+export interface Threshold {
+  from: number;
+  to: number;
+  label: string;
+  color: string;
 }
 const DAY = 86400000;
 const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
@@ -32,6 +49,14 @@ export function OverviewChart({
   zoom,
   onPick,
   highlight,
+  annotations,
+  thresholds,
+  area,
+  domain,
+  height,
+  width,
+  linkedDate,
+  onHoverDate,
 }: {
   title: string;
   unit: string;
@@ -45,7 +70,25 @@ export function OverviewChart({
   onPick?: (date: string) => void;
   /** Fecha (inicio de semana) a destacar con una franja de color. */
   highlight?: string;
+  /** Líneas verticales punteadas con rótulo (cambios de plan). */
+  annotations?: Annotation[];
+  /** Bandas horizontales de referencia. Los umbrales los define el coach: no se infieren. */
+  thresholds?: Threshold[];
+  /** Rellena el área bajo cada serie (no solo cuando hay una). */
+  area?: boolean;
+  /** Fija el eje vertical (p. ej. escalas 1–10). */
+  domain?: [number, number];
+  /** Alto del gráfico en unidades del viewBox (por defecto 340). */
+  height?: number;
+  /** Ancho del viewBox (por defecto 720): más ancho = letras más chicas en pantallas grandes. */
+  width?: number;
+  /** Fecha resaltada desde afuera (p. ej. la fila de la tabla vinculada): dibuja la guía y agranda los puntos de esa fecha. */
+  linkedDate?: string | null;
+  /** Avisa la fecha bajo el cursor (o null al salir), para resaltar la fila de la tabla vinculada. */
+  onHoverDate?: (date: string | null) => void;
 }) {
+  const planChanges = usePlanMarks();
+  const marks = annotations ?? planChanges;
   const box = useRef<HTMLElement | null>(null);
   const [hover, setHover] = useState<{ date: string; left: number } | null>(null);
   const values = traces.flatMap((t) => t.points.flatMap((p) => (p.value === null ? [] : [p.value])));
@@ -58,14 +101,18 @@ export function OverviewChart({
   const vmin = Math.min(...values);
   const rawHigh = Math.max(...values);
   const span = Math.max(rawHigh - vmin, rawHigh * 0.05, 1);
-  const low = zoom ? Math.max(0, Math.floor((vmin - span * 0.25) / 5) * 5) : Math.min(0, vmin);
-  const high = zoom ? rawHigh + span * 0.2 : rawHigh * 1.08 || 1;
-  const W = 720;
-  const H = 340;
+  const low = domain
+    ? domain[0]
+    : zoom
+      ? Math.max(0, Math.floor((vmin - span * 0.25) / 5) * 5)
+      : Math.min(0, vmin);
+  const high = domain ? domain[1] : zoom ? rawHigh + span * 0.2 : rawHigh * 1.08 || 1;
+  const W = width ?? 720;
+  const H = height ?? 340;
   const L = 62;
   const R = 16;
   const T = 16;
-  const B = 296;
+  const B = H - 44;
   const x = (date: string) => L + ((Date.parse(date) - a) / Math.max(b - a, DAY)) * (W - L - R);
   const y = (value: number) => B - ((value - low) / Math.max(high - low, 1e-9)) * (B - T);
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => low + (high - low) * f);
@@ -81,7 +128,9 @@ export function OverviewChart({
     let best = allDates[0] as string;
     for (const d of allDates) if (Math.abs(x(d) - vx) < Math.abs(x(best) - vx)) best = d;
     setHover({ date: best, left: (x(best) / W) * r.width });
+    onHoverDate?.(best);
   };
+  const guide = hover?.date ?? linkedDate ?? null;
   const detail = (t: Trace) => {
     const pts = t.points.filter((p) => p.value !== null) as { date: string; value: number }[];
     const i = pts.findIndex((p) => p.date === hover?.date);
@@ -99,7 +148,10 @@ export function OverviewChart({
         role="img"
         aria-label={`${title} · ${unit}`}
         onMouseMove={onMove}
-        onMouseLeave={() => setHover(null)}
+        onMouseLeave={() => {
+          setHover(null);
+          onHoverDate?.(null);
+        }}
         onClick={() => hover && onPick?.(hover.date)}
         style={onPick ? { cursor: 'pointer' } : undefined}
       >
@@ -156,7 +208,53 @@ export function OverviewChart({
             />
           </g>
         )}
-        {hover && <line x1={x(hover.date)} x2={x(hover.date)} y1={T} y2={B} className="chart-guide" />}
+        {(thresholds ?? []).map((th, i) => {
+          const y1 = y(Math.min(high, Math.max(low, th.to)));
+          const y2 = y(Math.min(high, Math.max(low, th.from)));
+          return y2 > y1 ? (
+            <g key={'t' + i}>
+              <rect x={L} y={y1} width={W - L - R} height={y2 - y1} fill={th.color} opacity="0.12" />
+              <line x1={L} x2={W - R} y1={y2} y2={y2} stroke={th.color} strokeDasharray="5 4" opacity="0.8" />
+              <text
+                x={W - R - 4}
+                y={y1 + 14}
+                textAnchor="end"
+                className="band-label"
+                style={{ fill: th.color }}
+              >
+                {th.label}
+              </text>
+            </g>
+          ) : null;
+        })}
+        {marks
+          .filter((an) => Date.parse(an.date) >= a && Date.parse(an.date) <= b)
+          .map((an, i) => (
+            <g key={'a' + i} className="chart-annotation">
+              <title>{`${an.label} · rige desde ${an.date}${an.estimated ? ' (fecha estimada)' : ''}`}</title>
+              <line
+                x1={x(an.date)}
+                x2={x(an.date)}
+                y1={T}
+                y2={B}
+                stroke="var(--accent)"
+                strokeWidth={1.4}
+                strokeDasharray={an.estimated ? '2 4' : '5 4'}
+                opacity="0.85"
+              />
+              <text
+                x={x(an.date) + 4}
+                y={T + 31 + (i % 3) * 12}
+                className="band-label"
+                style={{ fill: 'var(--accent)' }}
+              >
+                {an.label}
+              </text>
+            </g>
+          ))}
+        {guide && Date.parse(guide) >= a && Date.parse(guide) <= b && (
+          <line x1={x(guide)} x2={x(guide)} y1={T} y2={B} className="chart-guide" />
+        )}
         {traces.map((t, i) => {
           const pts = t.points.filter((p) => p.value !== null) as { date: string; value: number }[];
           if (!pts.length) return null;
@@ -174,7 +272,7 @@ export function OverviewChart({
             .join(' ');
           return (
             <g key={i} style={{ color: t.color }}>
-              {single && !t.dotsOnly && pts.length > 1 && (
+              {(single || area) && !t.dotsOnly && !t.dashed && pts.length > 1 && (
                 <path
                   d={`M${x(pts[0]!.date)},${B} ${pts.map((p) => `L${x(p.date)},${y(p.value)}`).join(' ')} L${x(pts[pts.length - 1]!.date)},${B} Z`}
                   fill="currentColor"
@@ -197,8 +295,8 @@ export function OverviewChart({
                   key={j}
                   cx={x(p.date)}
                   cy={y(p.value)}
-                  r={hover?.date === p.date ? 7 : 4.8}
-                  fill={hover?.date === p.date ? 'currentColor' : 'var(--surface, #fff)'}
+                  r={guide === p.date ? 7 : 4.8}
+                  fill={guide === p.date ? 'currentColor' : 'var(--surface, #fff)'}
                   stroke="currentColor"
                   strokeWidth="2.6"
                 />
@@ -246,7 +344,7 @@ export function OverviewChart({
           <span key={i}>
             <i style={{ background: t.color }} />
             {t.label}
-            {t.dashed ? ' · total' : ''}
+            {t.dashed ? ` · ${t.legend ?? 'total'}` : ''}
           </span>
         ))}
       </figcaption>

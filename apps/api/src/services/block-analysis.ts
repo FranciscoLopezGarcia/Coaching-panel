@@ -6,39 +6,23 @@ import {
   latestFrom,
   LIFTS,
   orderedBlocks,
-  type BlockComparison,
+  type ActualSet,
+  type ChangeEvent,
   type Lift,
+  type PlannedSet,
+  type SessionFeedback,
   type MetricSource,
   type RuleResult,
 } from '@coaching/engine';
+import type {
+  BlockAnalysisResult,
+  ExpressionSignal,
+  PlanChangeMark,
+  SessionFatiguePoint,
+  SignalSide,
+} from '@coaching/contracts';
 import type { HistoryRepo } from '../repositories/history.js';
 import type { DataLoader } from './data.js';
-
-export interface ExpressionSignal {
-  lift: Lift;
-  /** B gobierna el indicador principal; A queda como contraste (decisión D14). */
-  principal: 'B';
-  a: SignalSide;
-  b: SignalSide;
-  agreement: 'coinciden' | 'difieren' | 'no_comparable';
-}
-export interface SignalSide {
-  state: 'favorable' | 'no_favorable' | 'indeterminado_por_faltantes' | 'sin_benchmarks';
-  /** Estado nativo del motor, sin adulterar. */
-  nativeStatus: string;
-  evidence: string[];
-  missing: string[];
-  dataUntil: string | null;
-}
-
-export interface BlockAnalysisResult extends BlockComparison {
-  athleteId: string;
-  asOf: string;
-  /** Bloques disponibles para elegir el actual (el selector sigue siendo automático por defecto). */
-  availableBlocks: { blockKey: string; start: string; end: string }[];
-  expression: ExpressionSignal[];
-  generatedFrom: { planRevisionCutoff: string; analysisVersion: string };
-}
 
 function side(r: RuleResult | undefined): SignalSide {
   if (!r)
@@ -62,6 +46,47 @@ function side(r: RuleResult | undefined): SignalSide {
     missing: r.missing,
     dataUntil: r.dataUntil || null,
   };
+}
+
+function planChanges(events: ChangeEvent[], from: string, asOf: string): PlanChangeMark[] {
+  return events
+    .filter(
+      (e) =>
+        e.status === 'aplicado' && e.effectiveOn !== null && e.effectiveOn >= from && e.effectiveOn <= asOf,
+    )
+    .map((e) => ({
+      id: e.id,
+      date: e.effectiveOn as string,
+      classes: [...new Set(e.changes.map((c) => c.classification))],
+      estimated: e.effectiveEstimated,
+    }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : 1));
+}
+
+function sessionFatigue(
+  planned: PlannedSet[],
+  actual: ActualSet[],
+  feedback: SessionFeedback[],
+  from: string,
+  asOf: string,
+): SessionFatiguePoint[] {
+  const first = new Map<string, PlannedSet>();
+  for (const s of planned) if (!first.has(s.sessionKey)) first.set(s.sessionKey, s);
+  const doneOn = new Map<string, string>();
+  const bySet = new Map(planned.map((s) => [s.id, s.sessionKey]));
+  for (const a of actual) {
+    const sk = bySet.get(a.plannedSetId);
+    if (!sk || a.status !== 'done' || !a.performedOn) continue;
+    if ((doneOn.get(sk) ?? '') < a.performedOn) doneOn.set(sk, a.performedOn);
+  }
+  return feedback
+    .flatMap((f) => {
+      const p = first.get(f.sessionKey);
+      const date = doneOn.get(f.sessionKey) ?? p?.plannedDate;
+      if (!p || !date || f.endFatigue === null || date < from || date > asOf) return [];
+      return [{ sessionKey: f.sessionKey, date, blockKey: p.blockKey, value: f.endFatigue }];
+    })
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.sessionKey < b.sessionKey ? -1 : 1));
 }
 
 /**
@@ -114,6 +139,20 @@ export class BlockAnalysisService {
       asOf: o.asOf,
       availableBlocks: blocks.map((b) => ({ blockKey: b.blockKey, start: b.start, end: b.end })),
       expression: this.expression(d, k, o.asOf, o.lift),
+      planChanges: planChanges(k.changeEvents, cmp.window.blocks[0]?.start ?? '', o.asOf),
+      sessionFatigue: sessionFatigue(
+        k.plannedSets,
+        k.actualSets,
+        k.sessionFeedback,
+        cmp.window.blocks[0]?.start ?? '',
+        o.asOf,
+      ),
+      thresholds: {
+        fatigue: d.params.fatigueThreshold,
+        compliance: d.params.minCompliance,
+        pain: d.params.painBlock,
+        rpeTolerance: d.params.rpeTolerance,
+      },
       generatedFrom: { planRevisionCutoff: o.asOf, analysisVersion: ANALYSIS_VERSION },
     };
   }

@@ -1,3 +1,4 @@
+import { EXTERNAL_SOURCE } from '../src/import/export-csv.js';
 import { describe, expect, it } from 'vitest';
 import type { ObservedSet } from '../src/observed.js';
 import { observedFromPlan } from '../src/observed.js';
@@ -27,7 +28,7 @@ const o = (
   x: Partial<ObservedSet> = {},
 ): ObservedSet => ({
   id: `o${++n}`,
-  source: 'hevy',
+  source: EXTERNAL_SOURCE,
   sessionKey: `s-${date}`,
   date,
   exerciseName: 'Squat (Barbell)',
@@ -216,14 +217,14 @@ describe('Comparación de períodos con duraciones distintas', () => {
     expect(c.rows.map((r) => r.metricId)).toEqual(
       expect.arrayContaining([
         'e1rm_table_rpe',
-        'e1rm_prg_formulas',
-        'si_rts_total',
-        'si_prg',
-        'si_efort_xl',
+        'e1rm_formulas',
+        'si_doble_total',
+        'si_carga_rel',
+        'carga_esfuerzo',
       ]),
     );
     expect(c.b.partial).toBe(true);
-    expect(c.rows.find((r) => r.metricId === 'si_rts_total')!.aPerWeek).not.toBeNull();
+    expect(c.rows.find((r) => r.metricId === 'si_doble_total')!.aPerWeek).not.toBeNull();
     expect(c.rows.find((r) => r.metricId === 'e1rm_table_rpe')!.aPerWeek).toBeNull(); // no aditivo
   });
   it('semana actual vs anterior: la actual es parcial y se ofrece la dosis normalizada por día', () => {
@@ -248,16 +249,16 @@ describe('Series y velas OHLC', () => {
   const get = (m: string, ex: string) => series.find((s) => s.methodId === m && s.exercise === ex)!;
   it('separa por método y por variante: nunca una serie mezclada', () => {
     expect(series.map((s) => `${s.exercise}|${s.methodId}`).sort()).toEqual([
-      'Squat (Barbell)|prg-6-formulas',
+      'Squat (Barbell)|prom-6-formulas',
       'Squat (Barbell)|table-rpe',
-      'Squat pausa|prg-6-formulas',
+      'Squat pausa|prom-6-formulas',
     ]);
     expect(get('table-rpe', 'Squat (Barbell)').points.map((p) => p.date)).toEqual([
       '2026-03-02',
       '2026-03-04',
       '2026-03-09',
     ]); // sin la serie sin RPE
-    expect(get('prg-6-formulas', 'Squat (Barbell)').points).toHaveLength(4);
+    expect(get('prom-6-formulas', 'Squat (Barbell)').points).toHaveLength(4);
   });
   it('informa desde cuándo hay RPE (cambio de método disponible) sin unir tendencias', () => {
     const t = methodTransitions.find((x) => x.exercise === 'Squat (Barbell)')!;

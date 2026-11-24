@@ -48,7 +48,7 @@
         "lift": "SQ",
         "exposures": {
           "e1rm_table_rpe": 24,
-          "e1rm_prg_formulas": 24
+          "e1rm_formulas": 24
         }
       }
     ]

@@ -39,7 +39,7 @@ export interface ParamDef {
   provenance: 'propuesta' | 'decision_del_proyecto' | 'equipamiento';
 }
 
-/** [propuesta] salvo indicación. Ninguno es un umbral científico ni una constante de RTS/PRG. */
+/** [propuesta] salvo indicación. Ninguno es un umbral científico ni una constante de ninguna fuente externa. */
 export const PARAM_REGISTRY: ParamDef[] = [
   {
     id: 'nExposures',
@@ -269,7 +269,7 @@ export const PARAM_REGISTRY: ParamDef[] = [
     id: 'peakIndexMin',
     label: 'PeakIndex mínimo (modo A de expresión)',
     description:
-      'Porcentaje mínimo de series ≥ 85 % de la referencia en 7 días (regla del Glosario de PRG reconstruida desde texto).',
+      'Porcentaje mínimo de series ≥ 85 % de la referencia en 7 días (regla de ventana reconstruida desde descripciones).',
     unit: '%',
     concept: 'umbral',
     kind: 'number',

@@ -4,11 +4,11 @@ import { loadConfig } from '../config.js';
 import { parseArgs } from './args.js';
 
 /**
- * Importa el CSV de Hevy de un atleta. Por defecto es un DRY-RUN: lee, valida y muestra qué se importaría; no escribe nada.
+ * Importa el CSV de exportación de un atleta. Por defecto es un DRY-RUN: lee, valida y muestra qué se importaría; no escribe nada.
  * Para aplicar: --apply --token <confirmToken del dry-run>. El archivo se lee de tu disco y no se copia ni se versiona.
  *
- *   npm run import:hevy -w @coaching/api -- --athlete <id> --file /ruta/workouts.csv
- *   npm run import:hevy -w @coaching/api -- --athlete <id> --file /ruta/workouts.csv --apply --token <token>
+ *   npm run import:csv -w @coaching/api -- --athlete <id> --file /ruta/workouts.csv
+ *   npm run import:csv -w @coaching/api -- --athlete <id> --file /ruta/workouts.csv --apply --token <token>
  */
 const { flags, opts } = parseArgs(process.argv.slice(2));
 const athleteId = opts.get('athlete');
@@ -25,7 +25,7 @@ if (!(await ctx.athletes.get(athleteId))) {
   process.exit(2);
 }
 const apply = flags.has('apply');
-const r = await ctx.imports.hevy(athleteId, {
+const r = await ctx.imports.csv(athleteId, {
   csv: readFileSync(file, 'utf8'),
   mode: apply ? 'apply' : 'dry_run',
   timeZone: opts.get('tz'),

@@ -6,6 +6,7 @@ import {
   patternFor,
   patternOf,
   type ObservedSet,
+  EXTERNAL_SOURCE,
 } from '../src/index.js';
 
 let n = 0;
@@ -55,12 +56,12 @@ describe('NL, tonelaje, SI', () => {
     expect(c.totals.nl.value).toBe(14);
     expect(c.totals.sets.value).toBe(3);
     expect(c.totals.tonnage.value).toBe(1400);
-    expect(c.totals.si.rts.total.value).toBeGreaterThan(0);
-    expect(c.totals.si.rts.model).toBe('rts-aprox-v1');
-    expect(c.totals.si.efort.model).toBe('efort-xl-v1');
-    expect(c.totals.si.prg.model).toBe('prg-si-v1');
-    expect(c.totals.si.prg.status).toBe('unavailable'); // sin referencia de fuerza fechada
-    expect(c.totals.si.prg.missing.length).toBeGreaterThan(0);
+    expect(c.totals.si.doble.total.value).toBeGreaterThan(0);
+    expect(c.totals.si.doble.model).toBe('si-doble-v1');
+    expect(c.totals.si.esfuerzo.model).toBe('carga-esfuerzo-v1');
+    expect(c.totals.si.cargaRel.model).toBe('si-carga-rel-v1');
+    expect(c.totals.si.cargaRel.status).toBe('unavailable'); // sin referencia de fuerza fechada
+    expect(c.totals.si.cargaRel.missing.length).toBeGreaterThan(0);
   });
   it('calentamientos fuera; sin RPE el SI es parcial/no disponible pero NL y tonelaje siguen', () => {
     const c = base([
@@ -72,7 +73,7 @@ describe('NL, tonelaje, SI', () => {
     ]);
     expect(c.totals.nl.value).toBe(10);
     expect(c.totals.tonnage.value).toBe(1000);
-    expect(c.totals.si.rts.total.status).toBe('unavailable');
+    expect(c.totals.si.doble.total.status).toBe('unavailable');
     expect(c.warnings.join(' ')).toMatch(/sin RPE real/);
   });
   it('carga por lado / peso corporal no entran al tonelaje y se informan', () => {
@@ -387,7 +388,7 @@ describe('Fatiga entre sesiones', () => {
       ...mk(),
       ...sess(1, [[50, 10, 8]], {
         sessionKey: 'h',
-        source: 'hevy',
+        source: EXTERNAL_SOURCE,
         exerciseName: 'Bench comp',
         exerciseId: 'bench-comp',
         lift: 'BP',
@@ -397,7 +398,8 @@ describe('Fatiga entre sesiones', () => {
       computeCore({ obs: o, cutoff: day(60), from: day(0), to: day(60), lift: 'BP' }).sessions,
     ).toHaveLength(1);
     expect(
-      computeCore({ obs: o, cutoff: day(60), from: day(0), to: day(60), source: 'hevy' }).totals.nl.value,
+      computeCore({ obs: o, cutoff: day(60), from: day(0), to: day(60), source: EXTERNAL_SOURCE }).totals.nl
+        .value,
     ).toBe(10);
   });
 });
@@ -467,7 +469,10 @@ describe('Patrón de movimiento (otra dimensión: cada ejercicio en un solo patr
     expect(rows.reduce((a, r) => a + r.nl, 0)).toBe(c.totals.nl.value);
     expect(rows.reduce((a, r) => a + (r.tonnage ?? 0), 0)).toBe(c.totals.tonnage.value);
     // el SI por patrón también suma el SI total (todas las series tienen RPE)
-    expect(rows.reduce((a, r) => a + (r.si?.total ?? 0), 0)).toBeCloseTo(c.totals.si.rts.total.value ?? 0, 6);
+    expect(rows.reduce((a, r) => a + (r.si?.total ?? 0), 0)).toBeCloseTo(
+      c.totals.si.doble.total.value ?? 0,
+      6,
+    );
     expect(
       c.sessions
         .flatMap((s) => s.exercises)

@@ -235,7 +235,7 @@ export function compareBlocks(
         '/10',
         sa?.readinessMean ?? null,
         sb?.readinessMean ?? null,
-        'propia, no TRAC',
+        'propia',
       ),
       row(
         'ttp',

@@ -7,7 +7,7 @@ import { seedDemoData } from '../src/seed/load.js';
 
 /**
  * Recorridos funcionales que consume el frontend (handoff). Todo vía HTTP sobre una BD en memoria; datos 100 % sintéticos.
- * A programación · B registro · C análisis · D intervenciones · E historial · importación Hevy.
+ * A programación · B registro · C análisis · D intervenciones · E historial · importación CSV.
  */
 const TODAY = '2026-03-10';
 let app: FastifyInstance;
@@ -410,7 +410,7 @@ describe('C · Análisis, D · Intervenciones, E · Historial (sobre la demo sin
   });
 });
 
-describe('Importación Hevy · mapeo revisable y registros válidos vs rechazados', () => {
+describe('Importación CSV · mapeo revisable y registros válidos vs rechazados', () => {
   const HEAD =
     'title,start_time,end_time,description,exercise_title,superset_id,exercise_notes,set_index,set_type,weight_kg,reps,distance_km,duration_seconds,rpe';
   const row = (ex: string, i: number, kg: string, reps: string, rpe = '') =>
@@ -424,8 +424,8 @@ describe('Importación Hevy · mapeo revisable y registros válidos vs rechazado
   ].join('\n');
 
   it('dry-run separa rechazos de válidos con huecos, lista ejercicios; el mapeo guardado se aplica; aplicar exige token', async () => {
-    const id = (await send('POST', '/api/athletes', { name: 'Hevy sintético' })).json().id as string;
-    const url = `/api/athletes/${id}/imports/hevy`;
+    const id = (await send('POST', '/api/athletes', { name: 'CSV sintético' })).json().id as string;
+    const url = `/api/athletes/${id}/imports/csv`;
     const d1 = (await send('POST', url, { csv, mode: 'dry_run' })).json().preview;
     expect(d1.rejected).toBe(1);
     expect(d1.rejectedSample[0]).toHaveProperty('reason');

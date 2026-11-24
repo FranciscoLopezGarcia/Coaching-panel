@@ -1,5 +1,6 @@
 import {
   segmentKeyOf,
+  slotIndex,
   blockMetrics,
   buildExposures,
   compareBlocks,
@@ -151,7 +152,11 @@ export class HistoryService {
     const amap = new Map(d.actual.map((a) => [a.plannedSetId, a]));
     const fat = new Map(d.feedback.map((f) => [f.sessionKey, f.endFatigue]));
     const by = new Map<string, SessionRow>();
-    for (const s of d.planned) {
+    // El orden de los ejercicios dentro de la sesión vive en `slotKey` (:eN); dentro del ejercicio, por nº de serie.
+    const ordered = [...d.planned].sort(
+      (a, b) => slotIndex(a.slotKey) - slotIndex(b.slotKey) || a.setNo - b.setNo,
+    );
+    for (const s of ordered) {
       const row = by.get(s.sessionKey) ?? {
         sessionKey: s.sessionKey,
         date: s.plannedDate,
@@ -208,8 +213,6 @@ export class HistoryService {
       });
       by.set(s.sessionKey, row);
     }
-    return [...by.values()]
-      .map((r) => ({ ...r, sets: r.sets.sort((a, b) => a.setNo - b.setNo) }))
-      .sort((a, b) => (a.date < b.date ? 1 : -1));
+    return [...by.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
   }
 }

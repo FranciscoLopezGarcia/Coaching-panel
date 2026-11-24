@@ -1,13 +1,13 @@
-import chart from './data/rts-chart.json' with { type: 'json' };
-import measured from './data/rts-si-measured.json' with { type: 'json' };
+import chart from './data/curva-rpe.json' with { type: 'json' };
+import measured from './data/si-doble-medido.json' with { type: 'json' };
 
 /**
- * Stress Index por serie — modelo "rts-aprox-v1": reproduce el SI de la app RTS. Valores MEDIDOS (170 combinaciones) y, fuera de ellas,
- * fórmula con constantes AJUSTADAS (error ≤ 0,02 contra las mediciones; ver `SI_REVISION`). No es la fórmula interna de RTS (el servidor no la publica)
- * ni se mezcla con el Stress Index de PRG o el Exertion Load de eFort.
+ * Stress Index por serie — modelo "si-doble-v1": reproduce un modelo de SI doble medido. Valores MEDIDOS (170 combinaciones) y, fuera de ellas,
+ * fórmula con constantes AJUSTADAS (error ≤ 0,02 contra las mediciones; ver `SI_REVISION`). No es una fórmula publicada (el modelo original no la expone)
+ * ni se mezcla con el Stress Index relativo a la referencia o el Carga de esfuerzo (XL).
  * Depende solo de reps y RPE (no del peso absoluto). Central ≈ intensidad; periférico ≈ repeticiones efectivas.
  */
-export const SI_MODEL = 'rts-aprox-v1';
+export const SI_MODEL = 'si-doble-v1';
 const CS_A = 2.4798;
 const CS_B = 14.7239;
 const PS_C = 0.5386;
@@ -31,13 +31,13 @@ export interface Stress {
 }
 
 /**
- * Revisión del cálculo del SI de RTS (el id del modelo se mantiene: 'rts-aprox-v1'):
- *  r2 — (1) las combinaciones MEDIDAS en la app de RTS (170: reps 1–50 × RPE 1–10, w = 100) devuelven el valor medido, exacto a 2 decimales;
+ * Revisión del cálculo del SI doble (el id del modelo se mantiene: 'si-doble-v1'):
+ *  r2 — (1) las combinaciones MEDIDAS (170: reps 1–50 × RPE 1–10, w = 100) devuelven el valor medido, exacto a 2 decimales;
  *       (2) fuera de ellas rige la fórmula, ahora con el periférico acotado a RIR ≤ 5 (para RPE < 5 el término de decaimiento deja de crecer;
  *           sin esa cota el periférico subestimaba hasta 0,30). Error de la fórmula contra las 170 mediciones: central ≤ 0,016, periférico ≤ 0,006, total ≤ 0,010.
  *  r1 — (anterior) fórmula sin cota: error máximo 0,30 en el periférico a RPE bajo.
  */
-export const SI_REVISION = 'rts-si-r2';
+export const SI_REVISION = 'si-doble-r2';
 /** RIR máximo que entra en el decaimiento del periférico (ajustado a las mediciones: con 5 el error cae a ≈ 0,006). */
 const PS_K0_MAX = 5;
 const MEASURED = new Map(
@@ -58,7 +58,7 @@ export function stressOfSetFormula(reps: number, rpe: number): Stress {
   return { central, peripheral, total: (central + peripheral) / 2 };
 }
 
-/** SI de una serie: valor medido de RTS si la combinación (reps, RPE) fue medida; si no, la fórmula ajustada. */
+/** SI de una serie: valor medido si la combinación (reps, RPE) fue medida; si no, la fórmula ajustada. */
 export function stressOfSet(reps: number, rpe: number): Stress {
   const m = Number.isInteger(reps) ? MEASURED.get(`${reps}|${rpe}`) : undefined;
   if (m) return { central: m.central, peripheral: m.peripheral, total: m.total };
@@ -72,9 +72,9 @@ export const addStress = (a: Stress, b: Stress): Stress => ({
 });
 export const zeroStress = (): Stress => ({ central: 0, peripheral: 0, total: 0 });
 
-/** Exertion Load de eFort [recuperado]: peso · Σ e^(−0,215·(RIR + reps − t)); RIR = 10 − RPE real (decisión del proyecto). Escala propia: NO comparable con SI. */
-export const SI_MODEL_EFORT = 'efort-xl-v1';
-export function exertionLoadEfort(kg: number, reps: number, rpe: number): number {
+/** Carga de esfuerzo (XL) [recuperado]: peso · Σ e^(−0,215·(RIR + reps − t)); RIR = 10 − RPE real (decisión del proyecto). Escala propia: NO comparable con SI. */
+export const SI_MODEL_EFFORT = 'carga-esfuerzo-v1';
+export function effortLoad(kg: number, reps: number, rpe: number): number {
   const rir = 10 - rpe;
   const n = Math.round(reps);
   let sum = 0;
@@ -82,9 +82,9 @@ export function exertionLoadEfort(kg: number, reps: number, rpe: number): number
   return kg * sum;
 }
 
-/** Stress Index de PRG [recuperado]: t³·(RPE/10) + (reps/5)·t², t = kg/ref. Escala propia. Requiere RPE real (no se usa el RPE implícito de PRG). */
-export const SI_MODEL_PRG = 'prg-si-v1';
-export function stressIndexPrg(kg: number, reps: number, rpe: number, ref: number): number | null {
+/** Stress Index relativo a la referencia [recuperado]: t³·(RPE/10) + (reps/5)·t², t = kg/ref. Escala propia. Requiere RPE real (no se usa un RPE implícito). */
+export const SI_MODEL_REL = 'si-carga-rel-v1';
+export function stressIndexRel(kg: number, reps: number, rpe: number, ref: number): number | null {
   if (!(ref > 0) || !(kg > 0) || !(reps > 0) || !(rpe > 0 && rpe <= 10)) return null;
   const t = kg / ref;
   return Math.pow(t, 3) * (rpe / 10) + (reps / 5) * t * t;

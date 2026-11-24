@@ -13,7 +13,7 @@ Actualizado: 2026-11-06. Esta guía reemplaza los pendientes antiguos de las ent
 - Completar cuestionarios, incluso parciales. Elegir la fecha de análisis y ejecutar «Actualizar evaluación».
 - Ver estado por movimiento, último e1RM fechado, hallazgo y acción recibidos del backend; abrir curva, comparativas, evidencia e historial de cambios.
 - Consultar versiones publicadas y abrir el contenido de borradores guardados como tablas. Esa lectura no restaura ni publica el snapshot silenciosamente.
-- Mantener las importaciones Hevy/plan canónico y los formularios de parámetros/referencias existentes.
+- Mantener las importaciones CSV/plan canónico y los formularios de parámetros/referencias existentes.
 
 ## Entrada al laboratorio
 
@@ -175,7 +175,7 @@ Archivos: `apps/web/src/workspace/EssentialAnalysis.tsx`, `Analysis.tsx`, `pages
 
 Para probar: abrir `http://127.0.0.1:5200`, LAB-A al corte **2026-08-09**. En Resumen elegir ejercicio, alternar SI/NL/tonelaje, cambiar entre semanas y sesiones y consultar volumen muscular y fuerza debajo. **Ver datos** abre los datos oficiales; el resto del análisis permanece desplegable.
 
-Validación de lectura (no escribe en API/SQLite): `python3 apps/web/test/essential-analysis.py`. Comprueba valores del endpoint, detalle, sesiones oficiales y variantes, curva, ausencia honesta de singles, avanzado, retorno, recarga, celular de 390 px y error de red/Reintentar. También contrasta las sesiones de LAB-E con `/core` y consulta faltantes de LAB-D sin rellenarlos. Capturas y comprobantes: `docs/frontend-captures/esencial/`.
+Analizar es una sola pantalla (`apps/web/src/analysis/`, ver `docs/ANALISIS.md`); el análisis esencial anterior y su script de navegador se retiraron.
 
 Validaciones de la entrega anterior (referencia histórica; ver los checks de planillas al final):
 
@@ -213,13 +213,13 @@ python3 apps/web/test/overview-sheet.py
 
 El script valida la identidad ficticia contra la metadata de esa ruta y solo escribe en 5298/3298. Comprueba: acceso a Atletas desde inicio/perfil; tres gráficos en paralelo; edición/pegado y teclado; borrador al recargar; preview y publicación de dos cambios sin modificar ejecución; error de red y reintento en programación y registro; RPE real opcional sin relleno; persistencia; celular; creación de una sesión con dos top sets y tres backoffs sin resultados. Capturas y comprobantes en `docs/frontend-captures/planilla/`.
 
-El script anterior `essential-analysis.py` ahora despliega el detalle por ejercicio antes de comprobar el recorrido detallado; `persistent-laboratory.py` también abre los detalles necesarios. No se volvieron a ejecutar sus fases de escritura sobre el laboratorio persistente.
+`persistent-laboratory.py` abre los detalles necesarios. No se volvieron a ejecutar sus fases de escritura sobre el laboratorio persistente.
 
 ### Resultado de la validación final de planillas
 
 - `npm run ci` general: **aprobado**, con **434 tests** combinados (4 contracts, 299 engine, 111 API, 20 frontend), formato, lint, tipos y builds. Se corrigió únicamente el formato de `docs/frontend-captures/persistente/offline-checks.json`, un comprobante frontend anterior; no hubo cambios de fuentes fuera del alcance.
 - Tras integrar `exercises[].pattern`: ESLint frontend, TypeScript y los 20 tests frontend aprobados; comprobación en navegador del patrón oficial de un accesorio real de la base sintética.
-- `overview-sheet.py`: **10 escenarios aprobados** con escrituras exclusivamente en la BD temporal. `essential-analysis.py`: **9 escenarios de lectura aprobados** sobre el laboratorio persistente, conservando detalle, avanzado, fechas, errores recuperables y faltantes.
+- `overview-sheet.py`: **10 escenarios aprobados** con escrituras exclusivamente en la BD temporal. El script de lectura del análisis esencial se retiró con esa pantalla.
 - Los procesos propios de API se reiniciaron de forma controlada, después de terminar los tests activos, para incorporar los patrones nuevos de Claude. La API persistente sigue en 3200 con la misma ruta e identidad; Vite 5200 no se detuvo. No se volvieron a generar sus datos ni se ejecutaron evaluaciones de escritura.
 - Los procesos temporales 3298/5298 se detuvieron al finalizar. El archivo SQLite temporal queda en `/tmp/base-planilla-pruebas-20261108-785421.sqlite`; para repetir, iniciar la API y Vite de prueba sobre ese archivo existente, **sin repetir `lab:create`**. Para una ejecución nueva, elegir otra ruta exclusiva y actualizar el script de identidad.
 - No hubo commit, push ni deploy; ningún dato real se usó en las pruebas.
@@ -232,7 +232,7 @@ Se revisaron `VARIABLES_NUCLEO.md`, migración/compatibilidad, contratos, implem
 - **Respuesta entre series:** en Registro, desplegar **Comparar series con lo previsto**. Consulta `fatiga-v2` de `/core` para esa sesión, muestra objetivo/rango, reps y RPE real, posición respecto del rango y diferencias de RPE frente al objetivo y la serie anterior. Todos los deltas y posiciones vienen del backend. Se informa el corte y que los borradores aún no se analizan; una sesión posterior al corte no se presenta como observada.
 - **Patrones:** en análisis, desplegar **Volumen oficial por patrón · series, NL y tonelaje** para ver `patterns` y `patrones-v1`, por semana o sesión. Estos totales no son una suma del frontend ni un SI muscular.
 - **Músculos:** cada gráfico permite abrir repeticiones y tonelaje equivalentes oficiales. Los pesos y versión de la convención se leen del backend, sin fijarlos en el cliente.
-- **SI:** el botón de datos del gráfico consulta bajo demanda modelo/revisión/tablas de `/api/tables/si/rts`, incluyendo `rts-si-r2`. La curva y las recomendaciones siguen usando únicamente resultados de API. No se reevalúa automáticamente ni se reescriben evaluaciones guardadas.
+- **SI:** el botón de datos del gráfico consulta bajo demanda modelo/revisión/tablas de `/api/tables/si/doble`, incluyendo `si-doble-r2`. La curva y las recomendaciones siguen usando únicamente resultados de API. No se reevalúa automáticamente ni se reescriben evaluaciones guardadas.
 - **Compatibilidad:** `SessionRow` todavía tiene un protocolo manual sin `repsMax` en contracts. Se agregó un lector seguro solo en frontend; el desajuste está documentado para Claude en `FRONTEND_BACKEND_REQUESTS.md`.
 
 Archivos principales: `workspace/prescription.ts`, `SessionResponse.tsx`, `core.ts`, `ProgrammingSheet.tsx`, `Programming.tsx`, `Registration.tsx`, `AnalysisOverview.tsx`, `EssentialAnalysis.tsx`, `ExposureHistory.tsx`. Las demás métricas siguen disponibles bajo demanda.

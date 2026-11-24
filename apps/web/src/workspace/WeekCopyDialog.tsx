@@ -12,7 +12,7 @@ const monday = (d: string) => {
 
 /**
  * Copiar el microciclo completo a varias semanas y retocarlo: la semana se abre como texto («# Día 1»), se edita y se crean las semanas
- * elegidas, con la opción de subir el RPE semana a semana (como «Duplicar semana +1 RPE» de PRG).
+ * elegidas, con la opción de subir el RPE semana a semana .
  */
 export function WeekCopyDialog({
   id,

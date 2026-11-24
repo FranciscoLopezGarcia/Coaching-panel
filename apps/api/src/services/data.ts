@@ -36,7 +36,7 @@ export interface AthleteData {
   /** Series que ya no están en la programación vigente pero se conservan por tener ejecución. */
   retiredIds: Set<string>;
   actual: ActualSet[];
-  /** Observaciones ejecutadas con prescripción (plan) + las importadas sin ella (p. ej. Hevy). Las fuentes NO se deduplican entre sí. */
+  /** Observaciones ejecutadas con prescripción (plan) + las importadas sin ella (p. ej. un CSV importado). Las fuentes NO se deduplican entre sí. */
   observed: ObservedSet[];
   readinessHistory: Readiness[];
   feedback: SessionFeedback[];

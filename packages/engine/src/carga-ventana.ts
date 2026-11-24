@@ -3,10 +3,10 @@ import { median } from './format.js';
 import type { ActualSet, Lift, PlannedSet } from './types.js';
 
 /**
- * Métricas reconstruidas de PRG (R-EXPRESSION modo A). [recuperado del texto/código del cliente de PRG; NO verificado contra su motor completo].
- * Se calculan con el e1RM de tabla del proyecto, no con el promedio de 6 fórmulas de PRG: es una sustitución declarada.
+ * Métricas de ventana reconstruidas (R-EXPRESSION modo A). [reconstruido desde descripciones públicas; NO verificado contra ningún motor completo].
+ * Se calculan con el e1RM de tabla del proyecto, no con el promedio de 6 fórmulas: es una sustitución declarada.
  */
-export const inolPrg = (reps: number, kg: number, ref: number): number | null =>
+export const inolOf = (reps: number, kg: number, ref: number): number | null =>
   ref > 0 && kg > 0 && reps > 0 ? reps / Math.max(1, 100 - (100 * kg) / ref) : null;
 
 export interface DayPoint {
@@ -24,7 +24,7 @@ const addDays = (iso: string, n: number): string => {
 };
 
 /**
- * Serie diaria de INOL PRG (últimos `n` días hasta el corte) para un lift.
+ * Serie diaria de INOL (últimos `n` días hasta el corte) para un lift.
  * Un día es CONOCIDO si hay registro (hecho u omitido), o si no había nada previsto ese día dentro del plan conocido (descanso programado).
  * Un día con series previstas y sin registro es DESCONOCIDO: no se toma como descanso. Series sin referencia fechada vuelven desconocido el día.
  */
@@ -54,7 +54,7 @@ export function dailyInol(
         bad = true;
         continue;
       }
-      v += inolPrg(a.reps, a.kg, s.refKg) ?? 0;
+      v += inolOf(a.reps, a.kg, s.refKg) ?? 0;
       sets++;
       if (a.kg / s.refKg >= 0.85) sets85++;
     }
@@ -72,7 +72,7 @@ export function dailyInol(
   return out;
 }
 
-export function acwrPrg(x: DayPoint[]): { value: number | null; reason: string } {
+export function acwrOf(x: DayPoint[]): { value: number | null; reason: string } {
   if (x.length < 28) return { value: null, reason: 'Historial insuficiente' };
   const w = x.slice(-28);
   if (!w.every((d) => d.known))
@@ -89,7 +89,7 @@ export function acwrPrg(x: DayPoint[]): { value: number | null; reason: string }
 }
 
 /** PeakIndex = % de series ≥ 85 % de la referencia sobre las series válidas de 7 días. */
-export function peakIndexPrg(x: DayPoint[]): number | null {
+export function peakIndexOf(x: DayPoint[]): number | null {
   const w = x.slice(-7);
   if (!w.every((d) => d.known)) return null;
   const total = w.reduce((a, d) => a + d.sets, 0);
@@ -97,7 +97,7 @@ export function peakIndexPrg(x: DayPoint[]): number | null {
 }
 
 /** FR: mejor e1RM diario, reciente→antiguo, pesos N..1. Requiere ≥ 2 fechas. */
-export function frPrg(bestRecentFirst: number[]): number | null {
+export function frOf(bestRecentFirst: number[]): number | null {
   const n = bestRecentFirst.length;
   if (n < 2) return null;
   let num = 0;

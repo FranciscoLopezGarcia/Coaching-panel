@@ -39,7 +39,7 @@
 
 ## Variables núcleo y tablas (2026-11-08)
 
-- **⚠ Cambio de cálculo**: el e1RM por curva usa ahora la curva de RTS (`rts-curva-default-v1`) en lugar de la tabla `rpe-proyecto-v1`. Difiere solo donde reps + 10 − RPE > 10 (107 de 195 celdas de la tabla anterior); el resto es idéntico. `method.version` de `e1rm_table_rpe` cambia de string. No se reescriben resultados guardados: re-evaluar para ver los nuevos.
+- **⚠ Cambio de cálculo**: el e1RM por curva usa ahora la curva de referencia (`curva-rpe-v1`) en lugar de la tabla `rpe-proyecto-v1`. Difiere solo donde reps + 10 − RPE > 10 (107 de 195 celdas de la tabla anterior); el resto es idéntico. `method.version` de `e1rm_table_rpe` cambia de string. No se reescriben resultados guardados: re-evaluar para ver los nuevos.
 - **Dominio**: por defecto sigue siendo reps 1–15 × RPE 4–10; el amplio (reps 1–50 × RPE 1–10) es opcional (`domain=amplio`).
 - **Músculos**: `musculos-v1` (9 grupos) → `musculos-v2` (17 grupos + reglas por nombre). Se agregan grupos; los 9 anteriores conservan su nombre. Ejercicios que antes no tenían músculos (remos, jalones, curl, etc.) ahora aportan.
-- **Nuevo**: `GET /api/athletes/:id/core`, `GET /api/tables/*`, `ObservedSet.setNo` (orden de series; de `set_index` en Hevy, sin migración de BD: se lee de la clave externa guardada).
+- **Nuevo**: `GET /api/athletes/:id/core`, `GET /api/tables/*`, `ObservedSet.setNo` (orden de series; de `set_index` en el CSV importado, sin migración de BD: se lee de la clave externa guardada).

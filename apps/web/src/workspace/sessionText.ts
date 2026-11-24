@@ -211,7 +211,8 @@ export type EditOp =
   | { kind: 'move'; label: string; sessionKey: string; date: string; weekNo: number; dayNo: number }
   | { kind: 'change'; label: string; setIds: string[]; change: Record<string, unknown> }
   | { kind: 'remove'; label: string; setIds: string[]; executed: number }
-  | { kind: 'add'; label: string; sets: Record<string, unknown>[] };
+  | { kind: 'add'; label: string; sets: Record<string, unknown>[] }
+  | { kind: 'reorder'; label: string; sessionKey: string; order: string[] };
 export interface EditPlan {
   ops: EditOp[];
   changes: string[];
@@ -301,7 +302,9 @@ export function planSessionEdit(
   };
   const executed = (g: ExGroup) => g.sets.filter((s) => s.actual?.status === 'done').length;
   let slot = 100;
+  const placedLast: string[] = []; // los reemplazados/agregados quedan al final (slot 100+) hasta reordenar
   const replace = (o: ExGroup, n: (typeof news)[number], why: string) => {
+    placedLast.push(n.name);
     const ex = executed(o);
     plan.ops.push({
       kind: 'remove',
@@ -323,6 +326,7 @@ export function planSessionEdit(
   for (const n of news) {
     const o = olds.find((x) => x.name === n.name);
     if (!o) {
+      placedLast.push(n.name);
       plan.ops.push({ kind: 'add', label: `Agregar ${n.name}`, sets: buildSets(ctx, n, slot++) });
       plan.changes.push(`${n.name}: ejercicio nuevo (${n.sets.length} series)`);
       continue;
@@ -428,6 +432,19 @@ export function planSessionEdit(
       plan.warnings.push(
         `${o.name}: ${ex} serie(s) con ejecución se retiran del plan (su historia se conserva).`,
       );
+  }
+  // El orden escrito en el texto es el orden de la sesión. Va al final: ya existen (o se agregaron) todos los ejercicios.
+  const wanted = news.map((n) => n.name);
+  const kept = olds.map((o) => o.name).filter((x) => wanted.includes(x) && !placedLast.includes(x));
+  const afterOps = [...kept, ...placedLast];
+  if (wanted.length > 1 && afterOps.join('\u0000') !== wanted.join('\u0000')) {
+    plan.ops.push({
+      kind: 'reorder',
+      label: 'Ordenar ejercicios',
+      sessionKey: session.sessionKey,
+      order: wanted,
+    });
+    plan.changes.push(`Orden de los ejercicios: ${wanted.join(' · ')}`);
   }
   return plan;
 }

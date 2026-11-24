@@ -1,0 +1,98 @@
+.bd-seg {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  clip-path: var(--cut-s);
+  overflow: hidden;
+}
+.bd-seg button {
+  background: var(--surface);
+  color: var(--text);
+  border: 0;
+  padding: 7px 14px;
+  cursor: pointer;
+  font: inherit;
+}
+.bd-seg button[aria-pressed='true'] {
+  background: var(--accent);
+  color: #fff;
+}
+.bd-lifts button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  font-size: 15px;
+}
+.bd-lifts button i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c);
+  display: inline-block;
+}
+.bd-lifts button[aria-pressed='true'] {
+  background: var(--c) !important;
+  color: #fff;
+}
+.bd-lifts button[aria-pressed='true'] i {
+  background: #fff;
+}
+.mov-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 10px 0 6px;
+}
+.mov-filter > span {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+.mov-filter small {
+  color: var(--muted);
+}
+.mov-filter .bd-seg button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+}
+.mov-filter .bd-seg button i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.mov-filter button[data-mov='SQ'] i {
+  background: var(--sq);
+}
+.mov-filter button[data-mov='BP'] i {
+  background: var(--bp);
+}
+.mov-filter button[data-mov='DL'] i {
+  background: var(--dl);
+}
+.mov-filter button[data-mov='SQ'][aria-pressed='true'] {
+  background: var(--sq) !important;
+}
+.mov-filter button[data-mov='BP'][aria-pressed='true'] {
+  background: var(--bp) !important;
+}
+.mov-filter button[data-mov='DL'][aria-pressed='true'] {
+  background: var(--dl) !important;
+}
+.mov-filter button[aria-pressed='true'] i {
+  background: #fff !important;
+}
+
+.mov-filter button[data-mov='ALL'][aria-pressed='true'] {
+  background: var(--accent) !important;
+  color: #fff;
+}
+.mov-filter button[aria-pressed='true']:not([data-mov]) {
+  background: var(--accent);
+  color: #fff;
+}

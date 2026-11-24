@@ -1,6 +1,6 @@
 import type { MuscleGroupId } from '@coaching/contracts';
 /**
- * Carga rápida de una sesión por TEXTO (como «Crear con texto» de PRG): una línea por ejercicio.
+ * Carga rápida de una sesión por TEXTO: una línea por ejercicio.
  *   Squat comp 3x5@4-5-6            3 series de 5, RPE 4, 5 y 6 (una por serie)
  *   1° Bench comp 4x5@8             prioridad 1° del coach
  *   Remo barra 3x10-12 RIR2         rango de reps y RIR (RIR 2 = RPE 8)

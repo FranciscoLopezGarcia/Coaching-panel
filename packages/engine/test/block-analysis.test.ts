@@ -71,6 +71,36 @@ describe('compareAdjacentBlocks', () => {
     expect(nl?.deltas).toHaveLength(3);
     expect(c?.window.blocks[3]?.closed).toBe(false);
   });
+  it('entrega el rango semanal de cada bloque con fechas reales; semana sin dato no es cero', () => {
+    const f = fx();
+    const c = compareAdjacentBlocks({
+      planned: f.planned,
+      actual: f.actual,
+      currentBlockKey: 'Sep',
+      asOf: '2026-12-31',
+      source: 'actual',
+      lift: 'SQ',
+    });
+    const nl = c?.rows.find((r) => r.metricId === 'nl_per_week');
+    expect(nl?.spread).toHaveLength(4);
+    const jul = nl?.spread[1];
+    expect(jul?.points.map((p) => p.date)).toEqual(['2026-07-06', '2026-07-13']);
+    const vals = jul?.points.map((p) => p.value as number) ?? [];
+    expect(jul?.min).toBe(Math.min(...vals));
+    expect(jul?.max).toBe(Math.max(...vals));
+    expect(jul?.n).toBe(2);
+    // el valor del bloque (media semanal) queda dentro del rango semanal
+    const v = nl?.values[1] as number;
+    expect(v).toBeGreaterThanOrEqual(jul?.min as number);
+    expect(v).toBeLessThanOrEqual(jul?.max as number);
+    // SI central y periférico existen como filas propias, de la misma familia que el total
+    const ids = c?.rows.map((r) => r.metricId) ?? [];
+    expect(ids).toEqual(expect.arrayContaining(['si_central_per_week', 'si_peripheral_per_week']));
+    expect(c?.rows.find((r) => r.metricId === 'si_central_per_week')?.modelFamily).toBe('si-doble-v1');
+    // adherencia no tiene semanas: spread nulo, no inventado
+    const ad = c?.rows.find((r) => r.metricId === 'adherence_sets');
+    expect(ad?.spread.every((x) => x === null)).toBe(true);
+  });
   it('detecta variante nueva, retirada y reintroducida', () => {
     const f = new Fixture();
     f.session('2026-05-04', row(100), {

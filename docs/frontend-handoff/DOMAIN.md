@@ -3,7 +3,7 @@
 ## Jerarquía y entidades
 
 Atleta → Macro → Meso (`blockKey`) → Microciclo (`blockKey`+`weekNo`, fechas explícitas opcionales) → Sesión (`sessionKey`) → Exposición → Serie prevista (`PlannedSet`) ← Serie realizada (`ActualSet`, 1:1 por `plannedSetId`).
-Aparte: `checkins` (por fecha), `session_feedback` (fatiga fin de sesión), `coach_reviews` (técnica), `competitions`, `strength_references` (fuente/fecha/ejercicio), `observed_sets` (Hevy, **no** ligadas a prescripción), `plan_versions` + `change_events`, `interventions`, `record_revisions`, `plan_templates`, `exposure_links`.
+Aparte: `checkins` (por fecha), `session_feedback` (fatiga fin de sesión), `coach_reviews` (técnica), `competitions`, `strength_references` (fuente/fecha/ejercicio), `observed_sets` (CSV importado, **no** ligadas a prescripción), `plan_versions` + `change_events`, `interventions`, `record_revisions`, `plan_templates`, `exposure_links`.
 Duraciones de macro/meso/micro variables; si un meso no tiene fechas, el motor deriva de las series previstas y lo marca.
 
 ## IDs e identidad de exposición
@@ -26,17 +26,17 @@ Lo previsto vive en `planned_sets` (con `protocol`, `plannedKgSource`); lo reali
 
 ## Métricas (catálogo en `GET /api/catalog`)
 
-| id                                                            | unidad              | método                                                                          |
-| ------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------- |
-| `nl`                                                          | repeticiones        | suma de reps (≠ series)                                                         |
-| `sets`, `frequency`                                           | series; días/semana | conteos                                                                         |
-| `tonnage`                                                     | kg                  | solo cargas totales conocidas                                                   |
-| `intensity_rel`                                               | % ref               | kg ÷ referencia fechada                                                         |
-| `e1rm_table_rpe`                                              | kg                  | curva reps×RPE `rts-curva-default-v1`; **exige RPE real**                       |
-| `e1rm_prg_formulas`                                           | kg                  | promedio de 6 fórmulas PRG, reps 2–10                                           |
-| `si_rts_*` (aprox), `si_prg`, `si_efort_xl`                   | adimensional        | modelos distintos, **no se suman ni comparan**                                  |
-| `inol_prg`, `acwr_prg`, `fatigue_ratio_prg`, `peak_index_prg` | —                   | PRG reconstruido                                                                |
-| `muscle_sets_equivalent`                                      | series eq.          | directo 1.0 / indirecto 0.5 (convención del proyecto); sin total entre músculos |
+| id                                                     | unidad              | método                                                                          |
+| ------------------------------------------------------ | ------------------- | ------------------------------------------------------------------------------- |
+| `nl`                                                   | repeticiones        | suma de reps (≠ series)                                                         |
+| `sets`, `frequency`                                    | series; días/semana | conteos                                                                         |
+| `tonnage`                                              | kg                  | solo cargas totales conocidas                                                   |
+| `intensity_rel`                                        | % ref               | kg ÷ referencia fechada                                                         |
+| `e1rm_table_rpe`                                       | kg                  | curva reps×RPE `curva-rpe-v1`; **exige RPE real**                               |
+| `e1rm_formulas`                                        | kg                  | promedio de 6 fórmulas, reps 2–10                                               |
+| `si_doble_*` (aprox), `si_carga_rel`, `carga_esfuerzo` | adimensional        | modelos distintos, **no se suman ni comparan**                                  |
+| `inol`, `acwr`, `fatigue_ratio`, `peak_index`          | —                   | reglas de ventana reconstruidas                                                 |
+| `muscle_sets_equivalent`                               | series eq.          | directo 1.0 / indirecto 0.5 (convención del proyecto); sin total entre músculos |
 
 `MetricResult`: `status, value, unit, period{from,to,days,weeks,partial}, scope, usedRecords, excluded, missing, reference, baseline, method{id,version}, warnings, cutoff`.
 **Disponibilidad y abstención**: `unavailable` ⇒ `value:null` + `missing`; `partial` ⇒ valor con `warnings`. Una regla sin dato **se abstiene** (la matriz completa está en `informe-final.md` §5 y en `/api/catalog`.availability); las demás métricas siguen. Nunca se completa un RPE faltante con el objetivo. `referenceMode`: `original` (referencia conocida a la fecha) vs `retrospective` (recalculado, rotulado).
@@ -47,8 +47,8 @@ Cada decisión trae `ruleId` + `rulesVersion` + `paramsVersion`, `explanation` (
 
 ## Convenciones
 
-- **Fechas**: ISO local del atleta (`TZ_APP`, default `America/Argentina/Mendoza`); Hevy se interpreta en esa zona (`dateInterpretation` lo informa).
+- **Fechas**: ISO local del atleta (`TZ_APP`, default `America/Argentina/Mendoza`); el CSV importado se interpreta en esa zona (`dateInterpretation` lo informa).
 - **Semanas**: lunes–domingo (`dayNo` 1–7, lunes=1). `weekNo` es de bloque (microciclo), no de calendario. Semana parcial se marca `partial` y se normaliza por semana/día.
 - **Cargas**: kg. Tipos de carga: `total, per_side (mancuernas por lado), machine, bodyweight, added_bodyweight, assisted, unknown`; solo `total`/`machine` entran al tonelaje. `RPE` 1–10 (pasos .5); `pain` 0–10 por serie; check-in 1–10.
-- **Grupos musculares**: tabla de la app (no la de Hevy); NL ≠ series musculares.
+- **Grupos musculares**: tabla de la app (convención propia); NL ≠ series musculares.
 - **Parámetros**: `PARAM_REGISTRY` (default, alcance, versión); precedencia movimiento > atleta > default; `missingConfig` dice qué falta y qué se suspende.

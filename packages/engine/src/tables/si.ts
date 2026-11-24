@@ -1,21 +1,21 @@
-import measured from '../data/rts-si-measured.json' with { type: 'json' };
+import measured from '../data/si-doble-medido.json' with { type: 'json' };
 import { RPE_VALUES, REPS_VALUES, RPE_FULL, pctFromCurve } from './rpe.js';
 import {
   SI_REVISION,
   stressOfSetFormula,
-  exertionLoadEfort,
-  stressIndexPrg,
+  effortLoad,
+  stressIndexRel,
   SI_MODEL,
-  SI_MODEL_EFORT,
-  SI_MODEL_PRG,
+  SI_MODEL_EFFORT,
+  SI_MODEL_REL,
 } from '../si.js';
 
 /**
  * TABLAS DE STRESS INDEX. Los modelos NO se mezclan ni comparan (escalas propias).
- *  - RTS (`rts-aprox-v1`, revisión `rts-si-r2`): central/periférico/total por (reps, RPE); no depende del peso. 170 celdas MEDIDAS en la app real (reps 1–50, RPE 1–10, w = 100);
+ *  - Doble (`si-doble-v1`, revisión `si-doble-r2`): central/periférico/total por (reps, RPE); no depende del peso. 170 celdas MEDIDAS (reps 1–50, RPE 1–10, w = 100);
  *    el resto se calcula con la fórmula ajustada [error ≤ 0,02 en las medidas]. Cada celda dice su origen y, si fue medida, el error de la fórmula.
- *  - eFort (`efort-xl-v1`): Exertion Load por kg (XL = kg × factor(reps, RPE)), RIR = 10 − RPE [recuperado]. Cualquier reps/RPE.
- *  - PRG (`prg-si-v1`): depende de t = kg / referencia: SI = t³·(RPE/10) + (reps/5)·t² [recuperado]. Se tabula por % de la referencia.
+ *  - Esfuerzo (`carga-esfuerzo-v1`): Exertion Load por kg (XL = kg × factor(reps, RPE)), RIR = 10 − RPE Cualquier reps/RPE.
+ *  - Relativo (`si-carga-rel-v1`): depende de t = kg / referencia: SI = t³·(RPE/10) + (reps/5)·t². Se tabula por % de la referencia.
  */
 export const SI_TABLE_VERSION = 'si-tablas-v1';
 interface Meas {
@@ -28,19 +28,19 @@ interface Meas {
 const MEAS = new Map((measured as { cells: Meas[] }).cells.map((c) => [`${c.reps}|${c.rpe}`, c]));
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
-export interface RtsSiCell {
+export interface DoubleSiCell {
   reps: number;
   rpe: number;
   central: number | null;
   peripheral: number | null;
   total: number | null;
-  origin: 'medido-rts' | 'aproximado' | null;
+  origin: 'medido' | 'aproximado' | null;
   /** Solo en celdas medidas: lo que daría la aproximación y su diferencia (aprox − medido). */
   approx?: { central: number; peripheral: number; total: number };
   error?: { central: number; peripheral: number; total: number };
 }
 
-export function rtsSiCell(reps: number, rpe: number): RtsSiCell {
+export function doubleSiCell(reps: number, rpe: number): DoubleSiCell {
   if (pctFromCurve(reps, rpe) === null)
     return { reps, rpe, central: null, peripheral: null, total: null, origin: null };
   const a = stressOfSetFormula(reps, rpe);
@@ -53,7 +53,7 @@ export function rtsSiCell(reps: number, rpe: number): RtsSiCell {
     central: m.central,
     peripheral: m.peripheral,
     total: m.total,
-    origin: 'medido-rts',
+    origin: 'medido',
     approx,
     error: {
       central: r2(approx.central - m.central),
@@ -63,20 +63,20 @@ export function rtsSiCell(reps: number, rpe: number): RtsSiCell {
   };
 }
 
-export function rtsSiTable(): {
+export function doubleSiTable(): {
   model: string;
   revision: string;
   version: string;
   rpes: number[];
   reps: number[];
-  rows: RtsSiCell[][];
+  rows: DoubleSiCell[][];
   validation: {
     measuredCells: number;
     maxAbsError: { central: number; peripheral: number; total: number };
     meanAbsError: { central: number; peripheral: number; total: number };
   };
 } {
-  const rows = REPS_VALUES.map((n) => RPE_VALUES.map((p) => rtsSiCell(n, p)));
+  const rows = REPS_VALUES.map((n) => RPE_VALUES.map((p) => doubleSiCell(n, p)));
   const errs = rows.flat().filter((c) => c.error);
   const agg = (k: 'central' | 'peripheral' | 'total', f: (xs: number[]) => number) =>
     r2(f(errs.map((c) => Math.abs((c.error as Record<string, number>)[k] as number))));
@@ -103,8 +103,8 @@ export function rtsSiTable(): {
   };
 }
 
-/** eFort: Exertion Load por kg levantado, reps 1–50 × RPE 1–10 (pasos de 0,5). XL de una serie = kg × celda. */
-export function efortXlTable(): {
+/** Esfuerzo: carga por kg levantado, reps 1–50 × RPE 1–10 (pasos de 0,5). XL de una serie = kg × celda. */
+export function effortLoadTable(): {
   model: string;
   version: string;
   rpes: number[];
@@ -112,18 +112,16 @@ export function efortXlTable(): {
   xlPerKg: number[][];
 } {
   return {
-    model: SI_MODEL_EFORT,
+    model: SI_MODEL_EFFORT,
     version: SI_TABLE_VERSION,
     rpes: RPE_VALUES,
     reps: REPS_VALUES,
-    xlPerKg: REPS_VALUES.map((n) =>
-      RPE_VALUES.map((p) => Math.round(exertionLoadEfort(1, n, p) * 10000) / 10000),
-    ),
+    xlPerKg: REPS_VALUES.map((n) => RPE_VALUES.map((p) => Math.round(effortLoad(1, n, p) * 10000) / 10000)),
   };
 }
 
-/** PRG: SI por serie según % de la referencia (t), reps y RPE. Por defecto 30–110 % en pasos de 5, reps 1–30, RPE 1–10 en pasos de 0,5. */
-export function prgSiTable(
+/** Relativo: SI por serie según % de la referencia (t), reps y RPE. Por defecto 30–110 % en pasos de 5, reps 1–30, RPE 1–10 en pasos de 0,5. */
+export function relSiTable(
   o: { pctFrom?: number; pctTo?: number; pctStep?: number; repsMax?: number } = {},
 ): {
   model: string;
@@ -141,21 +139,21 @@ export function prgSiTable(
   for (let p = from; p <= to + 1e-9; p += step) pcts.push(Math.round(p * 100) / 100);
   const reps = Array.from({ length: Math.min(o.repsMax ?? 30, RPE_FULL.repsMax) }, (_, i) => i + 1);
   return {
-    model: SI_MODEL_PRG,
+    model: SI_MODEL_REL,
     version: SI_TABLE_VERSION,
     pcts,
     reps,
     rpes: RPE_VALUES,
     si: pcts.map((p) =>
       reps.map((n) =>
-        RPE_VALUES.map((r) => Math.round((stressIndexPrg(p / 100, n, r, 1) as number) * 10000) / 10000),
+        RPE_VALUES.map((r) => Math.round((stressIndexRel(p / 100, n, r, 1) as number) * 10000) / 10000),
       ),
     ),
   };
 }
 
-/** Curva continua de eFort: %1RM implícito para h = reps + RIR (h = 1…50; paso 0,5). */
-export function efortCurveTable(): { version: string; rows: { h: number; pct: number }[] } {
+/** Curva continua de esfuerzo: %1RM implícito para h = reps + RIR (h = 1…50; paso 0,5). */
+export function effortCurveTable(): { version: string; rows: { h: number; pct: number }[] } {
   const rows: { h: number; pct: number }[] = [];
   for (let h = 1; h <= 50; h += 0.5) {
     const v = Math.min(100, Math.max(0, (48.8 + 53.8 * Math.exp(-0.06 * h)) / 0.99466));

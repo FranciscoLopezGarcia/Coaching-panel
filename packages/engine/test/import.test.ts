@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { csvRecords, parseCsv } from '../src/import/csv.js';
-import { parseHevyCsv, parseHevyDate, previewHevy } from '../src/import/hevy.js';
+import { EXTERNAL_SOURCE, parseCsvExport, parseCsvDate, previewCsv } from '../src/import/export-csv.js';
 import { parseCanonicalPlan, parseProtocolText } from '../src/import/plan-canonical.js';
 import { computeObservedMetrics } from '../src/metrics-observed.js';
 import { plannedAvailability } from '../src/program.js';
@@ -32,34 +32,34 @@ describe('CSV', () => {
   });
 });
 
-describe('Fechas de Hevy: interpretación explícita', () => {
+describe('Fechas del CSV: interpretación explícita', () => {
   it('español, inglés, 12 h e ISO; la hora escrita no se convierte', () => {
-    expect(parseHevyDate('3 abr 2026, 18:30', 'America/Argentina/Mendoza')).toEqual({
+    expect(parseCsvDate('3 abr 2026, 18:30', 'America/Argentina/Mendoza')).toEqual({
       date: '2026-04-03',
       time: '18:30',
       interpretation: 'hora_local_escrita',
     });
-    expect(parseHevyDate('5 sept 2025, 07:05', 'x')?.date).toBe('2025-09-05');
-    expect(parseHevyDate('Apr 3, 2026, 6:30 PM', 'x')).toMatchObject({ date: '2026-04-03', time: '18:30' });
-    expect(parseHevyDate('2026-04-03 18:30:00', 'x')).toMatchObject({
+    expect(parseCsvDate('5 sept 2025, 07:05', 'x')?.date).toBe('2025-09-05');
+    expect(parseCsvDate('Apr 3, 2026, 6:30 PM', 'x')).toMatchObject({ date: '2026-04-03', time: '18:30' });
+    expect(parseCsvDate('2026-04-03 18:30:00', 'x')).toMatchObject({
       date: '2026-04-03',
       interpretation: 'hora_local_escrita',
     });
   });
   it('un instante con offset se convierte a la zona configurada (puede cambiar el día)', () => {
-    expect(parseHevyDate('2026-04-04T01:30:00Z', 'America/Argentina/Mendoza')).toEqual({
+    expect(parseCsvDate('2026-04-04T01:30:00Z', 'America/Argentina/Mendoza')).toEqual({
       date: '2026-04-03',
       time: '22:30',
       interpretation: 'instante_convertido_a_zona',
     });
   });
   it('lo no interpretable devuelve null (no se adivina)', () => {
-    expect(parseHevyDate('ayer', 'x')).toBeNull();
-    expect(parseHevyDate('3 xyz 2026, 18:30', 'x')).toBeNull();
+    expect(parseCsvDate('ayer', 'x')).toBeNull();
+    expect(parseCsvDate('3 xyz 2026, 18:30', 'x')).toBeNull();
   });
 });
 
-describe('Importador de Hevy', () => {
+describe('Importador CSV', () => {
   const text = csv(
     line('3 abr 2026, 18:30', 'Squat (Barbell)', 0, 'warmup', '60', '5'),
     line('3 abr 2026, 18:30', 'Squat (Barbell)', 1, 'normal', '140', '5', '8'),
@@ -70,7 +70,7 @@ describe('Importador de Hevy', () => {
     line('3 abr 2026, 18:30', 'Pull Up (Bodyweight)', 1, 'normal', '', '8'),
     line('3 abr 2026, 18:30', 'Sumo Deadlift', 1, 'normal', '180', '3', '"7,5"'),
   );
-  const p = parseHevyCsv(text);
+  const p = parseCsvExport(text);
   it('mapea tipos de serie sin tratar el warmup como trabajo y sin completar RPE', () => {
     expect(p.fatal).toEqual([]);
     const sq = p.rows.filter((r) => r.exerciseName === 'Squat (Barbell)');
@@ -82,7 +82,7 @@ describe('Importador de Hevy', () => {
       lift: 'SQ',
       variantKey: 'barbell',
       loadKind: 'total',
-      source: 'hevy',
+      source: EXTERNAL_SOURCE,
     });
     expect(sq[2]!.rpe).toBeNull(); // RPE vacío = no registrado, nunca el de otra serie ni el objetivo
     expect(sq[3]).toMatchObject({ setType: 'failure', rpe: 10 });
@@ -113,10 +113,10 @@ describe('Importador de Hevy', () => {
     });
     expect(m.nl?.value).toBe(5 + 5 + 4 + 8); // sin calentamiento
     expect(m.e1rm_table_rpe?.status).toBe('partial'); // solo 2 series con RPE
-    expect(m.e1rm_prg_formulas?.status).toBe('available');
+    expect(m.e1rm_formulas?.status).toBe('available');
   });
   it('rechaza con motivo lo que no es una serie de fuerza o está mal', () => {
-    const bad = parseHevyCsv(
+    const bad = parseCsvExport(
       csv(
         `Entreno,"3 abr 2026, 18:30",,,Running,,,1,normal,,,5.2,1800,`,
         line('3 abr 2026, 18:30', 'Squat (Barbell)', 1, 'superset', '100', '5'),
@@ -140,7 +140,7 @@ describe('Importador de Hevy', () => {
     expect(bad.rejected.every((r) => r.line >= 2 && Object.keys(r.raw).length > 0)).toBe(true);
   });
   it('detecta duplicados dentro del archivo', () => {
-    const d = parseHevyCsv(
+    const d = parseCsvExport(
       csv(
         line('3 abr 2026, 18:30', 'Squat (Barbell)', 1, 'normal', '100', '5'),
         line('3 abr 2026, 18:30', 'Squat (Barbell)', 1, 'normal', '100', '5'),
@@ -151,7 +151,7 @@ describe('Importador de Hevy', () => {
     expect(d.rejected[0]!.reason).toMatch(/duplicada dentro del archivo/);
   });
   it('la sesión es el ENTRENAMIENTO (título + inicio), no el ejercicio: varios ejercicios del mismo entrenamiento comparten sesión', () => {
-    const w = parseHevyCsv(
+    const w = parseCsvExport(
       csv(
         line('3 abr 2026, 18:30', 'Squat (Barbell)', 1, 'normal', '100', '5'),
         line('3 abr 2026, 18:30', 'Bench Press (Barbell)', 1, 'normal', '80', '5'),
@@ -161,17 +161,20 @@ describe('Importador de Hevy', () => {
     expect(new Set(w.rows.map((r) => r.sessionKey)).size).toBe(2);
     expect(w.rows[0]!.sessionKey).toBe(w.rows[1]!.sessionKey);
   });
-  it('un archivo que no es de Hevy falla con un mensaje claro', () => {
-    expect(parseHevyCsv('a,b\n1,2').fatal[0]).toMatch(/Faltan columnas obligatorias/);
-    expect(parseHevyCsv('').fatal).toHaveLength(1);
+  it('un archivo que no es un export válido falla con un mensaje claro', () => {
+    expect(parseCsvExport('a,b\n1,2').fatal[0]).toMatch(/Faltan columnas obligatorias/);
+    expect(parseCsvExport('').fatal).toHaveLength(1);
   });
   it('sin dato de zona: lo declara; el mapeo se puede corregir por título', () => {
     expect(p.dateInterpretation).toMatch(/hora local escrita/);
-    const q = parseHevyCsv(csv(line('3 abr 2026, 18:30', 'Front Squat (Barbell)', 1, 'normal', '100', '5')), {
-      exerciseMap: {
-        'Front Squat (Barbell)': { lift: 'SQ', variantKey: 'front', exerciseId: 'front-squat' },
+    const q = parseCsvExport(
+      csv(line('3 abr 2026, 18:30', 'Front Squat (Barbell)', 1, 'normal', '100', '5')),
+      {
+        exerciseMap: {
+          'Front Squat (Barbell)': { lift: 'SQ', variantKey: 'front', exerciseId: 'front-squat' },
+        },
       },
-    });
+    );
     expect(q.rows[0]).toMatchObject({ lift: 'SQ', variantKey: 'front', loadKind: 'total' });
   });
 });
@@ -183,9 +186,9 @@ describe('Vista previa (dry-run) e idempotencia', () => {
     line('4 abr 2026, 18:30', 'Face Pull (Cable)', 1, 'normal', '20', '15', '', 'Entreno B'),
     `Entreno,"3 abr 2026, 18:30",,,Running,,,1,normal,,,5.2,1800,`,
   );
-  const p = parseHevyCsv(text);
+  const p = parseCsvExport(text);
   it('informa nuevos, rechazados, sesiones, rango de fechas, ejercicios sin mapeo y que no hay RPE', () => {
-    const v = previewHevy(p);
+    const v = previewCsv(p);
     expect(v).toMatchObject({
       newRows: 3,
       rejected: 1,
@@ -201,19 +204,19 @@ describe('Vista previa (dry-run) e idempotencia', () => {
     expect(v.dateInterpretation).toMatch(/Mendoza/);
   });
   it('reimportar lo ya existente no suma nada y el token cambia con el contenido', () => {
-    const first = previewHevy(p);
+    const first = previewCsv(p);
     const existing = new Set(p.rows.map((r) => r.externalKey));
-    const again = previewHevy(p, existing);
+    const again = previewCsv(p, existing);
     expect(again).toMatchObject({ newRows: 0, duplicatesExisting: 3 });
-    expect(first.token).toBe(previewHevy(parseHevyCsv(text)).token); // determinista
+    expect(first.token).toBe(previewCsv(parseCsvExport(text)).token); // determinista
     expect(first.token).not.toBe(again.token); // lo que se confirma es lo que se vio
-    const more = parseHevyCsv(
+    const more = parseCsvExport(
       text + '\n' + line('5 abr 2026, 18:30', 'Squat (Barbell)', 1, 'normal', '142.5', '5'),
     );
-    expect(previewHevy(more).token).not.toBe(first.token);
+    expect(previewCsv(more).token).not.toBe(first.token);
   });
   it('los ids de las filas son estables entre corridas', () => {
-    expect(parseHevyCsv(text).rows.map((r) => r.id)).toEqual(p.rows.map((r) => r.id));
+    expect(parseCsvExport(text).rows.map((r) => r.id)).toEqual(p.rows.map((r) => r.id));
   });
 });
 
@@ -264,7 +267,7 @@ describe('Programación canónica (plan-canonical-v1)', () => {
     expect(plannedAvailability(r.sets)[0]!.metrics.find((m) => m.id === 'tonnage')!.status).toBe(
       'unavailable',
     );
-    expect(plannedAvailability(r.sets)[0]!.metrics.find((m) => m.id === 'si_rts_total')!.status).toBe(
+    expect(plannedAvailability(r.sets)[0]!.metrics.find((m) => m.id === 'si_doble_total')!.status).toBe(
       'available',
     );
   });

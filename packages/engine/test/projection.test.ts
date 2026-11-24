@@ -95,19 +95,19 @@ describe('Proyección · series por exposición', () => {
       base(
         series(weekly(8), () => 100, { rpe: null }),
         day(50),
-        { variable: 'e1rm_prg_formulas' },
+        { variable: 'e1rm_formulas' },
       ),
     );
-    expect(f.target.method.id).toBe('prg-6-formulas');
+    expect(f.target.method.id).toBe('prom-6-formulas');
     expect(f.observedPoints.length).toBe(8);
     expect(f.dataQuality.warnings.join(' ')).toMatch(/submáxima/);
   });
   it('métodos distintos dan series distintas y nunca se mezclan', () => {
     const obs = series(weekly(6), (i) => 100 + i * 2);
     const curve = projectPerformance(base(obs, day(40)));
-    const prg = projectPerformance(base(obs, day(40), { variable: 'e1rm_prg_formulas' }));
-    expect(curve.target.method.id).not.toBe(prg.target.method.id);
-    expect(curve.observedPoints[0]?.value).not.toBe(prg.observedPoints[0]?.value);
+    const formulas = projectPerformance(base(obs, day(40), { variable: 'e1rm_formulas' }));
+    expect(curve.target.method.id).not.toBe(formulas.target.method.id);
+    expect(curve.observedPoints[0]?.value).not.toBe(formulas.observedPoints[0]?.value);
   });
   it('varias variantes: exige elegir una; no extrapola equivalencias', () => {
     const obs = [

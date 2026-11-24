@@ -1,6 +1,6 @@
 import { daysBetween } from '../dates.js';
 import { f, median } from '../format.js';
-import { acwrPrg, dailyInol, frPrg, peakIndexPrg, trend2128 } from '../prg.js';
+import { acwrOf, dailyInol, frOf, peakIndexOf, trend2128 } from '../carga-ventana.js';
 import type { Exposure, RuleResult } from '../types.js';
 import { evaluateChange } from '../change.js';
 import type { RuleCtx } from './ctx.js';
@@ -12,22 +12,22 @@ const NOT_PEAK =
 const mark = (ok: boolean | null) => (ok === null ? '? sin dato' : ok ? '✓' : '✗');
 
 /**
- * R-EXPRESSION modo A — PRG_RECONSTRUIDO [recuperado del TEXTO de ayuda de PRG, no del motor completo]:
+ * R-EXPRESSION modo A — MODO_A_RECONSTRUIDO [reconstruido desde descripciones, no de un motor completo]:
  * FR ≥ 1, tendencia estable/ascendente, ACWR entre 0,8 y 1,3 y PeakIndex ≥ umbral. e1RM = tabla del proyecto (sustitución declarada).
  * Devuelve siempre un resultado: "ventana_expresion" si se cumplen todas, o "sin_senal" explicando qué falta.
  */
 export function ruleExpressionA(compAll: Exposure[], c: RuleCtx): RuleResult {
   const base = { ruleId: 'R-EXPRESSION-A' as const, exposureId: '' };
   const days = dailyInol(c.allPlanned, c.allActual, c.lift, c.cutoff, 28);
-  const acwr = acwrPrg(days);
-  const peak = peakIndexPrg(days);
+  const acwr = acwrOf(days);
+  const peak = peakIndexOf(days);
   const byDay = new Map<string, number>();
   for (const e of compAll) byDay.set(e.date, Math.max(byDay.get(e.date) ?? 0, e.e as number));
   const obs = [...byDay.entries()].map(([date, value]) => ({ date, value }));
   const win = obs
     .filter((o) => daysBetween(c.cutoff, o.date) >= 0 && daysBetween(c.cutoff, o.date) < 21)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
-  const fr = win.length >= 2 ? frPrg(win.map((o) => o.value)) : null;
+  const fr = win.length >= 2 ? frOf(win.map((o) => o.value)) : null;
   const tr = trend2128(obs, c.cutoff);
   const okFr = fr === null ? null : fr >= 1;
   const okTr = tr === null ? null : tr !== 'Descendente';
@@ -42,17 +42,17 @@ export function ruleExpressionA(compAll: Exposure[], c: RuleCtx): RuleResult {
   const checks = [okFr, okTr, okAc, okPk];
   const dataUntil = compAll.at(-1)?.date ?? '';
   const factsA = [
-    fact('fr', 'Fatigue Ratio (modelo PRG)', fr, 'ratio', 'metrica', 'fatigue_ratio_prg'),
+    fact('fr', 'Fatigue Ratio', fr, 'ratio', 'metrica', 'fatigue_ratio'),
     fact('trend', 'Tendencia 21–28 (e1RM)', tr, undefined, 'metrica', 'e1rm_table_rpe'),
-    fact('acwr', 'ACWR (modelo PRG)', acwr.value, 'ratio', 'metrica', 'acwr_prg'),
-    fact('peak_index', 'Peak Index (modelo PRG)', peak, '%', 'metrica', 'peak_index_prg'),
+    fact('acwr', 'ACWR (7 d / 21 d previos)', acwr.value, 'ratio', 'metrica', 'acwr'),
+    fact('peak_index', 'Peak Index', peak, '%', 'metrica', 'peak_index'),
   ];
   const common = {
     ...base,
     facts: factsA,
     dataUntil,
     evidence: [
-      'Modo A (reglas del Glosario de PRG, reconstruidas desde texto; no es el motor completo verificado)',
+      'Modo A (reglas de ventana reconstruidas desde descripciones; no es un motor completo verificado)',
       ...conds,
     ],
     support: support(compAll.slice(-3)),
@@ -62,7 +62,7 @@ export function ruleExpressionA(compAll: Exposure[], c: RuleCtx): RuleResult {
       ...common,
       status: 'ventana_expresion',
       sufficiency: 'parcial',
-      summary: `Señal de expresión según la regla de PRG (modo A): se cumplen FR, tendencia, ACWR y PeakIndex. ${NOT_PEAK}`,
+      summary: `Señal de expresión según las reglas de ventana (modo A): se cumplen FR, tendencia, ACWR y PeakIndex. ${NOT_PEAK}`,
       proposal:
         'Considerar la ventana en la planificación del coach. No se intenta ningún máximo automáticamente.',
       reviewWhen: 'Con la próxima sesión del lift.',
@@ -73,7 +73,7 @@ export function ruleExpressionA(compAll: Exposure[], c: RuleCtx): RuleResult {
     ...common,
     status: 'sin_senal',
     sufficiency: 'insuficiente',
-    summary: `Modo A (PRG reconstruido): no se cumplen o faltan condiciones (${checks.filter((x) => x === true).length} de 4 cumplidas).`,
+    summary: `Modo A (reglas de ventana): no se cumplen o faltan condiciones (${checks.filter((x) => x === true).length} de 4 cumplidas).`,
     missing,
   });
 }

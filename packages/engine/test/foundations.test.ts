@@ -1,6 +1,7 @@
+import { EXTERNAL_SOURCE } from '../src/import/export-csv.js';
 import { describe, expect, it } from 'vitest';
 import { AVAILABILITY_MATRIX, METRIC_CATALOG, metricDefinition, sameScale } from '../src/catalog.js';
-import { estimateCurve, estimatePrg } from '../src/e1rm-methods.js';
+import { estimateCurve, estimateFormulas } from '../src/e1rm-methods.js';
 import { computeObservedMetrics } from '../src/metrics-observed.js';
 import type { LoadKind, ObservedSet, SetType } from '../src/observed.js';
 import {
@@ -24,7 +25,7 @@ const o = (
   x: Partial<ObservedSet> = {},
 ): ObservedSet => ({
   id: `o${++n}`,
-  source: 'hevy',
+  source: EXTERNAL_SOURCE,
   sessionKey: `s-${date}`,
   date,
   exerciseName: 'Squat (Barbell)',
@@ -45,20 +46,20 @@ const o = (
 const win = { from: '2026-03-01', to: '2026-03-14', cutoff: '2026-03-14', scope: { lift: 'SQ' as const } };
 
 describe('e1RM: dos métodos separados, con y sin RPE', () => {
-  it('por fórmulas de PRG coincide con la implementación de referencia (redondeo de JS)', () => {
-    expect(estimatePrg(100, 5).value).toBe(115);
-    expect(estimatePrg(140, 3).value).toBe(153);
-    expect(estimatePrg(120, 8).value).toBe(149);
-    expect(estimatePrg(80, 10).value).toBe(104);
-    expect(estimatePrg(100, 2).value).toBe(106);
+  it('por fórmulas coincide con la implementación de referencia (redondeo de JS)', () => {
+    expect(estimateFormulas(100, 5).value).toBe(115);
+    expect(estimateFormulas(140, 3).value).toBe(153);
+    expect(estimateFormulas(120, 8).value).toBe(149);
+    expect(estimateFormulas(80, 10).value).toBe(104);
+    expect(estimateFormulas(100, 2).value).toBe(106);
   });
   it('respeta el dominio: reps = 1 devuelve el peso; fuera de 2–10 no se extrapola', () => {
-    expect(estimatePrg(180, 1).value).toBe(180);
-    expect(estimatePrg(100, 11)).toMatchObject({ value: null, status: 'unavailable' });
-    expect(estimatePrg(100, 0).status).toBe('unavailable');
+    expect(estimateFormulas(180, 1).value).toBe(180);
+    expect(estimateFormulas(100, 11)).toMatchObject({ value: null, status: 'unavailable' });
+    expect(estimateFormulas(100, 0).status).toBe('unavailable');
   });
   it('advierte que sin conocer el esfuerzo una serie submáxima se subestima', () => {
-    expect(estimatePrg(100, 5).warnings.join(' ')).toMatch(/subestima/);
+    expect(estimateFormulas(100, 5).warnings.join(' ')).toMatch(/subestima/);
   });
   it('por curva exige RPE real: nunca lo completa', () => {
     expect(estimateCurve(150, 5, null)).toMatchObject({ value: null, reason: 'sin RPE real registrado' });
@@ -67,7 +68,7 @@ describe('e1RM: dos métodos separados, con y sin RPE', () => {
     expect(estimateCurve(150, 5, 8.25).status).toBe('unavailable');
   });
   it('los métodos tienen identificador y versión distintos', () => {
-    expect(estimateCurve(140, 3, 8).method.id).not.toBe(estimatePrg(140, 3).method.id);
+    expect(estimateCurve(140, 3, 8).method.id).not.toBe(estimateFormulas(140, 3).method.id);
   });
 });
 
@@ -88,10 +89,10 @@ describe('Un historial SIN RPE no apaga el análisis: se abstienen solo las mét
     expect(m.nl?.excluded.map((e) => e.reason).join(' ')).toMatch(/calentamientos/);
   });
   it('el e1RM por fórmulas está disponible y el de curva se abstiene con el motivo', () => {
-    expect(m.e1rm_prg_formulas?.status).toBe('available');
+    expect(m.e1rm_formulas?.status).toBe('available');
     expect(m.e1rm_table_rpe).toMatchObject({ status: 'unavailable', value: null });
     expect(m.e1rm_table_rpe?.missing).toContain('RPE real');
-    expect(m.si_rts_total?.status).toBe('unavailable');
+    expect(m.si_doble_total?.status).toBe('unavailable');
   });
   it('cada resultado trae período, método, registros usados y corte', () => {
     expect(m.nl?.period).toMatchObject({
@@ -115,22 +116,22 @@ describe('Disponibilidad parcial', () => {
     });
     expect(m.e1rm_table_rpe?.status).toBe('partial');
     expect(m.e1rm_table_rpe?.excluded.map((e) => e.reason).join(' ')).toMatch(/sin RPE real registrado/);
-    expect(m.si_rts_total?.status).toBe('partial');
-    expect(m.si_rts_total?.warnings.join(' ')).toMatch(/PARCIAL/);
+    expect(m.si_doble_total?.status).toBe('partial');
+    expect(m.si_doble_total?.warnings.join(' ')).toMatch(/PARCIAL/);
   });
   it('no mezcla modelos de SI: cada uno nombra su escala y no se comparan', () => {
     const m = computeObservedMetrics({ ...win, obs: [o('2026-03-02', 150, 5, 8, { refKg: 180 })] });
-    expect(m.si_rts_total?.unit).toMatch(/rts-aprox-v1/);
-    expect(m.si_prg?.unit).toMatch(/prg-si-v1/);
-    expect(m.si_efort_xl?.unit).toMatch(/efort-xl-v1/);
-    expect(sameScale('si_rts_total', 'si_prg')).toBe(false);
-    expect(sameScale('si_rts_total', 'si_rts_central')).toBe(true);
-    expect(sameScale('e1rm_table_rpe', 'e1rm_prg_formulas')).toBe(false);
+    expect(m.si_doble_total?.unit).toMatch(/si-doble-v1/);
+    expect(m.si_carga_rel?.unit).toMatch(/si-carga-rel-v1/);
+    expect(m.carga_esfuerzo?.unit).toMatch(/carga-esfuerzo-v1/);
+    expect(sameScale('si_doble_total', 'si_carga_rel')).toBe(false);
+    expect(sameScale('si_doble_total', 'si_doble_central')).toBe(true);
+    expect(sameScale('e1rm_table_rpe', 'e1rm_formulas')).toBe(false);
   });
-  it('el SI de PRG no usa un RPE implícito: sin RPE real la serie se excluye', () => {
+  it('el SI relativo no usa un RPE implícito: sin RPE real la serie se excluye', () => {
     const m = computeObservedMetrics({ ...win, obs: [o('2026-03-02', 150, 5, null, { refKg: 180 })] });
-    expect(m.si_prg?.status).toBe('unavailable');
-    expect(m.inol_prg?.status).toBe('available'); // INOL no requiere RPE
+    expect(m.si_carga_rel?.status).toBe('unavailable');
+    expect(m.inol?.status).toBe('available'); // INOL no requiere RPE
   });
 });
 
@@ -292,12 +293,12 @@ describe('Catálogo y matriz de disponibilidad', () => {
       expect(ids.has(rule), rule).toBe(true);
     for (const a of AVAILABILITY_MATRIX) expect(a.abstention.length).toBeGreaterThan(5);
   });
-  it('CTL/ATL queda marcado como evidencia contradictoria y no implementado; TRAC como desconocido', () => {
+  it('CTL/ATL queda marcado como evidencia contradictoria y no implementado; los cuestionarios externos como desconocidos', () => {
     expect(metricDefinition('ctl_atl')?.implementation).toBe('disputada_no_implementada');
-    expect(metricDefinition('trac')?.provenance).toBe('desconocido');
+    expect(metricDefinition('readiness_externo')?.provenance).toBe('desconocido');
   });
   it('las aproximaciones se rotulan como tales (no son fórmulas exactas)', () => {
-    expect(metricDefinition('si_rts_total')?.provenance).toBe('aproximado');
+    expect(metricDefinition('si_doble_total')?.provenance).toBe('aproximado');
     expect(metricDefinition('e1rm_table_rpe')?.provenance).toBe('recuperado');
     expect(metricDefinition('muscle_sets_equivalent')?.provenance).toBe('propuesta');
   });

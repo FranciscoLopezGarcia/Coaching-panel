@@ -192,7 +192,7 @@ export function Settings({
   );
 }
 function Imports({ id }: { id: string }) {
-  const [kind, setKind] = useState('hevy');
+  const [kind, setKind] = useState('csv');
   const [csv, setCsv] = useState('');
   const [file, setFile] = useState('');
   const [preview, setPreview] = useState<ImportResponse | null>(null);
@@ -211,7 +211,7 @@ function Imports({ id }: { id: string }) {
     () =>
       get<Record<string, { lift: string | null; variantKey?: string; loadKind?: string }>>(
         id,
-        'imports/hevy/exercise-map',
+        'imports/csv/exercise-map',
       ),
     [id, revision],
   );
@@ -229,7 +229,7 @@ function Imports({ id }: { id: string }) {
       const r = await send<ImportResponse>(id, `imports/${kind}`, {
         csv,
         mode,
-        ...(kind === 'hevy' ? { exerciseMap: mapping } : { status, replace }),
+        ...(kind === 'csv' ? { exerciseMap: mapping } : { status, replace }),
         ...(mode === 'apply' ? { confirmToken: token } : {}),
       });
       setPreview(r);
@@ -268,7 +268,7 @@ function Imports({ id }: { id: string }) {
                 reset();
               }}
             >
-              <option value="hevy">Exportación Hevy · CSV</option>
+              <option value="csv">Exportación de entrenamientos · CSV</option>
               <option value="plan-csv">Plan canónico · plan-canonical-v1</option>
             </select>
           </label>

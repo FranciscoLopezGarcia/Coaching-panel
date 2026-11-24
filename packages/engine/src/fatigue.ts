@@ -1,4 +1,4 @@
-import { estimateCurve, estimatePrg } from './e1rm-methods.js';
+import { estimateCurve, estimateFormulas } from './e1rm-methods.js';
 import type { CurveDomain } from './e1rm.js';
 import type { ObservedSet } from './observed.js';
 import { stressOfSet } from './si.js';
@@ -32,8 +32,8 @@ export interface SetPoint {
   reps: number | null;
   rpe: number | null;
   e1rmCurve: number | null;
-  e1rmPrg: number | null;
-  siRtsTotal: number | null;
+  e1rmFormulas: number | null;
+  siDobleTotal: number | null;
   setType: string;
   target: SetTarget | null;
   /** RPE real − RPE objetivo (positivo = más duro de lo previsto). */
@@ -91,8 +91,8 @@ export interface BetweenSets {
     | null;
   load: (FirstLast & { values: number[] }) | null;
   e1rmCurve: (FirstLast & { max: number; dropFromMaxPct: number | null }) | null;
-  e1rmPrg: (FirstLast & { max: number; dropFromMaxPct: number | null }) | null;
-  siRtsTotal: { first: number; last: number; sum: number } | null;
+  e1rmFormulas: (FirstLast & { max: number; dropFromMaxPct: number | null }) | null;
+  siDobleTotal: { first: number; last: number; sum: number } | null;
   notes: string[];
 }
 
@@ -147,8 +147,8 @@ export function fatigueBetweenSets(
     reps: null,
     load: null,
     e1rmCurve: null,
-    e1rmPrg: null,
-    siRtsTotal: null,
+    e1rmFormulas: null,
+    siDobleTotal: null,
     notes: [],
   };
   const work = sets.filter((s) => s.setType === 'work' || s.setType === 'failure');
@@ -186,8 +186,8 @@ export function fatigueBetweenSets(
       reps: s.reps,
       rpe: s.rpe,
       e1rmCurve: e1c[i] as number | null,
-      e1rmPrg: NON_TOTAL(s) ? null : estimatePrg(s.kg, s.reps).value,
-      siRtsTotal: s.reps !== null && s.reps > 0 && s.rpe !== null ? stressOfSet(s.reps, s.rpe).total : null,
+      e1rmFormulas: NON_TOTAL(s) ? null : estimateFormulas(s.kg, s.reps).value,
+      siDobleTotal: s.reps !== null && s.reps > 0 && s.rpe !== null ? stressOfSet(s.reps, s.rpe).total : null,
       setType: s.setType,
       target: t,
       rpeVsTarget: s.rpe !== null && t?.rpe !== null && t?.rpe !== undefined ? s.rpe - t.rpe : null,
@@ -281,7 +281,7 @@ export function fatigueBetweenSets(
   // --- e1RM por serie
   for (const [key, field] of [
     ['e1rmCurve', 'e1rmCurve'],
-    ['e1rmPrg', 'e1rmPrg'],
+    ['e1rmFormulas', 'e1rmFormulas'],
   ] as const) {
     const vs = pts.map((p) => p[field]).filter((v): v is number => v !== null);
     if (vs.length >= 2 && vs.length === pts.length) {
@@ -294,9 +294,9 @@ export function fatigueBetweenSets(
     }
   }
   if (!out.e1rmCurve) reasons.push('e1RM por curva: requiere RPE real en todas las series.');
-  const si = pts.map((p) => p.siRtsTotal).filter((v): v is number => v !== null);
+  const si = pts.map((p) => p.siDobleTotal).filter((v): v is number => v !== null);
   if (si.length)
-    out.siRtsTotal = {
+    out.siDobleTotal = {
       first: si[0] as number,
       last: si.at(-1) as number,
       sum: si.reduce((a, b) => a + b, 0),
@@ -306,7 +306,7 @@ export function fatigueBetweenSets(
   );
   out.reasons = reasons;
   out.status =
-    out.rpe || out.reps || out.e1rmCurve || out.e1rmPrg
+    out.rpe || out.reps || out.e1rmCurve || out.e1rmFormulas
       ? reasons.length || withRpe.length < pts.length
         ? 'partial'
         : 'available'

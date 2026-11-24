@@ -33,7 +33,7 @@ Para pruebas HTTP sin servidor: `buildApp(buildContext(cfg, openDb(':memory:'), 
 
 - Importá tipos y esquemas de `@coaching/contracts`; no dupliques tipos a mano.
 - Mostrá siempre `status`, `missing`, `warnings`, método+versión y suficiencia. No rellenes con 0 lo desconocido, no mezcles e1RM de métodos distintos ni SI de modelos distintos, no agrupes variantes.
-- Nunca hay datos reales en el repo; el CSV personal de Hevy no se usa como demo.
+- Nunca hay datos reales en el repo; el CSV personal de exportación no se usa como demo.
 
 ## Implementación de interfaz
 

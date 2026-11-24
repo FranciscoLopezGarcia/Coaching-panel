@@ -40,7 +40,7 @@ npm run dev              # API en :3001 y web en http://localhost:5173
 ## Datos y privacidad
 
 - La DB es un archivo local (`apps/api/data/*.sqlite`), ignorado por git.
-- `.gitignore` y el CI **rechazan** CSV y bases de datos versionados. El export personal de Hevy **no** se incorpora ni se usa como demo.
+- `.gitignore` y el CI **rechazan** CSV y bases de datos versionados. El export personal **no** se incorpora ni se usa como demo.
 - Los datos de `npm run seed` son sintéticos.
 
 ## Estado
@@ -48,7 +48,7 @@ npm run dev              # API en :3001 y web en http://localhost:5173
 Las 4 etapas del motor están implementadas (local, sin despliegue):
 
 1. **Registro y reglas base:** calidad de datos, `B-DOLOR`, `R-PROGRESS`, `R-LOAD`, `R-END`, decisión del coach e idempotencia.
-2. **Expresión y PR:** `R-EXPRESSION` (modo A: PRG reconstruido desde texto; modo B: motor propio) y `R-PR` (récord de peso para reps; single máximo apagado).
+2. **Expresión y PR:** `R-EXPRESSION` (modo A: reglas de ventana reconstruidas; modo B: motor propio) y `R-PR` (récord de peso para reps; single máximo apagado).
 3. **Historial y comparativas:** versiones del plan, eventos de cambio detectados solos (NL, frecuencia, perfil, referencia, duración), desviaciones de ejecución, seguimiento posterior sin causalidad y comparativas A/B por semana (planificado y realizado separados).
 4. **Experimentos y TTP:** `R-VOLUME`, `R-FREQUENCY`, TTP observado por bloque/familia y candidatos «golden».
 
@@ -58,12 +58,12 @@ Pendiente: autenticación/roles, lectura íntegra de prescripción e IDs de seri
 
 ## Consolidación del motor (reglas-v0.2-propuesta / params-v2)
 
-- Métricas observadas separadas (e1RM por curva con RPE real, e1RM PRG 6 fórmulas, referencia de fuerza); abstención por regla, nunca relleno de RPE.
+- Métricas observadas separadas (e1RM por curva con RPE real, e1RM por 6 fórmulas, referencia de fuerza); abstención por regla, nunca relleno de RPE.
 - Estado multidimensional por lift, recomendaciones explicables, ciclo hallazgo→intervención→seguimiento, exposiciones con identidad estable.
-- Programación (operaciones puras + preview), consultas semanales/meso/macro, importador Hevy CSV (dry-run), plan CSV canónico, replay.
-- Documentos: `docs/MIGRACION_Y_COMPATIBILIDAD.md`, `docs/VALIDACION_Y_REPLAY.md`. Informe: `analisis/features/consolidacion-motor-coaching/outputs/informe-final.md`.
-- CSV personal de Hevy: **nunca** se versiona; solo fixtures sintéticos.
-- Hevy dry-run: `npm run import:hevy -w @coaching/api -- --athlete <id> --file <csv>` (aplicar: `--apply --token <t>`).
+- Programación (operaciones puras + preview), consultas semanales/meso/macro, importador CSV (dry-run), plan CSV canónico, replay.
+- Documentos: `docs/MIGRACION_Y_COMPATIBILIDAD.md`, `docs/VALIDACION_Y_REPLAY.md`.
+- CSV personal de exportación: **nunca** se versiona; solo fixtures sintéticos.
+- Importación CSV, dry-run: `npm run import:csv -w @coaching/api -- --athlete <id> --file <csv>` (aplicar: `--apply --token <t>`).
 
 ## Frontend BASE
 

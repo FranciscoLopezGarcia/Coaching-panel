@@ -32,6 +32,14 @@ describe('GET /athletes/:id/block-analysis', () => {
       for (const row of j.rows) {
         expect(row.values).toHaveLength(j.window.blocks.length);
         expect(row.deltas).toHaveLength(j.window.blocks.length - 1);
+        expect(row.spread).toHaveLength(j.window.blocks.length);
+      }
+      // umbrales efectivos del motor (para bandas de referencia) y marcas con fecha real, nunca posteriores al corte
+      expect(j.thresholds).toEqual({ fatigue: 7, compliance: 0.9, pain: 4, rpeTolerance: 0.5 });
+      for (const m of j.planChanges) expect(m.date <= j.asOf).toBe(true);
+      for (const p of j.sessionFatigue) {
+        expect(p.date <= j.asOf).toBe(true);
+        expect(p.value).toBeGreaterThanOrEqual(1);
       }
       expect((await get(`/api/athletes/${id}/block-analysis?source=planned`)).json()).toEqual(j);
     }

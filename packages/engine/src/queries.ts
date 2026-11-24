@@ -1,5 +1,5 @@
 import { summarizeBlocks, type BlockSummary } from './blocks.js';
-import { estimateCurve, estimatePrg, METHOD_CURVE, METHOD_PRG } from './e1rm-methods.js';
+import { estimateCurve, estimateFormulas, METHOD_CURVE, METHOD_FORMULAS } from './e1rm-methods.js';
 import { computeObservedMetrics } from './metrics-observed.js';
 import { weekMetrics, type WeekMetrics } from './metrics.js';
 import type { MetricResult } from './metric-result.js';
@@ -199,10 +199,10 @@ export function weeklyByMovement(inp: WeeklyInput): WeeklyMovementRow[] {
             'tonnage',
             'frequency',
             'e1rm_table_rpe',
-            'e1rm_prg_formulas',
-            'si_rts_total',
-            'si_rts_central',
-            'si_rts_peripheral',
+            'e1rm_formulas',
+            'si_doble_total',
+            'si_doble_central',
+            'si_doble_peripheral',
             'intensity_rel',
             'intensity_rel_reps',
           ].includes(k),
@@ -279,7 +279,7 @@ export function weeklyByMuscle(
       version: MUSCLE_CONVENTION_VERSION,
       directWeight: DIRECT_WEIGHT,
       indirectWeight: INDIRECT_WEIGHT,
-      note: 'Convención del proyecto (no recuperada del mapeo interno de Hevy). Series equivalentes ≠ NL ≠ tonelaje.',
+      note: 'Convención del proyecto. Series equivalentes ≠ NL ≠ tonelaje.',
     },
     rows,
     unmappedExercises: [...unmapped].sort(),
@@ -326,12 +326,12 @@ const ADDITIVE = new Set([
   'nl',
   'sets',
   'tonnage',
-  'inol_prg',
-  'si_rts_total',
-  'si_rts_central',
-  'si_rts_peripheral',
-  'si_prg',
-  'si_efort_xl',
+  'inol',
+  'si_doble_total',
+  'si_doble_central',
+  'si_doble_peripheral',
+  'si_carga_rel',
+  'carga_esfuerzo',
 ]);
 const COMPARE_IDS = [
   'nl',
@@ -340,13 +340,13 @@ const COMPARE_IDS = [
   'frequency',
   'intensity_rel',
   'e1rm_table_rpe',
-  'e1rm_prg_formulas',
-  'si_rts_total',
-  'si_rts_central',
-  'si_rts_peripheral',
-  'si_prg',
-  'si_efort_xl',
-  'inol_prg',
+  'e1rm_formulas',
+  'si_doble_total',
+  'si_doble_central',
+  'si_doble_peripheral',
+  'si_carga_rel',
+  'carga_esfuerzo',
+  'inol',
 ];
 
 /**
@@ -484,7 +484,7 @@ export function performanceSeries(
     const [exercise, variantKey] = key.split('|') as [string, string];
     for (const [m, fn] of [
       [METHOD_CURVE, (s: ObservedSet) => estimateCurve(s.kg, s.reps, s.rpe)],
-      [METHOD_PRG, (s: ObservedSet) => estimatePrg(s.kg, s.reps)],
+      [METHOD_FORMULAS, (s: ObservedSet) => estimateFormulas(s.kg, s.reps)],
     ] as const) {
       const byDay = new Map<string, SeriesPoint>();
       for (const s of sets) {

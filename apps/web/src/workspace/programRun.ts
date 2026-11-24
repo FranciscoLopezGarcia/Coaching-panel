@@ -20,7 +20,13 @@ export const toProgramOp = (o: EditOp): ProgramOpFullInput['op'] =>
         } as ProgramOpFullInput['op'])
       : o.kind === 'remove'
         ? ({ type: 'remove_sets', selection: { setIds: o.setIds } } as ProgramOpFullInput['op'])
-        : ({ type: 'add_sets', sets: o.sets } as ProgramOpFullInput['op']);
+        : o.kind === 'reorder'
+          ? ({
+              type: 'reorder_exercises',
+              sessionKey: o.sessionKey,
+              order: o.order,
+            } as ProgramOpFullInput['op'])
+          : ({ type: 'add_sets', sets: o.sets } as ProgramOpFullInput['op']);
 
 export interface RunItem {
   label: string;

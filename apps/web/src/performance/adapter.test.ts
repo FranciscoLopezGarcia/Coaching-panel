@@ -7,7 +7,7 @@ afterEach(() => vi.unstubAllGlobals());
 it('no sustituye un método desconocido por curva RPE', () => {
   expect(projectionVariable('nuevo-metodo')).toBeNull();
   expect(projectionVariable('table-rpe')).toBe('e1rm_table_rpe');
-  expect(projectionVariable('prg-6-formulas')).toBe('e1rm_prg_formulas');
+  expect(projectionVariable('prom-6-formulas')).toBe('e1rm_formulas');
 });
 it('identifica el baseline seleccionado sin generar una curva nueva', () => {
   const p = example();

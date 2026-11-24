@@ -7,7 +7,7 @@
 - C Análisis: estado multidimensional, macro activo, métricas con disponibilidad parcial, series, comparar semanas/períodos, evidencias, récords.
 - D Intervenciones: ciclo completo, aceptar ≠ aplicar, vincular evento de plan, seguimiento.
 - E Historial: listar macros/mesos/microciclos, semanal por movimiento y músculo, anotaciones, cambios automáticos.
-- Importación Hevy: dry-run/apply con token, rechazos por motivo y muestra, válidos con huecos, mapeo de ejercicios persistente y revisable, idempotencia. Programación: contrato `plan-canonical-v1`.
+- Importación CSV: dry-run/apply con token, rechazos por motivo y muestra, válidos con huecos, mapeo de ejercicios persistente y revisable, idempotencia. Programación: contrato `plan-canonical-v1`.
 
 ## Falta (backend)
 
@@ -17,8 +17,8 @@
 - Endpoint dedicado "crear sesión": se usa `POST /plan` (con `replace:false` agrega; ids únicos).
 - Revisiones cubren series realizadas, check-ins y fatiga de sesión; **no** cubren cambios de parámetros ni referencias.
 - Paginación en listas distintas de `revisions`.
-- Importación del Excel de programación (`Macro (2).xlsx`): bloqueada por ambigüedad (sin fechas, relación tarjeta↔sesión, semántica de la celda 1RM); no bloquea programación nueva. 184 ejercicios de Hevy sin mapeo hasta que se revisen vía `exercise-map`.
-- TRAC y CTL/ATL no implementados; dosis óptima de volumen desconocida.
+- Importación del Excel de programación (`Macro (2).xlsx`): bloqueada por ambigüedad (sin fechas, relación tarjeta↔sesión, semántica de la celda 1RM); no bloquea programación nueva. 184 ejercicios importados sin mapeo hasta que se revisen vía `exercise-map`.
+- Cuestionarios externos y CTL/ATL no implementados; dosis óptima de volumen desconocida.
 - Sin validación estadística del motor: el replay existe, la validación no (ver `docs/VALIDACION_Y_REPLAY.md`).
 
 ## Lo resuelve Codex en el frontend
@@ -31,7 +31,7 @@ Cualquier cálculo nuevo, nueva regla, regla de unicidad de macro activo, DELETE
 
 ## Antes de exponer externamente
 
-Sin autenticación ni CSRF; CORS abierto solo al origen de dev; SQLite local de un solo proceso (sin backups, sin migraciones reversibles); `bodyLimit` 25 MB; sin rate limiting; sin HTTPS; datos personales en CSV de Hevy (no versionar, política de retención pendiente); `node:sqlite` es experimental; reglas y umbrales son **[propuesta]**; no hay despliegue configurado (el CI no despliega).
+Sin autenticación ni CSRF; CORS abierto solo al origen de dev; SQLite local de un solo proceso (sin backups, sin migraciones reversibles); `bodyLimit` 25 MB; sin rate limiting; sin HTTPS; datos personales en CSV de exportación (no versionar, política de retención pendiente); `node:sqlite` es experimental; reglas y umbrales son **[propuesta]**; no hay despliegue configurado (el CI no despliega).
 
 ## Actualización
 

@@ -24,7 +24,7 @@ export interface LiftMarks {
   trainingHeaviest: { kg: number; reps: number; date: string } | null;
   /** Mayor carga hecha a 1 repetición en la variante de competencia. */
   trainingSingle: { kg: number; date: string } | null;
-  /** Mejor e1RM con RPE real (curva RTS) en la variante de competencia. */
+  /** Mejor e1RM con RPE real (curva) en la variante de competencia. */
   trainingE1rm: { kg: number; date: string } | null;
   /** Competencia − mejor single de entrenamiento (descriptivo: no dice cuál es «mejor»). */
   diffKg: number | null;

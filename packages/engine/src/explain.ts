@@ -68,7 +68,7 @@ const LIMITS: Record<RuleId, string[]> = {
     'Un mejor e1RM no es un récord real.',
   ],
   'R-EXPRESSION-A': [
-    'Reglas de PRG reconstruidas desde texto, no su motor completo verificado.',
+    'Reglas de ventana reconstruidas desde descripciones, no un motor completo verificado.',
     'Una ventana favorable observada no es un pico fisiológico confirmado.',
   ],
   'R-EXPRESSION-B': [

@@ -340,6 +340,11 @@ export function Programming({
                           </header>
                           {ss.length ? (
                             <SessionCards
+                              id={id}
+                              onChanged={(m) => {
+                                setMsg(m);
+                                refresh();
+                              }}
                               sessions={ss}
                               mode={mode}
                               selectedKey={session}
@@ -402,6 +407,11 @@ export function Programming({
                     ) : (
                       <>
                         <SessionCards
+                          id={id}
+                          onChanged={(m) => {
+                            setMsg(m);
+                            refresh();
+                          }}
                           sessions={selectedSessions}
                           mode={mode}
                           selectedKey={session}

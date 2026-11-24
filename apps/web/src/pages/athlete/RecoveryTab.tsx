@@ -5,7 +5,7 @@ import { LineChart } from '../../components/LineChart';
 import { useLoad } from '../../hooks';
 import { fmt } from '../../labels';
 
-/** TRAC ampliado (opcional): no entra en la disposición. */
+/** Check-in ampliado (opcional): no entra en la disposición. */
 const EXTRAS: [string, string][] = [
   ['soreness', 'Dolor muscular'],
   ['confidence', 'Confianza'],
@@ -20,7 +20,7 @@ const FIELDS: [string, string][] = [
   ['pain', 'Dolor'],
 ];
 
-/** Recuperación: check-in semanal propio (NO es TRAC). Un check-in viejo no reescribe el rendimiento registrado. */
+/** Recuperación: check-in semanal propio (no es un cuestionario estándar). Un check-in viejo no reescribe el rendimiento registrado. */
 export function RecoveryTab({ id }: { id: string }) {
   const rows = useLoad(() => api.checkins(id), [id]);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -61,7 +61,7 @@ export function RecoveryTab({ id }: { id: string }) {
         <div>
           <p className="small muted">
             Disposición (1–10) = promedio de sueño, energía, ganas, (11 − estrés) y (10 − dolor); requiere los
-            5 campos. Es una medida propia, no el TRAC de RTS ni de PRG, y es semanal: no genera un estado
+            5 campos. Es una medida propia, no un cuestionario estándar, y es semanal: no genera un estado
             diario retrospectivo.
           </p>
           <LineChart

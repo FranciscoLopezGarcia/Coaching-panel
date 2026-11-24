@@ -1,7 +1,7 @@
 /**
  * Convención de aportes por grupo muscular (v2). [propuesta del proyecto]
- *  - Aporte DIRECTO = peso 1,0; INDIRECTO = peso 0,5 (regla oficial de Hevy para "series por grupo": primario 1, secundario 0,5).
- *  - La ASIGNACIÓN ejercicio→grupos de esta tabla es del proyecto y NO está verificada contra el mapeo interno de Hevy.
+ *  - Aporte DIRECTO = peso 1,0; INDIRECTO = peso 0,5 (convención de series por grupo: primario 1, secundario 0,5).
+ *  - La ASIGNACIÓN ejercicio→grupos de esta tabla es del proyecto y no está verificada contra ningún mapeo externo.
  *  - "Series equivalentes" de un músculo = Σ series × peso. NO es NL (suma de repeticiones por movimiento) ni tonelaje.
  *  - Un músculo puede recibir aporte de varios ejercicios, y un ejercicio aporta a varios músculos: NO se suman músculos en un "total"
  *    sin duplicados. Cada grupo se informa por separado, con directo e indirecto discriminados.
@@ -60,7 +60,7 @@ export const EXERCISE_MUSCLES: Record<string, Contribution> = {
 
 /**
  * Reglas por NOMBRE del ejercicio (slug en minúsculas con guiones). Se evalúan en orden: gana la primera que coincide.
- * Son una convención del proyecto sobre nombres típicos (incluye los de Hevy); un ejercicio que no coincide con ninguna queda SIN músculos
+ * Son una convención del proyecto sobre nombres típicos (incluye nombres típicos de apps de registro); un ejercicio que no coincide con ninguna queda SIN músculos
  * (no se adivina) y se informa como no mapeado.
  */
 const RULES: { re: RegExp; v: Contribution }[] = [

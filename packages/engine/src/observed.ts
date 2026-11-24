@@ -12,7 +12,7 @@ export type LoadKind =
 
 export interface ObservedSet {
   id: string;
-  /** Origen del dato: 'plan' (ejecución de una serie prevista), 'hevy', etc. Las fuentes no se deduplican entre sí. */
+  /** Origen del dato: 'plan' (ejecución de una serie prevista), un origen externo importado, etc. Las fuentes no se deduplican entre sí. */
   source: string;
   sessionKey: string;
   /** Fecha civil (yyyy-mm-dd) tal como se registró/interpretó. */
@@ -28,7 +28,7 @@ export interface ObservedSet {
   /** RPE REAL registrado. null = no registrado. Nunca se completa con un objetivo ni con una estimación. */
   rpe: number | null;
   loadKind: LoadKind;
-  /** Serie prevista vinculada (null en datos sin prescripción, p. ej. Hevy). */
+  /** Serie prevista vinculada (null en datos sin prescripción, p. ej. un CSV importado). */
   plannedSetId: string | null;
   /** Orden de la serie dentro de su ejercicio y sesión (1, 2, 3…) cuando se conoce; null = no disponible (no se infiere del orden de lectura). */
   setNo?: number | null;

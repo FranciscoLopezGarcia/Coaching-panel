@@ -42,8 +42,8 @@ try:
  d.get(url);wait('SI por movimiento y patrón');w.until(lambda _:len(d.find_elements(By.CSS_SELECTOR,'.overview-main svg'))==3)
  panels=d.find_elements(By.CSS_SELECTOR,'.overview-main > article');assert len({round(x.rect['y']) for x in panels})==1
  assert len(d.find_elements(By.CSS_SELECTOR,'.muscle-grid article'))>=3 and len(d.find_elements(By.CSS_SELECTOR,'.force-grid article'))>=1
- d.find_element(By.CSS_SELECTOR,'button[aria-label="Datos de si"]').click();wait('rts-si-r2');click('×',d.find_element(By.TAG_NAME,'dialog'));ok('Revisión SI obtenida de /tables/si/rts: rts-si-r2')
- shot('graficos-juntos','.analysis-overview');ok('SI, NL y tonelaje a la par; patrones, músculos y fuerza visibles sin cambiar métrica')
+ d.find_element(By.CSS_SELECTOR,'button[aria-label="Datos de si"]').click();wait('si-doble-r2');click('×',d.find_element(By.TAG_NAME,'dialog'));ok('Revisión SI obtenida de /tables/si/doble: si-doble-r2')
+ shot('graficos-juntos','.an-page');ok('SI, NL y tonelaje a la par; patrones, músculos y fuerza visibles sin cambiar métrica')
  d.find_element(By.CSS_SELECTOR,'.sidebar nav a[href="#/?focus=plantel"]').click();wait('Plantel');w.until(lambda _:'#/athlete/' not in d.current_url)
  w.until(lambda _:d.find_element(By.ID,'plantel').rect['y'] < d.execute_script('return scrollY + innerHeight'))
  ok('Atletas abre y enfoca el plantel desde un perfil')
@@ -84,7 +84,7 @@ try:
  official=next(x for x in d.find_elements(By.CSS_SELECTOR,'.overview-data > summary') if 'Volumen oficial por patrón' in x.text)
  d.execute_script('arguments[0].scrollIntoView({block:"center"})',official);official.click();assert 'patrones-v1' in official.find_element(By.XPATH,'..').text
  ok('Totales oficiales por patrón y convención del backend accesibles')
- d.set_window_size(390,844);shot('graficos-celular','.analysis-overview');assert d.execute_script('return document.documentElement.scrollWidth <= innerWidth');ok('Vista por sesión compartida y celular sin desbordamiento de página')
+ d.set_window_size(390,844);shot('graficos-celular','.an-page');assert d.execute_script('return document.documentElement.scrollWidth <= innerWidth');ok('Vista por sesión compartida y celular sin desbordamiento de página')
  d.get(BASE+'/#/athlete/'+athlete+'?tab=registro&session='+session['sessionKey']);wait('Una serie por ficha');w.until(lambda _:d.find_elements(By.CSS_SELECTOR,'.record-set'));assert d.execute_script('return document.documentElement.scrollWidth <= innerWidth');ok('En celular registro por fichas, con planilla opcional')
  d.set_window_size(1540,1100);d.get(plan);wait('Programar en planilla');click('＋ Sesión');w.until(lambda _:d.find_elements(By.TAG_NAME,'dialog'))
  dialog=d.find_element(By.TAG_NAME,'dialog')

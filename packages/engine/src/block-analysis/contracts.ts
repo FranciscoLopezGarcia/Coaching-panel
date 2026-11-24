@@ -40,6 +40,27 @@ export interface BlockWindow {
 
 export type MetricSource = 'planned' | 'actual';
 
+/** Un valor semanal de una métrica dentro de un bloque (fecha real de la primera serie de la semana). */
+export interface SpreadPoint {
+  week: number;
+  date: string;
+  /** null = semana sin dato para la métrica (hueco, nunca 0). */
+  value: number | null;
+}
+
+/**
+ * Dispersión de las semanas de un bloque: rango y mediana de los valores semanales conocidos. Es descriptiva: con pocas semanas
+ * por bloque no se calculan cuartiles (sería precisión inventada).
+ */
+export interface Spread {
+  points: SpreadPoint[];
+  /** Semanas con valor conocido. */
+  n: number;
+  min: number | null;
+  median: number | null;
+  max: number | null;
+}
+
 export interface MetricRow {
   metricId: string;
   unit: string;
@@ -47,6 +68,8 @@ export interface MetricRow {
   values: (number | null)[];
   /** Deltas consecutivos: deltas[i] = bloque i+1 vs bloque i. */
   deltas: Delta[];
+  /** Semanas del bloque (alineado con `values`); null si el bloque no tiene datos de la métrica. */
+  spread: (Spread | null)[];
   /** Familia del modelo (SI) para no comparar escalas distintas. */
   modelFamily: string | null;
 }
