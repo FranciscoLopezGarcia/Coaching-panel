@@ -40,4 +40,24 @@ describe('progresión sugerida', () => {
     const s = suggestProgression(plan(3, 8, 10, 8), Array(3).fill({ kg: 50, reps: 9, rpe: null }));
     expect(s.rationale[0]).toMatch(/sin RPE/);
   });
+  it('prensa 3x10-12@8: 12×200@8,5 · 10×200@8 · 10×180@8 → un solo número que mantiene el rango (205 kg)', () => {
+    const s = suggestProgression(plan(3, 10, 12, 8), [
+      { kg: 200, reps: 12, rpe: 8.5 },
+      { kg: 200, reps: 10, rpe: 8 },
+      { kg: 180, reps: 10, rpe: 8 },
+    ]);
+    expect(s.action).toBe('subir_carga');
+    expect(s.sets).toEqual([10, 10, 10].map((reps) => ({ reps, kg: 205 })));
+    expect(s.athleteText).toBe('Subí a 205 kg y buscá 10-12 reps');
+    expect(s.rationale.join(' ')).toMatch(/Mejor e1RM de las series hechas/);
+  });
+  it('si el RPE se pasó del objetivo no sube la carga aunque el e1RM lo permita', () => {
+    const s = suggestProgression(plan(3, 10, 12, 8), [
+      { kg: 200, reps: 12, rpe: 10 },
+      { kg: 200, reps: 11, rpe: 10 },
+      { kg: 200, reps: 10, rpe: 10 },
+    ]);
+    expect(s.action).toBe('mantener');
+    expect(s.sets.every((x) => x.kg === 200)).toBe(true);
+  });
 });

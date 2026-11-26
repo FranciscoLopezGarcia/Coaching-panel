@@ -1,6 +1,7 @@
 import { useState, type DragEvent, type KeyboardEvent } from 'react';
 import type { SessionRow } from '@coaching/contracts';
-import { dateLabel, Message } from './ui';
+import { dateLabel, Message, number } from './ui';
+import { RpeChip } from '../components/RpeChip';
 import { groupByExercise, isoWeekday, protocolText, type SetRow } from './sessionText';
 import { applyAll, previewAll, type RunItem } from './programRun';
 import './sessionorder.css';
@@ -10,6 +11,12 @@ const WD = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 const weekday = (d: string) => WD[new Date(d + 'T12:00:00Z').getUTCDay()];
 const EX = 'application/x-coaching-exercise';
 const SES = 'application/x-coaching-session';
+/** «3/3 series» o «2/3 series · 1 omitida»: cuánto de lo previsto se cargó de verdad. */
+function executedSummary(sets: SetRow[]): string {
+  const done = sets.filter((x) => x.actual?.status === 'done').length;
+  const skipped = sets.filter((x) => x.actual?.status === 'skipped').length;
+  return `${done}/${sets.length} series${skipped ? ` · ${skipped} omitida${skipped > 1 ? 's' : ''}` : ''}`;
+}
 /** Mueve `item` a la posición de `target` (si no están o son iguales, devuelve la lista sin cambios). */
 function moveTo<T>(list: T[], item: T, target: T): T[] {
   const from = list.indexOf(item);
@@ -114,19 +121,8 @@ export function SessionCards({
           const visible = s.sets.filter(
             (x) => !x.retired && matchesPrio(x.priority, prio) && matchesRole(x.exposureRole, role),
           );
-          const shown: SetRow[] =
-            mode === 'plan'
-              ? visible
-              : visible
-                  .filter((x) => x.actual?.status === 'done')
-                  .map((x) => ({
-                    ...x,
-                    planned: {
-                      reps: x.actual?.reps ?? 0,
-                      kg: x.actual?.kg ?? null,
-                      targetRpe: x.actual?.rpe ?? null,
-                    },
-                  }));
+          // en «Ejecución» se muestran TODOS los ejercicios con lo que cargó el atleta (nada se completa ni se omite en silencio)
+          const shown: SetRow[] = visible;
           const groups = groupByExercise(shown);
           const all = s.sets.filter((x) => !x.retired);
           const done = all.filter((x) => x.actual?.status === 'done').length;
@@ -237,13 +233,52 @@ export function SessionCards({
                       <RoleBadge role={g.role} />
                       {g.name}
                     </span>
-                    <span className="sc-proto">
-                      {protocolText(g)
-                        .split(' + ')
-                        .map((b, k) => (
-                          <span key={k}>{b}</span>
+                    {mode === 'plan' ? (
+                      <span className="sc-proto">
+                        {protocolText(g)
+                          .split(' + ')
+                          .map((b, k) => (
+                            <span key={k}>{b}</span>
+                          ))}
+                      </span>
+                    ) : (
+                      <span className="sc-proto">{executedSummary(g.sets)}</span>
+                    )}
+                    {mode !== 'plan' && (
+                      <ul className="sc-actual" aria-label={`Series de ${g.name}`}>
+                        <li className="sc-planned">Previsto: {protocolText(g)}</li>
+                        {g.sets.map((x) => (
+                          <li key={x.plannedSetId} className={`sc-aset ${x.actual?.status ?? 'none'}`}>
+                            <span className="sc-no">{x.isWarmup ? 'A' : x.setNo}</span>
+                            {x.actual?.status === 'done' ? (
+                              <>
+                                <span className="sc-data">
+                                  {x.actual.reps != null ? x.actual.reps : '—'} ×{' '}
+                                  {x.actual.kg != null ? `${number(x.actual.kg)} kg` : '— kg'}
+                                </span>
+                                <RpeChip
+                                  value={x.actual.rpe}
+                                  label={null}
+                                  title="RPE real cargado por el atleta"
+                                />
+                                {x.actual.pain != null && (
+                                  <span className="sc-pain">dolor {x.actual.pain}/10</span>
+                                )}
+                                <span className="sc-vs">
+                                  prev. {x.planned.reps}
+                                  {x.planned.kg != null ? ` × ${number(x.planned.kg)} kg` : ''}
+                                  {x.planned.targetRpe != null ? ` @${number(x.planned.targetRpe)}` : ''}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="sc-none">
+                                {x.actual?.status === 'skipped' ? 'omitida' : 'sin registrar'}
+                              </span>
+                            )}
+                          </li>
                         ))}
-                    </span>
+                      </ul>
+                    )}
                   </li>
                 ))}
                 {!groups.length && (

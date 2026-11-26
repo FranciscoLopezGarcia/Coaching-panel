@@ -9,6 +9,7 @@ import { dateLabel } from './ui';
 import { get, send } from './api';
 import { VIEW_LABEL } from './AthleteAccess';
 import { ProgressionPanel } from './ProgressionPanel';
+import { BasePanel, missingBase, withBase } from './BasePanel';
 
 /**
  * Editar una sesión ESCRIBIÉNDOLA otra vez, como si se estuviera prescribiendo: se abre con el texto de lo vigente, se edita y se
@@ -45,6 +46,15 @@ export function SessionTextEditor({
     applyMeta(parseQuickSession(initial).segments, initialMeta),
   );
   const [ok, setOk] = useState(true);
+  // 1RM base de los ejercicios escritos con % (lo ya programado se conserva)
+  const current = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const x of session.sets)
+      if (!x.retired && x.protocol?.loadMode === 'pct' && x.refKg) m[x.exerciseName] = x.refKg;
+    return m;
+  }, [session.sets]);
+  const [chosen, setChosen] = useState<Record<string, number>>({});
+  const noBase = missingBase(segs, chosen);
   const [plan, setPlan] = useState<EditPlan | null>(null);
   const [reviewed, setReviewed] = useState<Reviewed[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -70,7 +80,7 @@ export function SessionTextEditor({
     setError('');
     setReviewed(null);
     try {
-      const p = planSessionEdit(session, segs);
+      const p = planSessionEdit(session, withBase(segs, chosen));
       if (moved) {
         p.ops.unshift({
           kind: 'move',
@@ -198,6 +208,18 @@ export function SessionTextEditor({
           if (good) setSegs(s);
         }}
       />
+      <BasePanel
+        id={id}
+        date={date}
+        segs={segs}
+        current={current}
+        chosen={chosen}
+        onChosen={(c) => {
+          setChosen(c);
+          setReviewed(null);
+          setPlan(null);
+        }}
+      />
       <ProgressionPanel id={id} sessionKey={session.sessionKey} />
       {error && <Message error>{error}</Message>}
       {plan && !plan.ops.length && <Message>No hay cambios respecto de lo vigente.</Message>}
@@ -228,11 +250,17 @@ export function SessionTextEditor({
         </div>
       )}
       <div className="sticky-actions">
-        <span className="small muted">{dirty ? 'Cambios sin publicar' : 'Sin cambios'}</span>
+        <span className="small muted">
+          {noBase.length
+            ? `Falta el 1RM base de: ${noBase.join(', ')}`
+            : dirty
+              ? 'Cambios sin publicar'
+              : 'Sin cambios'}
+        </span>
         <button
           className="primary"
           type="button"
-          disabled={busy || !ok || !dirty}
+          disabled={busy || !ok || !dirty || noBase.length > 0}
           onClick={() => void review()}
         >
           {busy ? 'Revisando…' : 'Revisar cambios'}

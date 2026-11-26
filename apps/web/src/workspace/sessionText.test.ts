@@ -135,3 +135,84 @@ describe('sesión como texto', () => {
     expect(p.ops).toEqual([]);
   });
 });
+
+describe('porcentajes al programar (SxRx80%)', () => {
+  const pctSet = (name: string, setNo: number, pct: number, kg: number, ref = 200) =>
+    set(name, setNo, 5, null, kg, {
+      refKg: ref,
+      plannedKgSource: 'derived',
+      protocol: {
+        loadMode: 'pct',
+        pct,
+        capKg: null,
+        segment: 'work',
+        tempo: null,
+        pauseSec: null,
+        instructions: null,
+      },
+    });
+  it('lee 3x5x80% y rampas 80-85%', () => {
+    const r = parseQuickSession('Squat comp 3x5x80%\nSquat pausa 3x5x80-85%@7');
+    expect(r.errors).toEqual([]);
+    expect(r.segments[0]).toMatchObject({ count: '3', pct: '80', kg: '', mode: 'pct' });
+    const rampa = r.segments.filter((x) => x.exerciseName === 'Squat pausa');
+    expect(rampa.map((x) => x.pct)).toEqual(['80', '82,5', '85']);
+    expect(rampa.every((x) => x.rpe === '7' && x.mode === 'pct')).toBe(true);
+  });
+  it('rechaza un porcentaje fuera de rango', () => {
+    expect(parseQuickSession('Squat comp 3x5x180%').errors[0]?.message).toMatch(/1 a 150/);
+  });
+  it('los kg siguen funcionando igual', () => {
+    expect(parseQuickSession('Squat comp 3x5x100@8').segments[0]).toMatchObject({
+      kg: '100',
+      pct: '',
+      mode: 'kg',
+    });
+  });
+  it('ida y vuelta: las series con % se escriben con %', () => {
+    const sets = [1, 2, 3].map((i) => pctSet('Squat comp', i, 80, 160));
+    expect(setsToText(sets)).toBe('1° Squat comp 3x5x80%');
+    expect(summarizeExercise(groupByExercise(sets)[0]!)).toBe('3×5 · 80 %');
+    const p = planSessionEdit(
+      base(sets),
+      segs(setsToText(sets)).map((x) => ({ ...x, ref: '200' })),
+    );
+    expect(p.ops).toEqual([]);
+  });
+  it('cambiar el % cambia solo el porcentaje y anula el kg fijo para que el servidor lo derive', () => {
+    const sets = [1, 2, 3].map((i) => pctSet('Squat comp', i, 80, 160));
+    const p = planSessionEdit(
+      base(sets),
+      segs('1° Squat comp 3x5x85%').map((x) => ({ ...x, ref: '200' })),
+    );
+    expect(p.ops).toHaveLength(1);
+    const op = p.ops[0]!;
+    expect(op.kind).toBe('change');
+    if (op.kind === 'change')
+      expect(op.change).toMatchObject({ plannedKg: null, protocol: { pct: 85, loadMode: 'pct' } });
+  });
+  it('cambiar el 1RM base reemplaza el ejercicio (no se mezclan bases)', () => {
+    const sets = [1, 2, 3].map((i) => pctSet('Squat comp', i, 80, 160));
+    const p = planSessionEdit(
+      base(sets),
+      segs('1° Squat comp 3x5x80%').map((x) => ({ ...x, ref: '210' })),
+    );
+    expect(p.ops.map((o) => o.kind)).toEqual(['remove', 'add']);
+    const add = p.ops[1]!;
+    if (add.kind === 'add') {
+      expect(add.sets[0]).toMatchObject({
+        plannedKg: null,
+        refKg: 210,
+        protocol: { loadMode: 'pct', pct: 80 },
+      });
+    }
+  });
+  it('pasar de % a kg fijos limpia el porcentaje', () => {
+    const sets = [1, 2, 3].map((i) => pctSet('Squat comp', i, 80, 160));
+    const p = planSessionEdit(base(sets), segs('1° Squat comp 3x5x150@8'));
+    const op = p.ops[0]!;
+    expect(op.kind).toBe('change');
+    if (op.kind === 'change')
+      expect(op.change).toMatchObject({ plannedKg: 150, protocol: { pct: null, loadMode: 'kg' } });
+  });
+});

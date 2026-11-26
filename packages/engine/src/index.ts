@@ -68,6 +68,7 @@ export * from './exercise-library.js';
 export * from './metrics-observed.js';
 export { stressIndexRel, effortLoad, SI_MODEL_REL, SI_MODEL_EFFORT } from './si.js';
 export * from './program.js';
+export * from './base-1rm.js';
 export * from './queries.js';
 export { parseCsv, csvRecords } from './import/csv.js';
 export * from './import/export-csv.js';

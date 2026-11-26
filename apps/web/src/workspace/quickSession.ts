@@ -142,7 +142,7 @@ const FIRST_PROTO = /(^|\s)\d+\s*[x×*]\s*\d/i;
 const PRIO = /^\s*(?:p(?:rio)?\s*)?([1-5])\s*[°º]\s*[:.)-]?\s*|^\s*p(?:rio)?\s*([1-5])\s+/i;
 const BLOCK = new RegExp(
   `^(\\d+)\\s*[x×*]\\s*(\\d+)(?:\\s*-\\s*(\\d+))?(?:\\s*/\\s*\\d+)?` + // N x R [-R2] [/R]
-    `(?:\\s*[x×*]\\s*(${NUM}(?:\\s*[-/]\\s*${NUM})*)\\s*(?:kg)?)?` + // x KG [lista]
+    `(?:\\s*[x×*]\\s*(${NUM}(?:\\s*[-/]\\s*${NUM})*)\\s*(%|kg)?)?` + // x KG [lista] o x % [lista]
     `(?:\\s*(@\\s*)?(rpe|rir)?\\s*(${NUM}(?:\\s*[-/]\\s*${NUM})*))?` + // @RPE [lista] / RIR n
     `\\s*(.*)$`,
   'i',
@@ -185,19 +185,28 @@ function parseBlock(
   if (repsMax && repsMax < reps) return { error: `rango de repeticiones al revés («${raw.trim()}»)` };
   const warnings: string[] = [];
   let kgs: number[] | null = null;
+  let pcts: number[] | null = null;
   if (m[4]) {
     const l = m[4].split(/[-/]/).map((x) => toNum(x.trim()));
     if (l.some((x) => !(x > 0))) return { error: `la carga debe ser positiva («${raw.trim()}»)` };
-    const s = spread(l, n, 2.5);
-    if ('error' in s) return { error: `cargas: ${s.error}` };
-    if (s.ramp) warnings.push('cargas en rampa');
-    kgs = s.values;
+    if ((m[5] ?? '') === '%') {
+      if (l.some((x) => x > 150)) return { error: `el porcentaje va de 1 a 150 («${raw.trim()}»)` };
+      const s = spread(l, n, 0.5);
+      if ('error' in s) return { error: `porcentajes: ${s.error}` };
+      if (s.ramp) warnings.push('porcentajes en rampa');
+      pcts = s.values;
+    } else {
+      const s = spread(l, n, 2.5);
+      if ('error' in s) return { error: `cargas: ${s.error}` };
+      if (s.ramp) warnings.push('cargas en rampa');
+      kgs = s.values;
+    }
   }
   let rpes: number[] | null = null;
-  if (m[7]) {
-    if (!m[5] && !m[6]) return { error: `falta «@» o «RPE/RIR» antes de ${m[7]} («${raw.trim()}»)` };
-    const isRir = (m[6] ?? '').toLowerCase() === 'rir';
-    const l = m[7].split(/[-/]/).map((x) => toNum(x.trim()));
+  if (m[8]) {
+    if (!m[6] && !m[7]) return { error: `falta «@» o «RPE/RIR» antes de ${m[8]} («${raw.trim()}»)` };
+    const isRir = (m[7] ?? '').toLowerCase() === 'rir';
+    const l = m[8].split(/[-/]/).map((x) => toNum(x.trim()));
     const conv = l.map((x) => (isRir ? 10 - x : x));
     if (conv.some((x) => !(x >= 1 && x <= 10 && (x * 2) % 1 === 0)))
       return { error: `RPE 1–10 en pasos de 0,5 («${raw.trim()}»)` };
@@ -206,7 +215,7 @@ function parseBlock(
     if (s.ramp) warnings.push('RPE en rampa');
     rpes = s.values;
   }
-  const tail = (m[8] ?? '').trim();
+  const tail = (m[9] ?? '').trim();
   let type: QuickSegment['segment'] = 'work';
   let warmup = false;
   let note = note0;
@@ -229,19 +238,36 @@ function parseBlock(
     warmup,
     note,
   };
-  const modeOf = (kg: string): QuickSegment['mode'] => (kg ? 'kg' : 'rpe');
+  const modeOf = (kg: string, pct: string): QuickSegment['mode'] => (pct ? 'pct' : kg ? 'kg' : 'rpe');
   const segs: QuickSegment[] = [];
-  if (varies(kgs) || varies(rpes)) {
+  if (varies(kgs) || varies(pcts) || varies(rpes)) {
     for (let i = 0; i < n; i++) {
       const kg = kgs ? fmt(kgs[i] as number) : '';
-      segs.push({ ...common, count: '1', kg, rpe: rpes ? fmt(rpes[i] as number) : '', mode: modeOf(kg) });
+      const pct = pcts ? fmt(pcts[i] as number) : '';
+      segs.push({
+        ...common,
+        count: '1',
+        kg,
+        pct,
+        rpe: rpes ? fmt(rpes[i] as number) : '',
+        mode: modeOf(kg, pct),
+      });
     }
   } else {
     const kg = kgs ? fmt(kgs[0] as number) : '';
-    segs.push({ ...common, count: String(n), kg, rpe: rpes ? fmt(rpes[0] as number) : '', mode: modeOf(kg) });
+    const pct = pcts ? fmt(pcts[0] as number) : '';
+    segs.push({
+      ...common,
+      count: String(n),
+      kg,
+      pct,
+      rpe: rpes ? fmt(rpes[0] as number) : '',
+      mode: modeOf(kg, pct),
+    });
   }
   const parts = [`${n}×${repsMax ? `${reps}-${repsMax}` : reps}`];
   if (kgs) parts.push(varies(kgs) ? `${kgs.map(fmt).join('-')} kg` : `${fmt(kgs[0] as number)} kg`);
+  if (pcts) parts.push(varies(pcts) ? `${pcts.map(fmt).join('-')} %` : `${fmt(pcts[0] as number)} %`);
   if (rpes) parts.push(varies(rpes) ? `RPE ${rpes.map(fmt).join('-')}` : `RPE ${fmt(rpes[0] as number)}`);
   if (type !== 'work') parts.push(type === 'top' ? 'top set' : 'backoff');
   if (warmup) parts.push('aproximación');
@@ -373,9 +399,37 @@ export function segmentsToText(segs: QuickSegment[]): string {
     .filter((s) => s.exerciseName)
     .map((s) => {
       const reps = s.repsMax ? `${s.reps}-${s.repsMax}` : s.reps;
-      return `${s.priority ? s.priority + '° ' : ''}${s.exerciseName} ${s.count}x${reps}${s.kg ? 'x' + s.kg : ''}${s.rpe ? '@' + s.rpe : ''}${s.note ? ' ' + s.note : ''}`;
+      return `${s.priority ? s.priority + '° ' : ''}${s.exerciseName} ${s.count}x${reps}${s.kg ? 'x' + s.kg : s.pct ? 'x' + s.pct + '%' : ''}${s.rpe ? '@' + s.rpe : ''}${s.note ? ' ' + s.note : ''}`;
     })
     .join('\n');
+}
+
+/**
+ * Qué puede ver el atleta según lo que se escribió. Solo RPE en un básico (SQ/BP/DL) → ve ÚNICAMENTE el RPE, sin carga ni meta sugerida.
+ * Con kg o % → el coach elige carga / RPE / ambos. En los accesorios la meta sugerida siempre se puede ofrecer.
+ */
+export interface ViewRules {
+  basic: boolean;
+  hasKg: boolean;
+  hasPct: boolean;
+  /** Vista obligatoria (null = a elección del coach). */
+  forcedView: 'solo_rpe' | null;
+  /** ¿Se puede mostrar al atleta la meta/progresión sugerida? */
+  progAllowed: boolean;
+}
+export function viewRules(segs: QuickSegment[], exercise: string): ViewRules {
+  const mine = segs.filter((s) => s.exerciseName === exercise);
+  const basic = mine.some((s) => s.lift === 'SQ' || s.lift === 'BP' || s.lift === 'DL');
+  const hasKg = mine.some((s) => !!s.kg);
+  const hasPct = mine.some((s) => !!s.pct);
+  const rpeOnly = !hasKg && !hasPct;
+  return {
+    basic,
+    hasKg,
+    hasPct,
+    forcedView: basic && rpeOnly ? 'solo_rpe' : null,
+    progAllowed: !(basic && rpeOnly),
+  };
 }
 
 /** Ajustes por ejercicio que no se escriben en el texto: descanso entre series (s) y qué ve el atleta. */
@@ -383,6 +437,12 @@ export type ExMeta = Record<string, { pause: string; view: string; prog: string 
 export function applyMeta(segs: QuickSegment[], meta: ExMeta): QuickSegment[] {
   return segs.map((s) => {
     const m = meta[s.exerciseName];
-    return m ? { ...s, pause: m.pause, view: m.view, prog: m.prog } : s;
+    const rules = viewRules(segs, s.exerciseName);
+    const base = m ? { ...s, pause: m.pause, view: m.view, prog: m.prog } : s;
+    return {
+      ...base,
+      ...(rules.forcedView ? { view: rules.forcedView } : {}),
+      ...(rules.progAllowed ? {} : { prog: '' }),
+    };
   });
 }

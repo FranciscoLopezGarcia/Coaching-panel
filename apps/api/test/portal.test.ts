@@ -384,6 +384,43 @@ describe('notas y progresión sugerida', () => {
     expect(ex.sets[0].goal).toEqual({ reps: 9, kg: null });
     expect(ex.goalText).not.toContain('kg');
   });
+  it('un básico programado solo con RPE se ve ÚNICAMENTE con RPE y sin meta; con carga se respeta la vista elegida', async () => {
+    const sq = (id: string, no: number, date: string, session: string, extra: Record<string, unknown>) =>
+      set(id, session, 'Squat comp', no, date, {
+        plannedKg: null,
+        targetRpe: 8,
+        weekNo: 2,
+        protocol: proto({ loadMode: 'rpe', athleteProgression: 'reps_kg', ...extra }),
+      });
+    await call('POST', `/api/athletes/${a1}/plan`, {
+      sets: [1, 2].map((n) => sq(`sq${n}`, n, '2026-11-13', 's-sq-rpe', {})),
+      status: 'aplicado',
+    });
+    let ex = (await j(call('GET', '/api/me/sessions/s-sq-rpe', undefined, await tok()))).exercises[0];
+    expect(ex.mode).toBe('solo_rpe');
+    expect(ex.goalText).toBe('');
+    expect(
+      ex.sets.every(
+        (x: { kg: unknown; pct: unknown; goal: unknown }) =>
+          x.kg === null && x.pct === null && x.goal === null,
+      ),
+    ).toBe(true);
+    // el mismo básico con kg: se respeta la vista que eligió el coach
+    await call('POST', `/api/athletes/${a1}/plan`, {
+      sets: [1, 2].map((n) =>
+        set(`sq${n}`, 's-sq-rpe', 'Squat comp', n, '2026-11-13', {
+          plannedKg: 150,
+          weekNo: 2,
+          protocol: proto({ athleteView: 'solo_carga' }),
+        }),
+      ),
+      status: 'aplicado',
+    });
+    ex = (await j(call('GET', '/api/me/sessions/s-sq-rpe', undefined, await tok()))).exercises[0];
+    expect(ex.mode).toBe('solo_carga');
+    expect(ex.sets[0].kg).toBe(150);
+    expect(ex.sets[0].rpe).toBeNull();
+  });
   it('nota del atleta debajo del ejercicio: la guarda, la ve el coach y borrar la deja vacía', async () => {
     const t = await tok();
     expect(

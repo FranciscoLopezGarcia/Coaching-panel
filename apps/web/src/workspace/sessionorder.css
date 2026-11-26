@@ -37,3 +37,63 @@
 .sc-head span {
   margin-left: auto;
 }
+
+/* Base de los porcentajes (1RM por ejercicio): estados con ícono y texto, tokens existentes */
+.base-row {
+  padding: 8px 0;
+  border-top: 1px dashed var(--line);
+}
+.base-row .row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.base-ok {
+  color: var(--ok);
+  font-weight: 600;
+}
+.base-bad {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+/* Ejecución: lo que cargó el atleta, serie por serie */
+.sc-actual {
+  grid-column: 1 / -1;
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.sc-actual li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.sc-planned {
+  color: var(--muted);
+}
+.sc-aset .sc-no {
+  min-width: 1.4em;
+  color: var(--muted);
+}
+.sc-aset .sc-data {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 700;
+}
+.sc-aset .sc-vs,
+.sc-aset .sc-none {
+  color: var(--muted);
+}
+.sc-aset .sc-pain {
+  color: var(--bad);
+}
+
+.base-row label input {
+  max-width: 140px;
+}

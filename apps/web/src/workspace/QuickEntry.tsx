@@ -3,10 +3,18 @@ import {
   applyMeta,
   MOVEMENT_GROUPS,
   parseQuickSession,
+  viewRules,
   type ExMeta,
   type QuickSegment,
 } from './quickSession';
-import { VIEW_LABEL } from './AthleteAccess';
+
+/** Opciones de «El atleta ve» cuando hay carga escrita: carga, RPE o ambos (con % se ofrece también % y RPE). */
+const VIEW_CHOICES: Record<string, string> = {
+  solo_carga: 'Solo carga',
+  solo_rpe: 'Solo RPE',
+  completo: 'Carga y RPE',
+  rpe_porcentaje: '% del 1RM y RPE',
+};
 
 const RESTS = [30, 45, 60, 90, 120, 150, 180, 240, 300];
 
@@ -127,6 +135,7 @@ export function QuickEntry({
             <tbody>
               {r.lines.map((l) => {
                 const seg = r.segments.find((s) => s.exerciseName === l.exercise);
+                const rules = viewRules(r.segments, l.exercise);
                 return (
                   <tr key={l.line}>
                     <td>{l.line}</td>
@@ -153,27 +162,45 @@ export function QuickEntry({
                     </td>
                     <td>
                       <select
-                        disabled={disabled}
-                        value={meta[l.exercise]?.view ?? ''}
+                        disabled={disabled || !!rules.forcedView}
+                        value={rules.forcedView ?? meta[l.exercise]?.view ?? ''}
                         onChange={(e) => setOne(l.exercise, { view: e.target.value })}
                         aria-label={`Qué ve el atleta en ${l.exercise}`}
+                        title={
+                          rules.forcedView
+                            ? 'Solo escribiste RPE en un básico: el atleta ve únicamente el RPE.'
+                            : undefined
+                        }
                       >
-                        <option value="">
-                          Lo habitual{defaultViewLabel ? ` (${defaultViewLabel})` : ''}
-                        </option>
-                        {Object.entries(VIEW_LABEL).map(([k, v]) => (
-                          <option key={k} value={k}>
-                            {v}
-                          </option>
-                        ))}
+                        {rules.forcedView ? (
+                          <option value="solo_rpe">Solo RPE</option>
+                        ) : (
+                          <>
+                            <option value="">
+                              Lo habitual{defaultViewLabel ? ` (${defaultViewLabel})` : ''}
+                            </option>
+                            {Object.entries(VIEW_CHOICES)
+                              .filter(([k]) => (k === 'rpe_porcentaje' ? rules.hasPct : true))
+                              .map(([k, v]) => (
+                                <option key={k} value={k}>
+                                  {v}
+                                </option>
+                              ))}
+                          </>
+                        )}
                       </select>
                     </td>
                     <td>
                       <select
-                        disabled={disabled}
-                        value={meta[l.exercise]?.prog ?? ''}
+                        disabled={disabled || !rules.progAllowed}
+                        value={rules.progAllowed ? (meta[l.exercise]?.prog ?? '') : ''}
                         onChange={(e) => setOne(l.exercise, { prog: e.target.value })}
                         aria-label={`Meta de progresión para el atleta en ${l.exercise}`}
+                        title={
+                          rules.progAllowed
+                            ? undefined
+                            : 'Un básico con solo RPE no muestra carga ni meta sugerida.'
+                        }
                       >
                         <option value="">No (solo coach)</option>
                         <option value="reps">Meta de reps</option>

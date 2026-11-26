@@ -6,6 +6,7 @@ import './fonts/fonts.css';
 import './styles.css';
 import './experience.css';
 import './theme.css';
+import './responsive.css';
 
 initTheme();
 

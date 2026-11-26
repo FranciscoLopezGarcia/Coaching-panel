@@ -1,0 +1,106 @@
+/* Ajustes de celular que no cambian el estilo, solo el reacomodo. Carga después de theme.css. */
+/* Celular: la barra de contexto, los filtros y las barras de análisis no pueden ensanchar la página (solo reacomodo, mismo estilo) */
+@media (max-width: 640px) {
+  .context-strip {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 4px 0;
+  }
+  .context-strip > button {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 9px 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .context-strip > button strong {
+    text-align: right;
+    overflow-wrap: break-word;
+  }
+  .context-strip > :last-child {
+    display: grid;
+    margin-top: 0;
+    padding: 10px 14px 6px;
+    border-top: 0;
+  }
+  .period-picker {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .period-picker .row {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  .an-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .period-picker input,
+  .period-picker select {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .bd-seg {
+    display: flex;
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+  .bd-seg button {
+    flex: 1 1 auto;
+  }
+  .an-hbars li,
+  .an-stack li {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 3px;
+  }
+  .an-hbars .lab,
+  .an-stack .lab {
+    grid-column: 1;
+  }
+  .an-hbars .num,
+  .an-stack .num {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .an-hbars .trk,
+  .an-stack .trk {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+/* Portal del atleta: la barra inferior tiene que poder encogerse (4 botones) y no ensanchar la página */
+@media (max-width: 640px) {
+  .ath-nav {
+    padding-left: 4px;
+    padding-right: 4px;
+    gap: 2px;
+  }
+  .ath-nav a,
+  .ath-nav button {
+    min-width: 0;
+    padding: 6px 2px;
+  }
+}
+
+/* Portal del atleta: la columna principal no crece por el contenido (selectores y filas largas) */
+.ath-stack {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Editor de sesión en celular: las tablas anchas se desplazan dentro de su caja en vez de quedar cortadas */
+@media (max-width: 640px) {
+  .quick-preview,
+  .prog-panel {
+    overflow-x: auto;
+  }
+  .quick-preview table,
+  .prog-panel table {
+    min-width: 560px;
+  }
+  .quick-examples {
+    flex-wrap: wrap;
+  }
+  .quick-help {
+    overflow-wrap: anywhere;
+  }
+}

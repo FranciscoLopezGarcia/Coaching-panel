@@ -520,6 +520,7 @@ import type {
   Preview,
   ReplayReport,
   StrengthReference,
+  Base1rm,
 } from '@coaching/engine';
 export type {
   Explanation,
@@ -536,6 +537,7 @@ export type {
   Preview,
   ReplayReport,
   StrengthReference,
+  Base1rm,
 };
 export type { FamilySummaryT };
 

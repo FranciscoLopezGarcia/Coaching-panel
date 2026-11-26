@@ -5,7 +5,8 @@ import { e1rm, pctFromTable } from './e1rm.js';
  * Es una GUÍA para el coach (y, si el coach lo decide, para el atleta): nunca modifica el plan.
  *
  *  · Con rango de repeticiones (p. ej. 3×8-10@8): doble progresión. Si todas las series llegaron al tope con RPE dentro del objetivo →
- *    subir carga y volver al piso del rango; si no → sumar una repetición a la serie más floja (sin pasar el tope); si el RPE se
+ *    subir carga y volver al piso del rango; si el mejor e1RM de las series hechas permite más carga sin salir del rango al RPE
+ *    objetivo → esa carga (un solo número); si no → sumar una repetición a la serie más floja (sin pasar el tope); si el RPE se
  *    pasó del objetivo → mantener.
  *  · Con repeticiones fijas (p. ej. 3×5@7, básicos): la carga sale del 1RM estimado reciente y de la curva reps×RPE de cada serie prevista.
  *
@@ -136,10 +137,28 @@ export function suggestProgression(planned: ProgPlannedSet[], last: ProgSet[], s
         rationale: why,
       };
     }
+    // Carga que mantiene al atleta DENTRO del rango: la más alta con la que el mejor e1RM de las series hechas (con su RPE real)
+    // predice al menos `lo` reps al RPE objetivo. Si supera la carga usada, se sugiere ese número (un solo kg por ejercicio).
+    const all = done
+      .map((d) => e1rm(d.kg, d.reps, d.rpe ?? target, 'amplio'))
+      .filter((x): x is number => x !== null);
+    const best = all.length ? Math.max(...all) : null;
+    const pLo = pctFromTable(lo, target, 'amplio');
+    const inRange = best && pLo ? stepDown(best * pLo, stepKg) : 0;
+    if (best && inRange > kg0) {
+      why.push(
+        `Mejor e1RM de las series hechas: ${fmt(best)} kg. Con ${fmt(inRange)} kg, ${lo} reps @${fmt(target)} siguen dentro del rango ${lo}-${hi}.`,
+      );
+      return {
+        ...base,
+        action: 'subir_carga',
+        sets: planned.map(() => ({ reps: lo, kg: inRange })),
+        athleteText: `Subí a ${fmt(inRange)} kg y buscá ${lo}-${hi} reps`,
+        rationale: why,
+      };
+    }
     const n = Math.min(hi, Math.max(lo, minR + 1));
     why.push(`La serie más floja fue de ${minR}: buscar ${n} en todas, con la misma carga.`);
-    const alt = est ? stepDown(est * (pctFromTable(hi, target, 'amplio') ?? 0), stepKg) : 0;
-    if (alt > kg0) why.push(`Con ese 1RM, ${hi} reps @${fmt(target)} serían ≈ ${fmt(alt)} kg.`);
     return {
       ...base,
       action: 'subir_reps',

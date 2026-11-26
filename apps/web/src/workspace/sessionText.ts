@@ -69,6 +69,7 @@ function runs(sets: SetRow[]): Run[] {
       (l.protocol?.segment ?? 'work') === (s.protocol?.segment ?? 'work') &&
       l.isWarmup === s.isWarmup &&
       (l.planned.kg === null) === (s.planned.kg === null) &&
+      (pctOf(l) === null) === (pctOf(s) === null) &&
       (l.planned.targetRpe === null) === (s.planned.targetRpe === null)
     )
       last.sets.push(s);
@@ -76,19 +77,25 @@ function runs(sets: SetRow[]): Run[] {
   }
   return out;
 }
+/** Porcentaje del 1RM base de una serie (null si no se programó con %). */
+const pctOf = (s: SetRow): number | null =>
+  s.protocol?.loadMode === 'pct' && typeof s.protocol.pct === 'number' ? s.protocol.pct : null;
 const uniq = (xs: (number | null)[]) => new Set(xs).size;
 function blockText(r: Run, withTags: boolean): string[] {
   const s0 = r.sets[0] as SetRow;
-  const kgs = r.sets.map((s) => s.planned.kg);
+  const isPct = pctOf(s0) !== null;
+  const kgs = r.sets.map((s) => (isPct ? pctOf(s) : s.planned.kg));
   const rpes = r.sets.map((s) => s.planned.targetRpe);
   // si varían a la vez cargas y RPE, un bloque por serie
   if (uniq(kgs) > 1 && uniq(rpes) > 1) return r.sets.flatMap((s) => blockText({ sets: [s] }, withTags));
   const n = r.sets.length;
   const reps = repsMaxOf(s0) ? `${s0.planned.reps}-${repsMaxOf(s0)}` : String(s0.planned.reps);
+  const unit = isPct ? '%' : '';
+  const first = kgs[0] ?? null;
   const kg =
-    s0.planned.kg === null
+    first === null
       ? ''
-      : `x${uniq(kgs) > 1 ? kgs.map((k) => fmt(k as number)).join('-') : fmt(s0.planned.kg)}`;
+      : `x${uniq(kgs) > 1 ? kgs.map((k) => fmt(k as number)).join('-') : fmt(first)}${unit}`;
   const rpe =
     s0.planned.targetRpe === null
       ? ''
@@ -117,14 +124,17 @@ export function summarizeExercise(g: ExGroup): string {
   return runs(g.sets)
     .flatMap((r) => {
       const s0 = r.sets[0] as SetRow;
-      const kgs = r.sets.map((s) => s.planned.kg);
+      const isPct = pctOf(s0) !== null;
+      const kgs = r.sets.map((s) => (isPct ? pctOf(s) : s.planned.kg));
       const rpes = r.sets.map((s) => s.planned.targetRpe);
       const reps = repsMaxOf(s0) ? `${s0.planned.reps}-${repsMaxOf(s0)}` : String(s0.planned.reps);
       const one = (rs: SetRow[], k: (number | null)[], p: (number | null)[]) => {
         const parts = [`${rs.length}×${reps}`];
         if (k[0] !== null)
           parts.push(
-            uniq(k) > 1 ? `${k.map((x) => fmt(x as number)).join('-')} kg` : `${fmt(k[0] as number)} kg`,
+            uniq(k) > 1
+              ? `${k.map((x) => fmt(x as number)).join('-')} ${isPct ? '%' : 'kg'}`
+              : `${fmt(k[0] as number)} ${isPct ? '%' : 'kg'}`,
           );
         if (p[0] !== null)
           parts.push(
@@ -137,7 +147,7 @@ export function summarizeExercise(g: ExGroup): string {
         return parts.join(' · ');
       };
       if (uniq(kgs) > 1 && uniq(rpes) > 1)
-        return r.sets.map((s) => one([s], [s.planned.kg], [s.planned.targetRpe]));
+        return r.sets.map((s) => one([s], [isPct ? pctOf(s) : s.planned.kg], [s.planned.targetRpe]));
       return [one(r.sets, kgs, rpes)];
     })
     .join('  +  ');
@@ -148,6 +158,8 @@ export interface SetSpec {
   reps: number;
   repsMax: number | null;
   kg: number | null;
+  /** % del 1RM base (si se programó con %): los kg los deriva el servidor con la referencia. */
+  pct: number | null;
   rpe: number | null;
   segment: 'work' | 'top' | 'backoff';
   warmup: boolean;
@@ -194,6 +206,7 @@ export function specsByExercise(segs: QuickSegment[]): {
         reps: Number(s.reps.replace(',', '.')),
         repsMax: num(s.repsMax),
         kg: num(s.kg),
+        pct: num(s.pct),
         rpe: num(s.rpe),
         segment: s.segment,
         warmup: s.warmup,
@@ -260,16 +273,16 @@ export function buildSets(
     familyKey: ctx.blockKey,
     setNo: i + 1,
     reps: s.reps,
-    plannedKg: s.kg,
+    plannedKg: s.pct !== null ? null : s.kg,
     targetRpe: s.rpe,
     refKg: refKg ?? g.ref ?? null,
     isWarmup: s.warmup,
     priority: g.priority,
     protocol: {
       repsMax: s.repsMax,
-      loadMode: s.kg !== null ? 'kg' : s.rpe !== null ? 'rpe' : 'kg',
+      loadMode: s.pct !== null ? 'pct' : s.kg !== null ? 'kg' : s.rpe !== null ? 'rpe' : 'kg',
       segment: s.segment,
-      pct: null,
+      pct: s.pct,
       capKg: null,
       tempo: null,
       pauseSec: s.pause,
@@ -315,7 +328,7 @@ export function planSessionEdit(
     plan.ops.push({
       kind: 'add',
       label: `Agregar ${n.name}`,
-      sets: buildSets(ctx, n, slot++, o.exposureId, o.sets[0]?.refKg ?? null),
+      sets: buildSets(ctx, n, slot++, o.exposureId, n.ref ?? o.sets[0]?.refKg ?? null),
     });
     plan.changes.push(`${n.name}: ${why}`);
     if (ex)
@@ -335,7 +348,10 @@ export function planSessionEdit(
       replace(o, n, `${o.sets.length} → ${n.sets.length} series`);
       continue;
     }
+    const refChanged =
+      n.sets.some((t) => t.pct !== null) && o.sets.some((s) => (s.refKg ?? null) !== (n.ref ?? null));
     if (
+      refChanged ||
       (n.prioExplicit && (o.priority ?? 3) !== n.priority) ||
       o.sets.some((s, i) => s.isWarmup !== (n.sets[i] as SetSpec).warmup)
     ) {
@@ -344,7 +360,9 @@ export function planSessionEdit(
         n,
         n.prioExplicit && (o.priority ?? 3) !== n.priority
           ? `prioridad ${o.priority ?? '—'}° → ${n.priority}°`
-          : 'cambió qué series son aproximación',
+          : refChanged
+            ? 'cambió el 1RM base de los porcentajes'
+            : 'cambió qué series son aproximación',
       );
       continue;
     }
@@ -363,7 +381,22 @@ export function planSessionEdit(
         change.targetRpe = t.rpe;
         text.push(`RPE ${s.planned.targetRpe ?? '—'} → ${t.rpe ?? '—'}`);
       }
-      if (!same(s.planned.kg, t.kg)) {
+      const oldPct = pctOf(s);
+      if (t.pct !== null) {
+        // con % los kg los deriva el servidor: se anula el fijo y se guarda el porcentaje
+        if (oldPct !== t.pct) {
+          change.plannedKg = null;
+          protocol.pct = t.pct;
+          protocol.loadMode = 'pct';
+          text.push(`${oldPct ?? '—'} → ${t.pct} %`);
+        }
+      } else if (oldPct !== null) {
+        // pasa de % a kg fijos o a solo RPE
+        change.plannedKg = t.kg;
+        protocol.pct = null;
+        protocol.loadMode = loadMode(t.kg, t.rpe, s);
+        text.push(t.kg !== null ? `${oldPct} % → ${t.kg} kg` : `${oldPct} % → solo RPE`);
+      } else if (!same(s.planned.kg, t.kg)) {
         change.plannedKg = t.kg;
         text.push(`${s.planned.kg ?? '—'} → ${t.kg ?? '—'} kg`);
       }
@@ -396,6 +429,8 @@ export function planSessionEdit(
         text.push('nota');
       }
       if (
+        t.pct === null &&
+        oldPct === null &&
         ('plannedKg' in change || 'targetRpe' in change) &&
         s.protocol?.loadMode !== loadMode(t.kg, t.rpe, s)
       )

@@ -11,6 +11,7 @@ import type {
   Explanation,
   PeriodComparison,
   StrengthReference,
+  Base1rm,
   ImportPlanInput,
 } from '@coaching/contracts';
 import { request } from '../api/client';
@@ -145,4 +146,6 @@ export const workspaceApi = {
   period: (id: string, values: Record<string, string>) =>
     get<PeriodComparison>(id, 'period-compare' + query(values)),
   references: (id: string) => get<StrengthReference[]>(id, 'references'),
+  base1rm: (id: string, names: string[], asOf?: string) =>
+    get<Base1rm[]>(id, `base-1rm?names=${encodeURIComponent(names.join('|'))}${asOf ? `&asOf=${asOf}` : ''}`),
 };

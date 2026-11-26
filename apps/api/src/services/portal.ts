@@ -88,6 +88,9 @@ function goalTextFor(sg: ProgSuggestion, withKg: boolean, mode: ViewMode): strin
           : 'Meta';
   return parts.length ? `${verb === 'Meta' ? 'Meta' : `${verb} · meta`}: ${parts.join(' × ')}` : '';
 }
+/** ¿El coach programó una carga (kg fijos o %)? Los kg derivados de un RPE con referencia no cuentan: eso sigue siendo «solo RPE». */
+const programmedLoad = (s: PlannedSet) =>
+  s.protocol?.loadMode === 'pct' || (s.plannedKg !== null && s.plannedKgSource !== 'derived');
 const round1 = (x: number) => Math.round(x * 10) / 10;
 const repsMaxOf = (p: PlannedSet): number | null => {
   const m = (p.protocol as { repsMax?: number | null } | null)?.repsMax;
@@ -356,12 +359,17 @@ export class PortalService {
     const exercises: ExerciseView[] = await Promise.all(
       [...groups.values()].map(async (g) => {
         const first = g[0] as PlannedSet;
-        const show = g.map((s) => s.protocol?.athleteProgression).find((m) => !!m) ?? null;
+        // Un básico programado solo con RPE (sin kg ni %): el atleta ve ÚNICAMENTE el RPE, sin carga ni meta sugerida.
+        const rpeOnlyBasic = first.lift !== null && !g.some(programmedLoad);
+        const show = rpeOnlyBasic
+          ? null
+          : (g.map((s) => s.protocol?.athleteProgression).find((m) => !!m) ?? null);
         const sg = show ? prog.get(first.exposureId) : undefined;
         const goalSets = sg && sg.action !== 'sin_datos' ? sg.sets : null;
-        const exMode: ViewMode =
-          (g.map((s) => s.protocol?.athleteView).find((m) => !!m) as ViewMode | undefined) ??
-          modeFrom(settings, key, first.lift);
+        const exMode: ViewMode = rpeOnlyBasic
+          ? 'solo_rpe'
+          : ((g.map((s) => s.protocol?.athleteView).find((m) => !!m) as ViewMode | undefined) ??
+            modeFrom(settings, key, first.lift));
         const prevSets = past
           .filter((p) => p.exerciseName === first.exerciseName && actual.get(p.id)?.status === 'done')
           .sort((x, y) => y.plannedDate.localeCompare(x.plannedDate) || x.setNo - y.setNo);

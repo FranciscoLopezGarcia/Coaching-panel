@@ -721,6 +721,59 @@ describe('Orden de los ejercicios dentro de la sesión (arrastrar)', () => {
   });
 });
 
+describe('Porcentaje del 1RM base', () => {
+  it('un set con pct + refKg y sin kg fijo se publica con los kg derivados; el endpoint de base lista declarado y calculado', async () => {
+    const id = (await post('/api/athletes', { name: 'Pct' })).json().id as string;
+    const mk = (n: number) => ({
+      id: `p-${n}`,
+      sessionKey: 'S1',
+      slotKey: 'B1:w1:d1:e0',
+      exposureId: 'x-sq',
+      exerciseName: 'Squat comp',
+      lift: 'SQ',
+      plannedDate: '2026-03-02',
+      setNo: n,
+      reps: 5,
+      targetRpe: null,
+      plannedKg: null,
+      refKg: 200,
+      blockKey: 'B1',
+      weekNo: 1,
+      dayNo: 1,
+      familyKey: 'F1',
+      protocol: { loadMode: 'pct', pct: 80, segment: 'work' },
+    });
+    expect((await post(`/api/athletes/${id}/plan`, { sets: [mk(1), mk(2)] })).statusCode).toBe(200);
+    const planned = await ctx.records.listActivePlanned(id);
+    expect(planned.map((x) => x.plannedKg)).toEqual([160, 160]);
+    expect(planned.every((x) => x.plannedKgSource === 'derived')).toBe(true);
+    // sin referencia ni observaciones: no hay base (no se inventa)
+    const none = await get(
+      `/api/athletes/${id}/base-1rm?names=${encodeURIComponent('sq comp|Squat pausa')}&asOf=2026-03-02`,
+    );
+    expect(none.map((r: { declared: unknown; calculated: unknown }) => [r.declared, r.calculated])).toEqual([
+      [null, null],
+      [null, null],
+    ]);
+    // una referencia declarada de "Sentadilla competencia" rige para "sq comp", no para "Squat pausa"
+    expect(
+      (
+        await post(`/api/athletes/${id}/references`, {
+          exerciseName: 'Sentadilla competencia',
+          kg: 200,
+          source: 'decision_del_coach',
+          asOf: '2026-03-01',
+        })
+      ).statusCode,
+    ).toBe(201);
+    const withRef = await get(
+      `/api/athletes/${id}/base-1rm?names=${encodeURIComponent('sq comp|Squat pausa')}&asOf=2026-03-02`,
+    );
+    expect(withRef[0].declared.kg).toBe(200);
+    expect(withRef[1].declared).toBeNull();
+  });
+});
+
 describe('Vínculos explícitos entre identidades de exposición', () => {
   it('dos identidades separadas se evalúan por separado; un vínculo EXPLÍCITO las une y sin él nada se fusiona', async () => {
     const created = (await post('/api/athletes', { name: 'Vínculos' })).json().id as string;

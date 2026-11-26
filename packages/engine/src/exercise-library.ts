@@ -97,3 +97,27 @@ export function fixedItems(): LibraryItem[] {
     notes: '',
   }));
 }
+
+/* ---------------- Clave canónica de un ejercicio (para ligar el 1RM base) ---------------- */
+
+const strip = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+const COMP_ALIASES: [RegExp, string][] = [
+  [/^(squat|sq|sentadilla)( (comp|competencia|competition))?$/, 'sentadilla competencia'],
+  [/^(bench( press)?|bp|banca|press banca)( (comp|competencia|competition))?$/, 'press banca competencia'],
+  [/^(deadlift|dl|peso muerto)( (comp|competencia|competition))?$/, 'peso muerto competencia'],
+];
+/**
+ * Clave canónica de un ejercicio: «Squat comp», «sq comp» y «Sentadilla competencia» son la MISMA; «Squat pausa» es OTRA variante.
+ * Solo se unifican los alias de las tres competitivas: nada se fusiona por parecido (no se transfiere 1RM entre variantes).
+ */
+export function exerciseKey(name: string): string {
+  const n = strip(name);
+  for (const [re, key] of COMP_ALIASES) if (re.test(n)) return key;
+  return n;
+}

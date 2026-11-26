@@ -22,7 +22,7 @@ import {
   sourceQuerySchema,
   strengthReferenceSchema,
 } from '@coaching/contracts';
-import { stepFor, type Lift } from '@coaching/engine';
+import { base1rm, base1rmFor, stepFor, type Lift } from '@coaching/engine';
 import type { AppContext } from '../app.js';
 import { NotFoundError } from '../services/errors.js';
 import { toEngineParams } from '../services/params.js';
@@ -340,6 +340,32 @@ export function registerConsolidationRoutes(app: FastifyInstance, ctx: AppContex
     const { id } = parse(idParam, req.params);
     await must(id);
     return await ctx.references.list(id);
+  });
+  /** 1RM base por ejercicio (declarado y calculado, por separado) para programar con porcentajes. Solo lectura. */
+  app.get('/api/athletes/:id/base-1rm', async (req) => {
+    const { id } = parse(idParam, req.params);
+    await must(id);
+    const q = parse(
+      z.object({
+        asOf: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+        /** Nombres separados por «|»: una fila por nombre pedido (aunque no tenga base). Sin esto, solo los que tienen base. */
+        names: z.string().max(2000).optional(),
+      }),
+      req.query,
+    );
+    const cutoff = q.asOf ?? ctx.today();
+    const d = await ctx.loader.load(id, cutoff);
+    const refs = await ctx.references.list(id);
+    const names = q.names
+      ?.split('|')
+      .map((x) => x.trim())
+      .filter(Boolean);
+    return names?.length
+      ? base1rmFor(names, refs, d.planned, d.actual, cutoff)
+      : base1rm(refs, d.planned, d.actual, cutoff);
   });
 
   /* ----- intervenciones ----- */
