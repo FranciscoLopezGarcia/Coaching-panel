@@ -51,6 +51,8 @@ export interface BlockExportInput {
   macros: MacroMeta[];
   micros: MicroMeta[];
   zoneCuts?: number[];
+  /** Cierre de bloque que dejó el atleta (uno por bloque), ya con nombres legibles. */
+  closings: { blockKey: string; updatedAt: string; answers: unknown }[];
 }
 
 export interface ExportSelection {
@@ -327,6 +329,11 @@ function exportBlock(inp: BlockExportInput, blockKey: string, weeks: number[] | 
     revisionesTecnicasCoach: inp.reviews
       .filter((r) => inRange(r.date))
       .map((r) => ({ fecha: r.date, movimiento: r.lift, veredicto: r.verdict, nota: r.note || null })),
+    /** Lo que contestó el atleta al cerrar el bloque (vale para el bloque entero). 1–10; molestias 0–10. */
+    cierreDeBloque: (() => {
+      const c = inp.closings.find((x) => x.blockKey === blockKey && x.updatedAt.slice(0, 10) <= inp.asOf);
+      return c ? { fecha: c.updatedAt.slice(0, 10), respuestas: c.answers } : null;
+    })(),
     cambiosDePlan: inp.changeEvents
       .filter((e) => {
         const d = e.effectiveOn ?? e.detectedOn;

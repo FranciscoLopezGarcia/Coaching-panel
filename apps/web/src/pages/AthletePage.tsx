@@ -20,6 +20,7 @@ import { Settings } from '../workspace/Settings';
 import { AthleteAccess } from '../workspace/AthleteAccess';
 import { DeleteAthleteDialog, EditAthleteDialog } from '../workspace/AthleteAdmin';
 import { RecoveryTab } from './athlete/RecoveryTab';
+import { BlockClosingPanel } from '../workspace/BlockClosingPanel';
 import { AgendaCard } from '../workspace/AgendaCard';
 import { CompetitionsPanel } from '../workspace/CompetitionsPanel';
 import { LibraryPanel } from '../workspace/LibraryPanel';
@@ -387,6 +388,7 @@ export function AthletePage({ id }: { id: string }) {
             )}
             {tab === 'resumen' && (
               <>
+                <BlockClosingPanel id={id} />
                 <AgendaCard
                   id={id}
                   onOpen={(sessionKey) => select({ tab: 'plan', session: sessionKey, context: '1' })}

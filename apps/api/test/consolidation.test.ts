@@ -146,6 +146,7 @@ describe('Migración 003: compatibilidad con datos del esquema anterior', () => 
       '007_coach_y_tiempo_real.sql',
       '008_checkin_extras.sql',
       '009_perfil_competencias_biblioteca.sql',
+      '010_cierre_bloque.sql',
     ]);
     const recs = new RecordsRepo(db);
     const sets = await recs.listPlanned('a');

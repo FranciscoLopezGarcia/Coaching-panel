@@ -155,8 +155,8 @@ export function BlockExportDialog({
             }}
           />
           <span>
-            <b>JSON</b> · completo, para una IA o un modelo: sesiones, resumen por bloque, check-ins,
-            competencias, perfil y una guía de lectura.
+            <b>JSON</b> · completo, para una IA o un modelo: sesiones, resumen y cierre de cada bloque,
+            check-ins, competencias, perfil y una guía de lectura.
           </span>
         </label>
         <label className="check">

@@ -16,7 +16,26 @@ const tables = (
   )
 ).map((t) => t.name);
 const dump: Record<string, unknown[]> = {};
-for (const t of tables) dump[t] = await db.all(`SELECT * FROM ${t}`);
+// Por tandas: Turso corta las respuestas grandes. Si una tanda no entra, se reintenta con la mitad.
+for (const t of tables) {
+  const rows: unknown[] = [];
+  let size = 500;
+  for (;;) {
+    let page: unknown[];
+    try {
+      page = await db.all(`SELECT * FROM ${t} ORDER BY rowid LIMIT ${size} OFFSET ${rows.length}`);
+    } catch (e) {
+      if (size > 1 && /Resource exhausted|too large/i.test((e as Error).message)) {
+        size = Math.floor(size / 2);
+        continue;
+      }
+      throw e;
+    }
+    rows.push(...page);
+    if (page.length < size) break;
+  }
+  dump[t] = rows;
+}
 const dir = join(import.meta.dirname, '..', 'backups');
 mkdirSync(dir, { recursive: true });
 const file = join(dir, `backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`);

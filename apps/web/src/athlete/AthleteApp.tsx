@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, getToken, setToken } from './api';
+import { BlockClosing } from './BlockClosing';
 import { HomeScreen } from './Home';
 import { Login } from './Login';
 import { Picker } from './Picker';
@@ -21,12 +22,16 @@ export function AthleteApp({ hash }: { hash: string }) {
   }, []);
   if (!token) return <Login onIn={() => setTok(getToken())} />;
   const m = /^#\/atleta\/entreno\/(.+)$/.exec(hash);
-  const tab = m ? 'workout' : hash.startsWith('#/atleta/entrenos') ? 'picker' : 'home';
+  const closing = /^#\/atleta\/cierre\/(.+)$/.exec(hash);
+  const tab = m ? 'workout' : closing ? 'closing' : hash.startsWith('#/atleta/entrenos') ? 'picker' : 'home';
   return (
     <div className="ath">
       <div className="ath-body">
         {tab === 'home' && <HomeScreen go={go} />}
         {tab === 'picker' && <Picker go={go} />}
+        {closing && (
+          <BlockClosing key={closing[1]} blockKey={decodeURIComponent(closing[1] as string)} go={go} />
+        )}
         {tab === 'workout' && m && (
           <Workout key={m[1]} keyName={decodeURIComponent(m[1] as string)} go={go} />
         )}

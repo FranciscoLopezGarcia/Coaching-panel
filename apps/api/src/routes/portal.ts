@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { checkInSchema } from '@coaching/contracts';
+import { blockFeedbackSchema, checkInSchema } from '@coaching/contracts';
 import type { AppContext } from '../app.js';
 import { VIEW_MODES } from '../repositories/accounts.js';
 import { NotFoundError } from '../services/errors.js';
@@ -24,6 +24,7 @@ export function registerPortalRoutes(app: FastifyInstance, ctx: AppContext): Por
     ctx.programmingRepo,
     ctx.history,
     ctx.accounts,
+    ctx.blockFeedback,
     ctx.today,
     () => `${ctx.today()}T12:00:00.000Z`,
   );
@@ -209,6 +210,28 @@ export function registerPortalRoutes(app: FastifyInstance, ctx: AppContext): Por
     async (req) =>
       await portal.session(await me(req), parse(z.object({ key: z.string().min(1) }), req.params).key),
   );
+  /* ----- cierre de bloque ----- */
+  const blockParam = z.object({ blockKey: z.string().min(1) });
+  app.get('/api/me/blocks/:blockKey/feedback', async (req) => {
+    const id = await me(req);
+    return await portal.closing(id, parse(blockParam, req.params).blockKey);
+  });
+  app.put('/api/me/blocks/:blockKey/feedback', async (req) => {
+    const id = await me(req);
+    const { blockKey } = parse(blockParam, req.params);
+    return await portal.saveClosing(id, blockKey, parse(blockFeedbackSchema, req.body));
+  });
+  app.get('/api/athletes/:id/block-feedback', async (req) => {
+    const { id } = parse(idParam, req.params);
+    if (!(await ctx.athletes.get(id))) throw new NotFoundError('Atleta inexistente');
+    const mesos = await ctx.programmingRepo.listMesos(id);
+    return {
+      items: (await ctx.blockFeedback.list(id)).map((f) => ({
+        ...f,
+        blockName: mesos.find((m) => m.blockKey === f.blockKey)?.name ?? f.blockKey,
+      })),
+    };
+  });
   app.put('/api/me/sets', async (req) => {
     const b = parse(
       z.object({

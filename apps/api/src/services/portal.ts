@@ -1,11 +1,14 @@
 import {
   slotIndex,
   suggestProgression,
+  LIFTS,
   type ActualSet,
   type PlannedSet,
   type ProgSuggestion,
 } from '@coaching/engine';
+import type { BlockFeedbackAnswers } from '@coaching/contracts';
 import { modeFrom, type AccountsRepo, type ViewMode } from '../repositories/accounts.js';
+import type { BlockFeedbackRepo } from '../repositories/block-feedback.js';
 import type { AthletesRepo } from '../repositories/athletes.js';
 import type { HistoryRepo } from '../repositories/history.js';
 import type { ProgrammingRepo } from '../repositories/programming.js';
@@ -111,6 +114,7 @@ export class PortalService {
     private programming: ProgrammingRepo,
     private history: HistoryRepo,
     private accounts: AccountsRepo,
+    private blockFeedback: BlockFeedbackRepo,
     private today: () => string,
     private nowIso: () => string,
   ) {}
@@ -282,7 +286,68 @@ export class PortalService {
     );
   }
 
+  /**
+   * Bloques que ya se pueden cerrar: llegó su última sesión prevista o está todo registrado (hecho u omitido).
+   * Se mira el plan completo (no solo lo visible) y solo bloques que el atleta ya empezó a ver.
+   */
+  private async closings(athleteId: string) {
+    const [all, actualRows, mesos, sent] = await Promise.all([
+      this.records.listActivePlanned(athleteId),
+      this.records.listActual(athleteId),
+      this.programming.listMesos(athleteId),
+      this.blockFeedback.list(athleteId),
+    ]);
+    const t = this.today();
+    const { sun } = this.weekBounds(t);
+    const actual = new Map(actualRows.map((a) => [a.plannedSetId, a.status]));
+    return [...new Set(all.map((s) => s.blockKey))]
+      .flatMap((blockKey) => {
+        const sets = all.filter((s) => s.blockKey === blockKey);
+        const dates = sets.map((s) => s.plannedDate).sort();
+        const first = dates[0] as string;
+        const last = dates[dates.length - 1] as string;
+        const work = sets.filter((s) => !s.isWarmup);
+        const resolved =
+          work.length > 0 && work.every((s) => ['done', 'skipped'].includes(actual.get(s.id) ?? ''));
+        if (first > sun || (last > t && !resolved)) return [];
+        return [
+          {
+            blockKey,
+            name: mesos.find((m) => m.blockKey === blockKey)?.name ?? blockKey,
+            lastDate: last,
+            lifts: LIFTS.filter((l) => work.some((s) => s.lift === l)),
+            feedback: sent.find((f) => f.blockKey === blockKey) ?? null,
+          },
+        ];
+      })
+      .sort((a, b) => b.lastDate.localeCompare(a.lastDate));
+  }
+  async closing(athleteId: string, blockKey: string) {
+    const c = (await this.closings(athleteId)).find((x) => x.blockKey === blockKey);
+    if (!c) throw new NotFoundError('Ese bloque todavía no se puede cerrar.');
+    return c;
+  }
+  async saveClosing(athleteId: string, blockKey: string, answers: BlockFeedbackAnswers) {
+    const c = await this.closing(athleteId, blockKey);
+    // solo se guardan los movimientos que el bloque tiene
+    const lifts = Object.fromEntries(
+      c.lifts.flatMap((l) => (answers.lifts[l] ? [[l, answers.lifts[l]]] : [])),
+    );
+    await this.blockFeedback.upsert(athleteId, blockKey, { ...answers, lifts }, this.nowIso());
+    return { ok: true };
+  }
+
   async home(athleteId: string) {
+    const closings = await this.closings(athleteId);
+    // Se ofrece solo el último bloque cerrado, si sigue sin respuesta y no es viejo.
+    const latest = closings[0];
+    const recent = new Date(Date.parse(`${this.today()}T00:00:00Z`) - 45 * 86400000)
+      .toISOString()
+      .slice(0, 10);
+    const pendingClosing =
+      latest && !latest.feedback && latest.lastDate >= recent
+        ? { blockKey: latest.blockKey, name: latest.name }
+        : null;
     const [a, loaded, checks, mesos] = await Promise.all([
       this.athletes.get(athleteId),
       this.load(athleteId),
@@ -300,6 +365,7 @@ export class PortalService {
     return {
       athlete: { id: a.id, name: a.name },
       today: t,
+      pendingClosing,
       session,
       todaysCount: todays.length,
       next,
@@ -327,7 +393,16 @@ export class PortalService {
         }),
       )
     ).sort((x, y) => x.first.localeCompare(y.first));
-    return { today: this.today(), next: this.nextOf(all), current: this.currentOf(all, mesos), blocks };
+    const closings = await this.closings(athleteId);
+    return {
+      today: this.today(),
+      next: this.nextOf(all),
+      current: this.currentOf(all, mesos),
+      blocks: blocks.map((b) => {
+        const c = closings.find((x) => x.blockKey === b.key);
+        return { ...b, closing: c ? (c.feedback ? ('enviado' as const) : ('pendiente' as const)) : null };
+      }),
+    };
   }
   async next(athleteId: string) {
     return { next: this.nextOf(await this.allMeta(athleteId)) };

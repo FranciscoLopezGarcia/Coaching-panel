@@ -7,7 +7,9 @@ import { SessionTextEditor } from './SessionTextEditor';
 import { WeekCopyDialog } from './WeekCopyDialog';
 import { QuickEntry } from './QuickEntry';
 import { MOVEMENT_GROUPS, MOVEMENT_OTHER, movementFields, segmentsToText } from './quickSession';
+import { DeleteWeekDialog } from './AthleteAdmin';
 import { BlockNavigator } from './BlockNavigator';
+import { BlockClosingPanel } from './BlockClosingPanel';
 import { PriorityFilter, RoleFilter, usePrio, useRole } from './PriorityFilter';
 import { validateRepsRange } from './prescription';
 import { DataSheet } from './DataSheet';
@@ -61,6 +63,7 @@ export function Programming({
   const [create, setCreate] = useState<'macro' | 'meso' | 'session' | null>(null);
   const [textEdit, setTextEdit] = useState<SessionRow | null>(null);
   const [copyWeek, setCopyWeek] = useState(false);
+  const [removingWeek, setRemovingWeek] = useState(0);
   useEffect(() => {
     if (readSearch().get('action') === 'next' && block && week) {
       setOperation('repeat_week');
@@ -158,6 +161,7 @@ export function Programming({
                 onSelect={onSelect}
               />
             )}
+            {block && <BlockClosingPanel id={id} blockKey={block} />}
             {!block && !macro && (
               <>
                 {!d.macros.length && (
@@ -339,6 +343,9 @@ export function Programming({
                             <button onClick={() => onSelect({ week: String(n), session: null })}>
                               Abrir semana →
                             </button>
+                            <button type="button" className="danger" onClick={() => setRemovingWeek(n)}>
+                              Eliminar semana
+                            </button>
                           </header>
                           {ss.length ? (
                             <SessionCards
@@ -382,6 +389,9 @@ export function Programming({
                         disabled={!selectedSessions.length}
                       >
                         Duplicar sesión
+                      </button>
+                      <button type="button" className="danger" onClick={() => setRemovingWeek(week)}>
+                        Eliminar semana
                       </button>
                     </div>
                     {mode === 'plan' && (
@@ -464,6 +474,20 @@ export function Programming({
           onClose={() => setTextEdit(null)}
           onSaved={(m) => {
             setMsg(m);
+            refresh();
+          }}
+        />
+      )}
+      {removingWeek > 0 && block && (
+        <DeleteWeekDialog
+          id={id}
+          blockKey={block}
+          week={removingWeek}
+          onClose={() => setRemovingWeek(0)}
+          onDeleted={() => {
+            setMsg(`Semana ${removingWeek} eliminada.`);
+            setRemovingWeek(0);
+            onSelect({ week: null, session: null });
             refresh();
           }}
         />

@@ -144,6 +144,7 @@ interface Removal {
   sessions: number;
   sets: number;
   executedSets: number;
+  hasFeedback: boolean;
 }
 /** Eliminar un bloque. Muestra qué se pierde; si tiene entrenos registrados hay que tildar que también se borran. */
 export function DeleteBlockDialog({
@@ -168,7 +169,7 @@ export function DeleteBlockDialog({
       .then(setPv)
       .catch((e: Error) => setError(e.message));
   }, [id, blockKey]);
-  const needs = (pv?.executedSets ?? 0) > 0;
+  const needs = (pv?.executedSets ?? 0) > 0 || !!pv?.hasFeedback;
   return (
     <Modal title="Eliminar bloque" onClose={onClose}>
       {!pv && !error && <p className="muted">Calculando qué se borra…</p>}
@@ -186,7 +187,8 @@ export function DeleteBlockDialog({
                 <b>
                   {pv.executedSets} {pv.executedSets === 1 ? 'serie ya registrada' : 'series ya registradas'}
                 </b>{' '}
-                por el atleta. Entiendo que también se borran, para siempre.
+                por el atleta{pv.hasFeedback ? ' y su cierre de bloque' : ''}. Entiendo que también se borran,
+                para siempre.
               </span>
             </label>
           )}
@@ -216,6 +218,85 @@ export function DeleteBlockDialog({
           }}
         >
           {busy ? 'Eliminando…' : 'Eliminar bloque'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+interface WeekRemoval {
+  sessions: number;
+  sets: number;
+  executedSets: number;
+  notes: number;
+}
+/** Eliminar una semana de un bloque, mostrando qué se pierde antes de confirmar. */
+export function DeleteWeekDialog({
+  id,
+  blockKey,
+  week,
+  onClose,
+  onDeleted,
+}: {
+  id: string;
+  blockKey: string;
+  week: number;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const url = `/api/athletes/${encodeURIComponent(id)}/blocks/${encodeURIComponent(blockKey)}/weeks/${week}`;
+  const [pv, setPv] = useState<WeekRemoval | null>(null);
+  const [ok, setOk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    request<WeekRemoval>(`${url}/removal-preview`)
+      .then(setPv)
+      .catch((e: Error) => setError(e.message));
+  }, [url]);
+  const needs = !!pv && (pv.executedSets > 0 || pv.notes > 0);
+  return (
+    <Modal title={`Eliminar la semana ${week}`} onClose={onClose}>
+      {!pv && !error && <p className="muted">Calculando qué se borra…</p>}
+      {pv && (
+        <>
+          <Message error>
+            Se eliminan {pv.sessions} {pv.sessions === 1 ? 'sesión' : 'sesiones'} y {pv.sets} series. Las
+            demás semanas conservan su número y sus fechas.
+          </Message>
+          {needs && (
+            <label className="check">
+              <input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} />
+              <span>
+                El atleta ya cargó datos en esta semana (<b>series registradas: {pv.executedSets}</b>, notas o
+                cierres de sesión: {pv.notes}). Entiendo que también se borran, para siempre.
+              </span>
+            </label>
+          )}
+        </>
+      )}
+      {error && <Message error>{error}</Message>}
+      <div className="sticky-actions">
+        <button type="button" onClick={onClose}>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          className="danger"
+          disabled={busy || !pv || (needs && !ok)}
+          onClick={async () => {
+            setBusy(true);
+            setError('');
+            try {
+              await request(`${url}?withExecution=${needs ? '1' : '0'}`, { method: 'DELETE', body: '{}' });
+              onDeleted();
+            } catch (e) {
+              setError((e as Error).message);
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? 'Eliminando…' : 'Eliminar semana'}
         </button>
       </div>
     </Modal>

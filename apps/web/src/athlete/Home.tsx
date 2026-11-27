@@ -230,6 +230,18 @@ export function HomeScreen({ go }: { go: (hash: string) => void }) {
         <p className="muted">{fmtDate(home.today)}</p>
         <h1>Hola, {home.athlete.name.split(' ')[0]}</h1>
       </header>
+      {home.pendingClosing && (
+        <section className="ath-card ath-closing-call">
+          <h2>¿Cómo te fue en {home.pendingClosing.name}?</h2>
+          <p className="muted">Contale a tu coach cómo terminaste el bloque. Lleva un par de minutos.</p>
+          <button
+            className="ath-primary"
+            onClick={() => go(`#/atleta/cierre/${encodeURIComponent(home.pendingClosing!.blockKey)}`)}
+          >
+            Cerrar el bloque
+          </button>
+        </section>
+      )}
       {main ? (
         <SessionCard
           s={main}

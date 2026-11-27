@@ -56,6 +56,19 @@ export function registerAdminRoutes(app: FastifyInstance, ctx: AppContext): void
     return ctx.blocks.preview(id, blockKey);
   });
 
+  const weekParam = blockParam.extend({ week: z.coerce.number().int().positive() });
+  app.get('/api/athletes/:id/blocks/:blockKey/weeks/:week/removal-preview', async (req) => {
+    const { id, blockKey, week } = parse(weekParam, req.params);
+    await must(id);
+    return ctx.blocks.previewWeek(id, blockKey, week);
+  });
+  app.delete('/api/athletes/:id/blocks/:blockKey/weeks/:week', async (req) => {
+    const { id, blockKey, week } = parse(weekParam, req.params);
+    await must(id);
+    const q = parse(z.object({ withExecution: z.enum(['0', '1']).default('0') }), req.query);
+    return ctx.blocks.removeWeek(id, blockKey, week, q.withExecution === '1');
+  });
+
   app.delete('/api/athletes/:id/blocks/:blockKey', async (req) => {
     const { id, blockKey } = parse(blockParam, req.params);
     await must(id);

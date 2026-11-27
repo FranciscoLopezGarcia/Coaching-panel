@@ -1060,3 +1060,56 @@ export interface AnalysisResult {
   /** Resumen por bloque con TTP y familias de microciclo. */
   summary: { blocks: BlockSummary[]; families: FamilySummary[] };
 }
+
+// ---------- Cierre de bloque (lo completa el atleta) ----------
+const score = (min: number) => z.number().int().min(min).max(10).nullable().default(null);
+const shortText = (max: number) => z.string().trim().max(max).default('');
+export const BLOCK_FEEL = ['peor', 'igual', 'mejor'] as const;
+export const BLOCK_LOAD = ['liviana', 'justa', 'pesada'] as const;
+const liftClosingSchema = z.object({
+  /** Cómo sintió el movimiento respecto del arranque del bloque. */
+  feel: z.enum(BLOCK_FEEL).nullable().default(null),
+  fatigue: score(1),
+  technique: score(1),
+  /** 0 = sin molestias. */
+  discomfort: score(0),
+  discomfortWhere: shortText(120),
+  note: shortText(600),
+});
+export const blockFeedbackSchema = z
+  .object({
+    general: z.object({
+      fatigue: score(1),
+      stress: score(1),
+      sleep: score(1),
+      motivation: score(1),
+      satisfaction: score(1),
+      load: z.enum(BLOCK_LOAD).nullable().default(null),
+    }),
+    lifts: z.object({
+      SQ: liftClosingSchema.optional(),
+      BP: liftClosingSchema.optional(),
+      DL: liftClosingSchema.optional(),
+    }),
+    notes: z.object({
+      best: shortText(800),
+      hardest: shortText(800),
+      next: shortText(800),
+      other: shortText(800),
+    }),
+  })
+  .refine(
+    (v) =>
+      [v.general, ...Object.values(v.lifts), v.notes].some((group) =>
+        Object.values(group ?? {}).some((x) => x !== null && x !== ''),
+      ),
+    'Contestá al menos una cosa antes de enviar.',
+  );
+export type BlockFeedbackAnswers = z.infer<typeof blockFeedbackSchema>;
+export type LiftClosing = z.infer<typeof liftClosingSchema>;
+export interface BlockFeedbackRow {
+  blockKey: string;
+  answers: BlockFeedbackAnswers;
+  createdAt: string;
+  updatedAt: string;
+}

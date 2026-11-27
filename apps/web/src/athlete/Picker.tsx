@@ -110,6 +110,11 @@ export function Picker({ go }: { go: (hash: string) => void }) {
         <button className="ath-primary" disabled={!session} onClick={() => open(session)}>
           Abrir entrenamiento
         </button>
+        {b?.closing && (
+          <button className="ath-ghost" onClick={() => go(`#/atleta/cierre/${encodeURIComponent(b.key)}`)}>
+            {b.closing === 'enviado' ? 'Ver o corregir el cierre del bloque' : 'Dejar el cierre del bloque'}
+          </button>
+        )}
       </section>
       {w && (
         <section className="ath-card">

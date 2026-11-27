@@ -77,8 +77,20 @@ export class ProgrammingRepo {
       objective: r.objective,
     }));
   }
-  /** Quita la ficha del bloque (meso) y de sus microciclos. Las series del bloque se tratan aparte (ver BlockAdmin). */
+  async hasBlockFeedback(athleteId: string, blockKey: string): Promise<boolean> {
+    return !!(await this.db.get(
+      'SELECT 1 FROM block_feedback WHERE athlete_id = ? AND block_key = ?',
+      athleteId,
+      blockKey,
+    ));
+  }
+  /** Quita la ficha del bloque (meso), su cierre y sus microciclos. Las series del bloque se tratan aparte (ver BlockAdmin). */
   async deleteBlockMeta(athleteId: string, blockKey: string): Promise<void> {
+    await this.db.run(
+      'DELETE FROM block_feedback WHERE athlete_id = ? AND block_key = ?',
+      athleteId,
+      blockKey,
+    );
     await this.db.run('DELETE FROM microcycles WHERE athlete_id = ? AND block_key = ?', athleteId, blockKey);
     await this.db.run('DELETE FROM mesos WHERE athlete_id = ? AND block_key = ?', athleteId, blockKey);
   }

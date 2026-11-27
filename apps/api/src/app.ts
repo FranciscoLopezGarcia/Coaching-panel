@@ -16,6 +16,7 @@ import { ExerciseMapRepo, RevisionsRepo } from './repositories/revisions.js';
 import { RecordsRepo } from './repositories/records.js';
 import { ReferencesRepo } from './repositories/references.js';
 import { AccountsRepo } from './repositories/accounts.js';
+import { BlockFeedbackRepo } from './repositories/block-feedback.js';
 import { CoachesRepo } from './repositories/coaches.js';
 import { LiveBus } from './services/live.js';
 import { registerPortalRoutes } from './routes/portal.js';
@@ -57,6 +58,7 @@ export interface AppContext {
   exerciseMap: ExerciseMapRepo;
   references: ReferencesRepo;
   accounts: AccountsRepo;
+  blockFeedback: BlockFeedbackRepo;
   interventionsRepo: InterventionsRepo;
   programmingRepo: ProgrammingRepo;
   evaluation: EvaluationService;
@@ -90,6 +92,7 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
   const observed = new ObservedRepo(db);
   const references = new ReferencesRepo(db);
   const accounts = new AccountsRepo(db);
+  const blockFeedback = new BlockFeedbackRepo(db);
   const coaches = new CoachesRepo(db);
   const live = new LiveBus(db);
   const revisions = new RevisionsRepo(db);
@@ -125,6 +128,7 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
     exerciseMap,
     references,
     accounts,
+    blockFeedback,
     coaches,
     blocks: new BlockAdmin(db, records, programmingRepo, plans),
     blockAnalysis,
@@ -137,7 +141,15 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
     evaluation: new EvaluationService(db, loader, decisions, history),
     extrasRepo,
     coachExtras,
-    blockExport: new BlockExportService(loader, records, history, accounts, decisions, coachExtras),
+    blockExport: new BlockExportService(
+      loader,
+      records,
+      history,
+      accounts,
+      decisions,
+      coachExtras,
+      blockFeedback,
+    ),
     historyService,
     dashboard: new DashboardService(athletes, records, decisions, history),
     imports: new ImportService(observed, plans, config.timeZone, nowIso, exerciseMap),

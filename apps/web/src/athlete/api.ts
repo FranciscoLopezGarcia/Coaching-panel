@@ -1,3 +1,5 @@
+import type { BlockFeedbackRow } from '@coaching/contracts';
+
 /** Cliente del portal del atleta. El token vive en este navegador (localStorage) y se manda como Bearer. */
 const KEY = 'base:athlete-token';
 export const getToken = () => {
@@ -41,6 +43,10 @@ export const api = {
   logout: () => call('POST', '/api/auth/logout', {}),
   home: () => call<Home>('GET', '/api/me/home'),
   plan: () => call<PlanData>('GET', '/api/me/plan'),
+  closing: (blockKey: string) =>
+    call<Closing>('GET', `/api/me/blocks/${encodeURIComponent(blockKey)}/feedback`),
+  saveClosing: (blockKey: string, answers: unknown) =>
+    call('PUT', `/api/me/blocks/${encodeURIComponent(blockKey)}/feedback`, answers),
   next: () => call<{ next: SessionMeta | null }>('GET', '/api/me/next'),
   session: (key: string) => call<SessionData>('GET', `/api/me/sessions/${encodeURIComponent(key)}`),
   /** Registra una serie. Sin conexión no se pierde: queda en el teléfono y se reenvía sola (ver `flushOutbox`). */
@@ -100,6 +106,8 @@ export interface Checkin {
 export interface Home {
   athlete: { id: string; name: string };
   today: string;
+  /** Último bloque terminado que todavía no tiene cierre. */
+  pendingClosing: { blockKey: string; name: string } | null;
   session: SessionMeta | null;
   todaysCount: number;
   next: SessionMeta | null;
@@ -111,7 +119,17 @@ export interface PlanData {
   next: SessionMeta | null;
   /** Bloque, semana y sesión que corresponden a HOY por fecha. */
   current: { blockKey: string; weekNo: number; key: string } | null;
-  blocks: (BlockInfo & { weeksList: { weekNo: number; sessions: SessionMeta[] }[] })[];
+  blocks: (BlockInfo & {
+    weeksList: { weekNo: number; sessions: SessionMeta[] }[];
+    /** null = todavía no se puede cerrar. */
+    closing: 'pendiente' | 'enviado' | null;
+  })[];
+}
+export interface Closing {
+  blockKey: string;
+  name: string;
+  lifts: ('SQ' | 'BP' | 'DL')[];
+  feedback: BlockFeedbackRow | null;
 }
 export interface SetView {
   id: string;

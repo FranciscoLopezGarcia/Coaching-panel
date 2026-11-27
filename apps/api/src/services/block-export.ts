@@ -7,6 +7,7 @@ import {
   type ExportSelection,
 } from '@coaching/engine';
 import type { AccountsRepo } from '../repositories/accounts.js';
+import type { BlockFeedbackRepo } from '../repositories/block-feedback.js';
 import type { DecisionsRepo } from '../repositories/decisions.js';
 import type { HistoryRepo } from '../repositories/history.js';
 import type { RecordsRepo } from '../repositories/records.js';
@@ -35,11 +36,12 @@ export class BlockExportService {
     private accounts: AccountsRepo,
     private decisions: DecisionsRepo,
     private extras: CoachExtrasService,
+    private closings: BlockFeedbackRepo,
   ) {}
 
   async build(athleteId: string, o: BlockExportOptions) {
     const d = await this.loader.load(athleteId, o.asOf);
-    const [versions, finishes, notes, checkins, checkinExtras, profile, competitions, decisions] =
+    const [versions, finishes, notes, checkins, checkinExtras, profile, competitions, decisions, closings] =
       await Promise.all([
         this.history.listVersions(athleteId),
         this.history.listFinishes(athleteId),
@@ -49,6 +51,7 @@ export class BlockExportService {
         this.extras.profile(athleteId),
         this.extras.competitions(athleteId),
         this.decisions.list(athleteId),
+        this.closings.list(athleteId),
       ]);
     const k = knownAt(
       {
@@ -100,6 +103,7 @@ export class BlockExportService {
       macros: d.macros,
       micros: d.micros,
       zoneCuts: d.athlete.params.intensityCuts,
+      closings,
     };
     const { guia, bloques, ...head } = buildBlockExport(input);
     const { birthDate, updatedAt: _updatedAt, ...rest } = profile;

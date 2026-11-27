@@ -47,6 +47,7 @@ describe('DB · migraciones', () => {
       '007_coach_y_tiempo_real.sql',
       '008_checkin_extras.sql',
       '009_perfil_competencias_biblioteca.sql',
+      '010_cierre_bloque.sql',
     ]);
   });
   it('las restricciones impiden RPE/molestia fuera de rango y ejecución sin prescripción', async () => {
