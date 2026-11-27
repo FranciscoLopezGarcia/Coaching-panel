@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { readinessOf } from '@coaching/engine';
+import { blockExportCsv, readinessOf } from '@coaching/engine';
 import type { AppContext } from '../app.js';
-import { NotFoundError } from '../services/errors.js';
+import { NotFoundError, UnprocessableError } from '../services/errors.js';
 import { parse } from './http.js';
 
 const idParam = z.object({ id: z.string().min(1) });
@@ -13,6 +13,23 @@ const q = z.object({
     .optional(),
   format: z.enum(['md', 'json']).default('md'),
 });
+const repeated = z
+  .union([z.string().min(1), z.array(z.string().min(1)).max(500)])
+  .default([])
+  .transform((v) => (Array.isArray(v) ? v : [v]));
+const blockQuery = z
+  .object({
+    /** Bloques completos: se repite el parámetro por cada uno. */
+    block: repeated,
+    /** Semanas sueltas, como «número:bloque» (p. ej. 2:B1). */
+    week: repeated.pipe(z.array(z.string().regex(/^\d{1,3}:.+$/))),
+    format: z.enum(['json', 'csv']).default('json'),
+    anon: z.enum(['0', '1']).default('0'),
+    asOf: q.shape.asOf,
+  })
+  .refine((v) => v.block.length + v.week.length > 0, 'Elegí al menos un bloque o una semana');
+/** Vercel corta las respuestas de más de 4,5 MB: se avisa antes con un mensaje claro. */
+const MAX_BYTES = 4_400_000;
 const n = (v: number | null | undefined, d = 1) =>
   v === null || v === undefined ? '—' : String(Math.round(v * 10 ** d) / 10 ** d);
 
@@ -21,6 +38,47 @@ const n = (v: number | null | undefined, d = 1) =>
  * Lo que falta se escribe «—» (nunca 0). No incluye datos de acceso ni contraseñas.
  */
 export function registerExportRoutes(app: FastifyInstance, ctx: AppContext): void {
+  // Bloques elegidos: lo programado contra lo registrado, con notas. Solo lectura.
+  app.get('/api/athletes/:id/block-export', async (req, reply) => {
+    const { id } = parse(idParam, req.params);
+    if (!(await ctx.athletes.get(id))) throw new NotFoundError('Atleta inexistente');
+    const o = parse(blockQuery, req.query);
+    const today = ctx.today();
+    const data = await ctx.blockExport.build(id, {
+      selection: [
+        ...o.block.map((blockKey) => ({ blockKey, weeks: null })),
+        ...o.week.map((w) => {
+          const i = w.indexOf(':');
+          return { blockKey: w.slice(i + 1), weeks: [Number(w.slice(0, i))] };
+        }),
+      ],
+      asOf: o.asOf ?? today,
+      today,
+      generatedAt: new Date().toISOString(),
+      anonymous: o.anon === '1',
+    });
+    // El BOM hace que las planillas lean bien los acentos.
+    const body = o.format === 'csv' ? `\uFEFF${blockExportCsv(data)}` : JSON.stringify(data);
+    if (Buffer.byteLength(body) > MAX_BYTES)
+      throw new UnprocessableError(
+        'La descarga es demasiado grande. Elegí menos bloques y bajalos en tandas.',
+      );
+    reply.header(
+      'content-type',
+      o.format === 'csv' ? 'text/csv; charset=utf-8' : 'application/json; charset=utf-8',
+    );
+    const who = (data.atleta.nombre ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase();
+    const file = ['bloques', who, data.corte].filter(Boolean).join('-');
+    reply.header('content-disposition', `attachment; filename="${file}.${o.format}"`);
+    reply.header('cache-control', 'no-store');
+    return reply.send(body);
+  });
+
   app.get('/api/athletes/:id/export', async (req, reply) => {
     const { id } = parse(idParam, req.params);
     const a = await ctx.athletes.get(id);

@@ -84,3 +84,4 @@ export * from './progression.js';
 
 export * from './block-analysis/index.js';
 export * from './analysis/index.js';
+export * from './block-export.js';

@@ -3,12 +3,26 @@ import { dateLabel, today } from './ui';
 import type { Meso } from './api';
 import { useState } from 'react';
 import { DeleteBlockDialog } from './AthleteAdmin';
+import { BlockExportDialog } from './BlockExportDialog';
 
 type Sel = (v: Record<string, string | null>) => void;
 const done = (s: SessionRow) => {
   const work = s.sets.filter((x) => !x.retired && !x.isWarmup);
   return { n: work.length, ok: work.filter((x) => x.actual?.status === 'done').length };
 };
+
+/** Semanas de un bloque con su fecha de inicio y cuánto se hizo, para elegir qué exportar. */
+const weeksOf = (ss: SessionRow[]) =>
+  [...new Set(ss.map((s) => s.weekNo))]
+    .sort((a, b) => a - b)
+    .map((n) => {
+      const mine = ss.filter((s) => s.weekNo === n);
+      const tot = mine.reduce((a, s) => ({ n: a.n + done(s).n, ok: a.ok + done(s).ok }), { n: 0, ok: 0 });
+      return {
+        n,
+        detail: `desde ${dateLabel(mine.map((s) => s.date).sort()[0])} · ${tot.ok}/${tot.n} series`,
+      };
+    });
 
 /**
  * Navegador de bloques: todos los bloques en una tira (con su estado) y saltar al anterior/siguiente. Las sesiones de cada semana se ven
@@ -33,6 +47,7 @@ export function BlockNavigator({
 }) {
   const t = today();
   const [removing, setRemoving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   // Todos los bloques: los que tienen sesiones Y los mesos creados que todavía no tienen ninguna (antes se escondían).
   const keys = [...new Set([...sessions.map((s) => s.blockKey), ...mesos.map((m) => m.blockKey)])];
   const blocks = keys
@@ -73,6 +88,9 @@ export function BlockNavigator({
           >
             Bloque siguiente →
           </button>
+          <button type="button" disabled={!sessions.length} onClick={() => setExporting(true)}>
+            Exportar
+          </button>
           <button
             type="button"
             className="danger"
@@ -84,6 +102,21 @@ export function BlockNavigator({
           </button>
         </div>
       </div>
+      {exporting && (
+        <BlockExportDialog
+          id={id}
+          blocks={blocks.map((b) => ({
+            key: b.key,
+            name: b.name,
+            detail: b.sessions
+              ? `${dateLabel(b.from)} – ${dateLabel(b.to)} · ${b.sessions} ${b.sessions === 1 ? 'sesión' : 'sesiones'} · ${b.ok}/${b.n} series hechas`
+              : 'sin sesiones todavía',
+            weeks: weeksOf(sessions.filter((s) => s.blockKey === b.key)),
+          }))}
+          current={block}
+          onClose={() => setExporting(false)}
+        />
+      )}
       {removing && block && (
         <DeleteBlockDialog
           id={id}

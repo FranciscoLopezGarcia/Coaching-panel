@@ -1329,3 +1329,26 @@ input.rpe-input.rpe-input::placeholder {
   padding: 4px 12px;
   font-size: 12px;
 }
+
+/* Casillas y opciones dentro de diálogos: alineadas con la primera línea del texto. */
+dialog label.check input[type='radio'] {
+  flex: none;
+  clip-path: none;
+  width: auto;
+  min-height: 0;
+  padding: 0;
+  margin: 3px 0 0;
+}
+
+/* Exportar: las semanas cuelgan de su bloque, marcadas con el borde izquierdo. */
+.export-block {
+  margin-top: 10px;
+}
+.export-weeks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 4px 0 0 7px;
+  padding-left: 16px;
+  border-left: 2px solid var(--line);
+}

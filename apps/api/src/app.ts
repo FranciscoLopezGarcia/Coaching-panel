@@ -23,6 +23,7 @@ import { registerAdminRoutes } from './routes/admin.js';
 import { BlockAdmin } from './services/blocks.js';
 import { AnalysisService } from './services/analysis.js';
 import { BlockAnalysisService } from './services/block-analysis.js';
+import { BlockExportService } from './services/block-export.js';
 import { registerAthleteRoutes } from './routes/athletes.js';
 import { registerConsolidationRoutes } from './routes/consolidation.js';
 import { registerErrorHandler } from './routes/http.js';
@@ -72,6 +73,7 @@ export interface AppContext {
   coaches: CoachesRepo;
   blocks: BlockAdmin;
   blockAnalysis: BlockAnalysisService;
+  blockExport: BlockExportService;
   analysis: AnalysisService;
   live: LiveBus;
   today: () => string;
@@ -109,6 +111,7 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
   const blockAnalysis = new BlockAnalysisService(loader, history);
   const historyService = new HistoryService(loader, history);
   const queries = new QueryService(loader, decisions, history, programmingRepo, records, extrasRepo);
+  const coachExtras = new CoachExtrasService(athletes, records, history, extrasRepo, clock, nowIso);
   return {
     config,
     instance: loadInstance(config.dbPath),
@@ -133,7 +136,8 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
     plans,
     evaluation: new EvaluationService(db, loader, decisions, history),
     extrasRepo,
-    coachExtras: new CoachExtrasService(athletes, records, history, extrasRepo, clock, nowIso),
+    coachExtras,
+    blockExport: new BlockExportService(loader, records, history, accounts, decisions, coachExtras),
     historyService,
     dashboard: new DashboardService(athletes, records, decisions, history),
     imports: new ImportService(observed, plans, config.timeZone, nowIso, exerciseMap),
