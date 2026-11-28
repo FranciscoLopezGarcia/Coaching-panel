@@ -1,44 +1,10 @@
 /* Ajustes de celular que no cambian el estilo, solo el reacomodo. Carga después de theme.css. */
 /* Celular: la barra de contexto, los filtros y las barras de análisis no pueden ensanchar la página (solo reacomodo, mismo estilo) */
 @media (max-width: 640px) {
-  .context-strip {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 4px 0;
-  }
-  .context-strip > button {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 12px;
-    padding: 9px 14px;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .context-strip > button strong {
-    text-align: right;
-    overflow-wrap: break-word;
-  }
-  .context-strip > :last-child {
-    display: grid;
-    margin-top: 0;
-    padding: 10px 14px 6px;
-    border-top: 0;
-  }
-  .period-picker {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .period-picker .row {
-    flex-wrap: wrap;
-    min-width: 0;
-  }
   .an-two {
     grid-template-columns: minmax(0, 1fr);
   }
-  .period-picker input,
-  .period-picker select {
-    min-width: 0;
-    max-width: 100%;
-  }
+
   .bd-seg {
     display: flex;
     flex-wrap: wrap;

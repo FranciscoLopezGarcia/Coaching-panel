@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import type { SessionRow } from '@coaching/contracts';
 import { Message, Modal, shift, dateLabel } from './ui';
 import { parseQuickSession } from './quickSession';
+import { mondayOf, nextWeekDefaults } from './weekDefaults';
 import { buildSets, specsByExercise, splitWeekText, weekToText } from './sessionText';
 import { applyAll, previewAll, type Reviewed, type RunItem } from './programRun';
 
@@ -32,15 +33,22 @@ export function WeekCopyDialog({
   onSaved: (msg: string) => void;
 }) {
   const [text, setText] = useState(() => weekToText(sessions));
-  const [from, setFrom] = useState(week + 1);
-  const [to, setTo] = useState(week + 1);
+  const [next] = useState(() =>
+    nextWeekDefaults(
+      all.filter((s) => s.blockKey === block),
+      week,
+      new Date().toISOString().slice(0, 10),
+    ),
+  );
+  const [from, setFrom] = useState(next.week);
+  const [to, setTo] = useState(next.week);
   const [delta, setDelta] = useState('0');
   const [replace, setReplace] = useState(false);
   const [reviewed, setReviewed] = useState<Reviewed[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const srcMonday = monday(sessions[0]?.date ?? new Date().toISOString().slice(0, 10));
-  const [startDate, setStartDate] = useState(shift(srcMonday, 7));
+  const [startDate, setStartDate] = useState(() => mondayOf(next.date));
   const parsed = useMemo(() => {
     const sp = splitWeekText(text);
     const days = sp.days.map((d) => {

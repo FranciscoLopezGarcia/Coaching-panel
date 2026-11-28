@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { SessionRow } from '@coaching/contracts';
-import { Message, Modal } from './ui';
 import { QuickEntry } from './QuickEntry';
 import { applyMeta, parseQuickSession, type ExMeta, type QuickSegment } from './quickSession';
 import { isoWeekday, planSessionEdit, setsToText, weekOfDate, type EditPlan } from './sessionText';
 import { applyAll, previewAll, toProgramOp, type Reviewed } from './programRun';
-import { dateLabel } from './ui';
+import { Message, Modal, dateLabel } from './ui';
 import { get, send } from './api';
 import { VIEW_LABEL } from './AthleteAccess';
 import { ProgressionPanel } from './ProgressionPanel';
@@ -90,7 +89,9 @@ export function SessionTextEditor({
           dayNo: isoWeekday(date),
           sessionKey: session.sessionKey,
         });
-        p.changes.unshift(`Sesión: ${session.date} (semana ${session.weekNo}) → ${date} (semana ${weekNo})`);
+        p.changes.unshift(
+          `Sesión: ${dateLabel(session.date)} (semana ${session.weekNo}) pasa a ${dateLabel(date)} (semana ${weekNo})`,
+        );
       }
       setPlan(p);
       if (!p.ops.length) return;

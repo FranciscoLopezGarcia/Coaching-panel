@@ -1,8 +1,9 @@
 import type { DashboardData, Lift } from '@coaching/contracts';
-import { daysBetween } from '@coaching/engine';
+import { daysBetween, planningStatus } from '@coaching/engine';
 import type { AthletesRepo } from '../repositories/athletes.js';
 import type { DecisionsRepo } from '../repositories/decisions.js';
 import type { HistoryRepo } from '../repositories/history.js';
+import type { ProgrammingRepo } from '../repositories/programming.js';
 import type { RecordsRepo } from '../repositories/records.js';
 
 const REVIEW = ['revision_coach', 'posible_fin_respuesta'];
@@ -21,6 +22,7 @@ export class DashboardService {
     private records: RecordsRepo,
     private decisions: DecisionsRepo,
     private history: HistoryRepo,
+    private programming: ProgrammingRepo,
   ) {}
 
   async build(today: string): Promise<DashboardData> {
@@ -32,6 +34,7 @@ export class DashboardService {
       priorities: [],
       opportunities: [],
       competitions: [],
+      planning: [],
       recent: [],
     };
     for (const a of list) {
@@ -53,14 +56,36 @@ export class DashboardService {
           data.opportunities.push({ ...base, key: r.key });
       }
       if (review) data.cards.needReview++;
-      data.cards.blocksEnding += (ev?.blocks ?? []).filter(
-        (b) => !b.closed && daysBetween(b.endDate, today) >= 0 && daysBetween(b.endDate, today) <= 14,
-      ).length;
-      const last = (await this.records.listCheckIns(a.id))
-        .map((c) => c.date)
-        .sort()
-        .pop();
-      if (!last || daysBetween(today, last) > 7) data.cards.pendingCheckins++;
+      const [days, mesos, micros] = await Promise.all([
+        this.records.listActivePlanDays(a.id),
+        this.programming.listMesos(a.id),
+        this.programming.listMicros(a.id),
+      ]);
+      const plan = planningStatus(days, [...mesos, ...micros], today);
+      const blockName = (key: string) => mesos.find((m) => m.blockKey === key)?.name ?? key;
+      const lastCheckIn =
+        (await this.records.listCheckIns(a.id))
+          .map((c) => c.date)
+          .filter((d) => d <= today)
+          .sort()
+          .pop() ?? null;
+      const checkInPending = !lastCheckIn || daysBetween(today, lastCheckIn) > 7;
+      // Bloque a mostrar: el de la sesión más cercana hasta el fin de esta semana; si no hay, el primero que venga.
+      const dated = [...days].sort((x, y) => (x.date < y.date ? -1 : 1));
+      const current = dated.filter((x) => x.date <= plan.currentWeek.to).at(-1) ?? dated[0];
+      data.planning.push({
+        athleteId: a.id,
+        athleteName: a.name,
+        hasCurrent: plan.hasCurrent,
+        hasNext: plan.hasNext,
+        plannedUntil: plan.plannedUntil,
+        endingBlocks: plan.endingBlocks.map((b) => ({ ...b, name: blockName(b.blockKey) })),
+        currentBlock: current ? blockName(current.blockKey) : null,
+        lastCheckIn,
+        checkInPending,
+      });
+      if (plan.endingBlocks.length) data.cards.blocksEnding++;
+      if (checkInPending) data.cards.pendingCheckins++;
       const lastDone = await this.records.lastRecordDate(a.id);
       if (lastDone)
         data.recent.push({

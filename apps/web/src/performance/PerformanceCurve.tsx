@@ -97,7 +97,7 @@ export function Curve({
         {observations.map((p, i) => (
           <circle key={i} cx={x(p.date)} cy={y(p.value)} r="4" className="observed-dot">
             <title>
-              {p.date}: {number(p.value)} kg · observado
+              {dateLabel(p.date)}: {number(p.value)} kg · observado
             </title>
           </circle>
         ))}
@@ -195,7 +195,7 @@ export function PerformanceCurve({
           {p.range.length > 0 && p.rangeLabel && <p className="small muted">{p.rangeLabel}</p>}
           <div className="curve-summary">
             <div>
-              <small>TENDENCIA</small>
+              <small>Tendencia</small>
               <strong>{p.summary.trend.label}</strong>
             </div>
             <div>
@@ -211,7 +211,7 @@ export function PerformanceCurve({
               </strong>
             </div>
             <div>
-              <small>DATOS</small>
+              <small>Datos</small>
               <strong>
                 {p.quality.exposures} exposiciones · {p.quality.sufficiency}
               </strong>

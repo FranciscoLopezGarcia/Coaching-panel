@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { usePlanMarks } from './planMarks';
-import { number } from './ui';
+import { number, dateLabel } from './ui';
 export interface Trace {
   label: string;
   color: string;
@@ -231,7 +231,7 @@ export function OverviewChart({
           .filter((an) => Date.parse(an.date) >= a && Date.parse(an.date) <= b)
           .map((an, i) => (
             <g key={'a' + i} className="chart-annotation">
-              <title>{`${an.label} · rige desde ${an.date}${an.estimated ? ' (fecha estimada)' : ''}`}</title>
+              <title>{`${an.label} · rige desde ${dateLabel(an.date)}${an.estimated ? ' (fecha estimada)' : ''}`}</title>
               <line
                 x1={x(an.date)}
                 x2={x(an.date)}

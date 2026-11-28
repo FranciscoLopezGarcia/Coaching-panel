@@ -31,80 +31,7 @@ small,
 .sidebar-foot p {
   font-size: 15px;
 }
-.athlete-heading {
-  margin: 18px 0;
-}
-.athlete-heading h1 {
-  font-size: 28px;
-}
-.athlete-heading > div:last-child {
-  font-size: 12px;
-}
-.athlete-actions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 24px 0 16px;
-}
-.athlete-actions button {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 3px 10px;
-  text-align: left;
-  background: var(--surface-2);
-  border: 0;
-  border-bottom: 2px solid var(--surface-2);
-  border-radius: 0;
-  padding: 15px 18px;
-}
-.athlete-actions span {
-  letter-spacing: 1.2px;
-  font-size: 13px;
-  font-weight: 750;
-}
-.athlete-actions small {
-  grid-row: 2;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 400;
-}
-.athlete-actions b {
-  grid-column: 2;
-  grid-row: 1/3;
-  font-size: 21px;
-  font-weight: 400;
-}
-.athlete-actions button.selected {
-  background: var(--accent);
-  color: white;
-  border-color: var(--surface-2);
-}
-.athlete-actions button.selected small {
-  color: var(--muted);
-}
-.context-strip {
-  position: static;
-  margin: 0;
-  padding: 10px 0;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0;
-}
-.context-strip small {
-  font-size: 12px;
-}
-.athlete-tabs {
-  margin-top: 5px;
-  gap: 18px;
-}
-.athlete-tabs button {
-  font-size: 12px;
-  padding: 12px 0;
-}
-.athlete-tabs .current-training {
-  white-space: nowrap;
-}
+
 .lift-card {
   border: 0;
   border-left: 3px solid var(--move);
@@ -143,10 +70,7 @@ small,
   margin: 10px 0;
   padding: 8px 0 0;
 }
-.lift-card .conclusion-detail {
-  border: 0;
-  margin: 8px 0;
-}
+
 .principal-conclusion {
   min-height: 0;
   font-size: 12px;
@@ -158,44 +82,7 @@ small,
 .lift-grid {
   gap: 14px;
 }
-.week-overview {
-  margin: 26px 0;
-  background: var(--surface-2);
-  padding: 20px;
-  border-radius: 0;
-  clip-path: var(--cut-s);
-}
-.week-overview h2 {
-  margin: 6px 0;
-}
-.week-session-list {
-  display: flex;
-  gap: 9px;
-  overflow: auto;
-  padding: 14px 0 2px;
-}
-.week-session-list button {
-  flex: 1 0 160px;
-  max-width: 230px;
-  display: grid;
-  gap: 8px;
-  text-align: left;
-  padding: 12px;
-  background: var(--surface-2);
-  border: 0;
-  border-radius: 0;
-}
-.week-session-list time {
-  font-size: 12px;
-  color: var(--muted);
-}
-.week-session-list strong {
-  font-size: 12px;
-}
-.week-session-list span {
-  font-size: 12px;
-  color: var(--accent-text);
-}
+
 .recent-changes {
   margin: 18px 0;
 }
@@ -424,9 +311,7 @@ small,
 .record-session .sticky-actions {
   bottom: 0;
 }
-.recording .athlete-actions {
-  margin: 16px 0;
-}
+
 .recording .message {
   font-size: 12px;
 }
@@ -451,16 +336,6 @@ button:disabled {
   opacity: 0.5;
 }
 @media (max-width: 1100px) {
-  .athlete-tabs {
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .athlete-tabs .current-training {
-    margin-left: 0;
-  }
-  .athlete-actions button {
-    padding: 12px;
-  }
   .curve-summary strong {
     font-size: 14px;
   }
@@ -472,50 +347,12 @@ button:disabled {
   .curve-summary {
     gap: 10px;
   }
-  .athlete-actions small {
-    font-size: 12px;
-  }
-  .athlete-actions span {
-    font-size: 12px;
-  }
-  .week-overview {
-    padding: 16px;
-  }
+
   .analysis-grid .performance-panel {
     padding: 16px;
   }
 }
 @media (max-width: 520px) {
-  .athlete-actions {
-    gap: 6px;
-    margin: 14px 0;
-  }
-  .athlete-actions button {
-    padding: 12px 8px;
-    display: block;
-    text-align: center;
-  }
-  .athlete-actions small,
-  .athlete-actions b {
-    display: none;
-  }
-  .athlete-actions span {
-    font-size: 12px;
-    letter-spacing: 0.6px;
-  }
-  .recording .athlete-actions {
-    margin: 10px 0;
-  }
-  .context-strip {
-    position: static;
-  }
-  .athlete-tabs {
-    flex-wrap: nowrap;
-    gap: 16px;
-  }
-  .athlete-tabs .current-training {
-    display: block;
-  }
   .curve-summary {
     grid-template-columns: 1fr 1fr;
   }
@@ -535,36 +372,11 @@ button:disabled {
   .coach-panels .panel {
     padding: 14px;
   }
-  .week-session-list button {
-    flex-basis: 145px;
-  }
+
   .lift-card {
     padding: 14px;
   }
-  .week-overview > .row button {
-    width: 100%;
-  }
-  .recording .athlete-heading {
-    margin-bottom: 8px;
-  }
-  .recording .context-strip {
-    padding: 6px 0;
-  }
-  .recording .context-strip strong {
-    font-size: 12px;
-  }
-  .recording .context-strip > div:first-child {
-    display: none;
-  }
-  .recording .context-strip > :last-child {
-    border: 0;
-    grid-column: auto;
-    margin: 0;
-    padding: 0 12px;
-  }
-  .recording .context-strip {
-    grid-template-columns: 1fr 1fr;
-  }
+
   .record-session .form-grid input {
     font-size: 16px;
   }

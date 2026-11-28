@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Base1rm } from '@coaching/contracts';
 import { workspaceApi as w, send } from './api';
-import { Message } from './ui';
+import { Message, dateLabel } from './ui';
 import type { QuickSegment } from './quickSession';
 
 const fmt = (n: number) => String(Math.round(n * 10) / 10).replace('.', ',');
@@ -123,7 +123,7 @@ export function BasePanel({
             {row?.declared && (
               <p className="small muted">
                 Declarado: {fmt(row.declared.kg)} kg ({SOURCE[row.declared.source] ?? row.declared.source},{' '}
-                {row.declared.asOf})
+                {dateLabel(row.declared.asOf)})
                 {kg !== row.declared.kg && (
                   <>
                     {' '}
@@ -141,7 +141,7 @@ export function BasePanel({
             {row?.calculated && (
               <p className="small muted">
                 Calculado: {fmt(row.calculated.kg)} kg (mejor e1RM de {row.calculated.sets} series con RPE
-                real, últimos {row.calculated.windowDays} días, al {row.calculated.asOf}){' '}
+                real, últimos {row.calculated.windowDays} días, al {dateLabel(row.calculated.asOf)}){' '}
                 {kg !== row.calculated.kg && (
                   <button
                     type="button"

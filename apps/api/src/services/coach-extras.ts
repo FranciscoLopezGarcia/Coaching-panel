@@ -244,7 +244,8 @@ export class CoachExtrasService {
       week: { from, to },
       sessions,
       checkInToday: checks.some((c) => c.date === today),
-      lastCheckIn: checks.at(-1)?.date ?? null,
+      // Un check-in con fecha posterior a hoy no cuenta como «último» (mismo criterio que el Inicio).
+      lastCheckIn: checks.filter((c) => c.date <= today).at(-1)?.date ?? null,
       painSets7d: { count: pains.length, max: pains.length ? Math.max(...pains) : null },
       nextCompetition: next
         ? { name: next.name, date: next.date, daysLeft: daysBetween(next.date, today) }

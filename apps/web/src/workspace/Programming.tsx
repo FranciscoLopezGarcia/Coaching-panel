@@ -25,7 +25,9 @@ import { useLoad } from '../hooks';
 import { Async } from '../components/Async';
 import { workspaceApi as w, get, send, type ProgramResult, type Meso } from './api';
 import { Empty, Message, Modal, number, today, shift, dateLabel, Detail, usePending, readSearch } from './ui';
+import { Menu, type MenuGroup } from '../components/Menu';
 import { useLibrary } from './LibraryPanel';
+import { nextWeekDefaults } from './weekDefaults';
 export type KnownSet = ImportPlanInput['sets'][number];
 const cacheKey = (id: string) => `base:planned-identities:${id}`;
 export function knownSets(id: string): KnownSet[] {
@@ -62,7 +64,8 @@ export function Programming({
   const [rev, setRev] = useState(0);
   const [create, setCreate] = useState<'macro' | 'meso' | 'session' | null>(null);
   const [textEdit, setTextEdit] = useState<SessionRow | null>(null);
-  const [copyWeek, setCopyWeek] = useState(false);
+  const [copyWeek, setCopyWeek] = useState(0);
+  const [blockDialog, setBlockDialog] = useState<'' | 'export' | 'delete'>('');
   const [removingWeek, setRemovingWeek] = useState(0);
   useEffect(() => {
     if (readSearch().get('action') === 'next' && block && week) {
@@ -101,47 +104,103 @@ export function Programming({
       ...(data.data?.micros.filter((s) => s.blockKey === block).map((s) => s.weekNo) ?? []),
     ]),
   ].sort((a, b) => a - b);
+  const copySource = week || weeks.at(-1) || 0;
+  const noWeeks = !weeks.length;
+  const menu: MenuGroup[] = [
+    {
+      title: 'Semana',
+      items: block
+        ? [
+            {
+              label: 'Crear siguiente semana',
+              disabled: noWeeks,
+              onSelect: () => setOperation('repeat_week'),
+            },
+            {
+              label: 'Repetir estructura',
+              disabled: noWeeks,
+              onSelect: () => setOperation('repeat_structure'),
+            },
+            {
+              label: 'Modificar protocolos',
+              disabled: !selectedSessions.length,
+              onSelect: () => setOperation('change_protocol'),
+            },
+            ...(week
+              ? [
+                  {
+                    label: 'Duplicar sesión',
+                    disabled: !selectedSessions.length,
+                    onSelect: () => setOperation('duplicate_session'),
+                  },
+                  { label: `Eliminar semana ${week}`, danger: true, onSelect: () => setRemovingWeek(week) },
+                ]
+              : []),
+          ]
+        : [],
+    },
+    {
+      title: 'Plantillas',
+      items: block
+        ? [
+            {
+              label: 'Guardar semana como plantilla',
+              disabled: noWeeks,
+              onSelect: () => setTemplate('semana'),
+            },
+            { label: 'Aplicar plantilla de semana', onSelect: () => setOperation('apply_template') },
+            {
+              label: 'Guardar bloque como plantilla',
+              disabled: noWeeks,
+              onSelect: () => setTemplate('bloque'),
+            },
+            { label: 'Aplicar plantilla de bloque', onSelect: () => setOperation('apply_block_template') },
+          ]
+        : [],
+    },
+    {
+      title: 'Bloques',
+      items: [
+        { label: 'Nuevo bloque', onSelect: () => setCreate('meso') },
+        { label: 'Nuevo macro', onSelect: () => setCreate('macro') },
+        { label: 'Exportar', disabled: !sessions.length, onSelect: () => setBlockDialog('export') },
+        ...(block
+          ? [{ label: 'Eliminar bloque', danger: true, onSelect: () => setBlockDialog('delete') }]
+          : []),
+      ],
+    },
+  ];
   return (
     <div>
-      <div className="section-heading row between">
-        <div>
-          <h2>Programación</h2>
-          <p className="muted small">Distribuí una vez. Progresá sobre los protocolos.</p>
-        </div>
-        <div className="row">
-          <button onClick={() => setCreate('macro')}>＋ Macro</button>
-          <button onClick={() => setCreate('meso')}>＋ Meso</button>
-          <button className="primary" onClick={() => setCreate('session')}>
-            ＋ Sesión
+      <div className="row between prog-head">
+        <div className="row breadcrumbs">
+          <button onClick={() => onSelect({ macro: null, block: null, week: null, session: null })}>
+            Macros
           </button>
+          {macro && (
+            <>
+              <span>/</span>
+              <button onClick={() => onSelect({ block: null, week: null, session: null })}>
+                {data.data?.macros.find((x) => x.id === macro)?.name ?? 'Macro'}
+              </button>
+            </>
+          )}
         </div>
-      </div>
-      <div className="row breadcrumbs">
-        <button onClick={() => onSelect({ macro: null, block: null, week: null, session: null })}>
-          Macros
-        </button>
-        {macro && (
-          <>
-            <span>/</span>
-            <button onClick={() => onSelect({ block: null, week: null, session: null })}>
-              {data.data?.macros.find((x) => x.id === macro)?.name ?? 'Macro'}
+        <div className="row prog-actions">
+          <button className="primary" onClick={() => setCreate('session')}>
+            Añadir sesión
+          </button>
+          {block && (
+            <button
+              onClick={() => setCopyWeek(week || weeks.at(-1) || 0)}
+              disabled={!weeks.length}
+              title="Copia el microciclo completo a otras semanas para retocarlo"
+            >
+              Duplicar semana{copySource ? ` ${copySource}` : ''}
             </button>
-          </>
-        )}
-        {block && (
-          <>
-            <span>/</span>
-            <button onClick={() => onSelect({ week: null, session: null })}>
-              {mesos.find((x) => x.blockKey === block)?.name ?? block}
-            </button>
-          </>
-        )}
-        {!!week && (
-          <>
-            <span>/</span>
-            <button onClick={() => onSelect({ session: null })}>Semana {week}</button>
-          </>
-        )}
+          )}
+          <Menu label="Más" groups={menu} />
+        </div>
       </div>
       {msg && <Message>{msg}</Message>}
       <Async state={data}>
@@ -150,6 +209,8 @@ export function Programming({
             {(!!d.sessions.length || !!d.mesos.length) && (
               <BlockNavigator
                 id={id}
+                dialog={blockDialog}
+                onCloseDialog={() => setBlockDialog('')}
                 onDeleted={() => {
                   onSelect({ block: null, week: null, session: null });
                   refresh();
@@ -157,11 +218,9 @@ export function Programming({
                 sessions={d.sessions}
                 mesos={d.mesos}
                 block={block}
-                week={week}
                 onSelect={onSelect}
               />
             )}
-            {block && <BlockClosingPanel id={id} blockKey={block} />}
             {!block && !macro && (
               <>
                 {!d.macros.length && (
@@ -182,51 +241,17 @@ export function Programming({
                       <h3>{m.name}</h3>
                       <p>{m.objective ?? 'Sin objetivo definido'}</p>
                       <div className="small muted">
-                        {dateLabel(m.startDate)} → {m.endDate ? dateLabel(m.endDate) : 'Abierto'}{' '}
-                        <span>↗</span>
+                        {dateLabel(m.startDate)} a {m.endDate ? dateLabel(m.endDate) : 'abierto'}
                       </div>
                     </button>
                   ))}
                 </div>
               </>
             )}
-            {!block && (
-              <div className="meso-list">
-                {mesos
-                  .filter((m) => !macro || m.macroId === macro)
-                  .map((m) => (
-                    <button
-                      className="meso-row"
-                      key={m.blockKey}
-                      onClick={() => onSelect({ macro: m.macroId, block: m.blockKey, week: null })}
-                    >
-                      <span className="monogram">M</span>
-                      <div>
-                        <strong>{m.name}</strong>
-                        <p>{m.objective ?? 'Objetivo pendiente'}</p>
-                      </div>
-                      <span className="muted small">
-                        {m.startDate ?? 'Fechas derivadas'} → {m.endDate ?? 'Abierto'}
-                      </span>
-                      <span>→</span>
-                    </button>
-                  ))}
-                {macro && !mesos.some((m) => m.macroId === macro) && (
-                  <Empty title="Este macro todavía no tiene mesociclos">
-                    Creá un meso y asignalo a este macro.
-                  </Empty>
-                )}
-                {!macro &&
-                  [...new Set(sessions.map((s) => s.blockKey))]
-                    .filter((k) => !mesos.some((m) => m.blockKey === k))
-                    .map((k) => (
-                      <button className="meso-row" key={k} onClick={() => onSelect({ block: k, week: null })}>
-                        <strong>{k}</strong>
-                        <span className="muted">Bloque previo sin metadatos de mesociclo</span>
-                        <span>→</span>
-                      </button>
-                    ))}
-              </div>
+            {macro && !block && !mesos.some((m) => m.macroId === macro) && (
+              <Empty title="Este macro todavía no tiene bloques">
+                Creá un bloque y asignalo a este macro.
+              </Empty>
             )}
             {macro && !block && current.data && (
               <Message>
@@ -246,49 +271,6 @@ export function Programming({
                     </button>
                     <button className={mode === 'actual' ? 'on' : ''} onClick={() => setMode('actual')}>
                       Ejecución y respuesta
-                    </button>
-                  </div>
-                  <div className="row">
-                    <button
-                      className="primary"
-                      onClick={() => setCopyWeek(true)}
-                      disabled={!week || !selectedSessions.length}
-                      title={
-                        week
-                          ? 'Copiar el microciclo completo a otras semanas y retocarlo'
-                          : 'Elegí una semana (S1, S2…)'
-                      }
-                    >
-                      ⧉ Duplicar semana…
-                    </button>
-                    <button onClick={() => setOperation('repeat_week')} disabled={!weeks.length}>
-                      Crear siguiente semana
-                    </button>
-                    <button onClick={() => setOperation('repeat_structure')} disabled={!weeks.length}>
-                      Repetir estructura
-                    </button>
-                    <button onClick={() => setTemplate('semana')} disabled={!weeks.length}>
-                      Guardar plantilla
-                    </button>
-                    <button onClick={() => setOperation('apply_template')}>Aplicar plantilla</button>
-                    <button
-                      onClick={() => setTemplate('bloque')}
-                      disabled={!weeks.length}
-                      title="Guarda todas las semanas de este bloque como plantilla"
-                    >
-                      Guardar bloque como plantilla
-                    </button>
-                    <button
-                      onClick={() => setOperation('apply_block_template')}
-                      title="Aplica una plantilla de bloque entero al bloque elegido"
-                    >
-                      Aplicar plantilla de bloque
-                    </button>
-                    <button
-                      onClick={() => setOperation('change_protocol')}
-                      disabled={!selectedSessions.length}
-                    >
-                      Modificar protocolos
                     </button>
                   </div>
                 </div>
@@ -320,7 +302,7 @@ export function Programming({
                           <header className="wk-head">
                             <h3>Semana {n}</h3>
                             <span className="small muted">
-                              {dateLabel(summary?.from ?? dates?.startDate ?? ss.at(-1)?.date)} →{' '}
+                              {dateLabel(summary?.from ?? dates?.startDate ?? ss.at(-1)?.date)} a{' '}
                               {dateLabel(summary?.to ?? dates?.endDate ?? ss[0]?.date)}
                               {mode === 'plan' && summary?.planned?.nl != null
                                 ? ` · ${number(summary.planned.nl, 0)} NL · ${number(summary.planned.sets, 0)} series`
@@ -341,10 +323,7 @@ export function Programming({
                               }}
                             />
                             <button onClick={() => onSelect({ week: String(n), session: null })}>
-                              Abrir semana →
-                            </button>
-                            <button type="button" className="danger" onClick={() => setRemovingWeek(n)}>
-                              Eliminar semana
+                              Abrir semana
                             </button>
                           </header>
                           {ss.length ? (
@@ -384,15 +363,6 @@ export function Programming({
                           refresh();
                         }}
                       />
-                      <button
-                        onClick={() => setOperation('duplicate_session')}
-                        disabled={!selectedSessions.length}
-                      >
-                        Duplicar sesión
-                      </button>
-                      <button type="button" className="danger" onClick={() => setRemovingWeek(week)}>
-                        Eliminar semana
-                      </button>
                     </div>
                     {mode === 'plan' && (
                       <div className="row sheet-layout-switch">
@@ -444,7 +414,7 @@ export function Programming({
                       <article className="card" key={l.lift}>
                         <strong>{l.lift}</strong>
                         <p>
-                          e1RM: {number(l.eStart)} → {number(l.eEnd)} kg · {l.ttp.note}
+                          e1RM: de {number(l.eStart)} a {number(l.eEnd)} kg · {l.ttp.note}
                         </p>
                       </article>
                     ))}
@@ -456,7 +426,7 @@ export function Programming({
                 )}
                 {detail.error && (
                   <Message error>
-                    {detail.error}. Podés crear sesiones en el meso; su resumen estará disponible cuando
+                    {detail.error}. Podés crear sesiones en el bloque; su resumen estará disponible cuando
                     contenga series.
                   </Message>
                 )}
@@ -465,6 +435,7 @@ export function Programming({
           </>
         )}
       </Async>
+      {block && <BlockClosingPanel id={id} blockKey={block} />}
       <PlanVersions key={rev} id={id} />
       {textEdit && (
         <SessionTextEditor
@@ -492,14 +463,14 @@ export function Programming({
           }}
         />
       )}
-      {copyWeek && week > 0 && (
+      {copyWeek > 0 && (
         <WeekCopyDialog
           id={id}
-          sessions={selectedSessions}
+          sessions={sessions.filter((s) => s.blockKey === block && s.weekNo === copyWeek)}
           all={sessions}
           block={block}
-          week={week}
-          onClose={() => setCopyWeek(false)}
+          week={copyWeek}
+          onClose={() => setCopyWeek(0)}
           onSaved={(m) => {
             setMsg(m);
             refresh();
@@ -528,6 +499,7 @@ export function Programming({
           id={id}
           type={operation}
           sessions={selectedSessions}
+          blockSessions={sessions.filter((s) => s.blockKey === block)}
           block={block}
           week={week || weeks.at(-1) || 1}
           session={session || selectedSessions[0]?.sessionKey || ''}
@@ -750,6 +722,9 @@ export function CreateDialog({
   const [weekNo, setWeek] = useState(week);
   const [day, setDay] = useState(1);
   usePending(name !== defaultName || segments.some((s) => !!s.exerciseName));
+  const blockChoices = [...new Set([...mesos.map((m) => m.blockKey), ...all.map((s) => s.blockKey)])].map(
+    (k) => ({ key: k, name: mesos.find((m) => m.blockKey === k)?.name ?? k }),
+  );
   const build = () => {
     const sinMovimiento = segments.find((s) => s.exerciseName && !s.lift);
     if (sinMovimiento)
@@ -854,9 +829,7 @@ export function CreateDialog({
   return (
     <Modal
       title={
-        { macro: 'Crear macro', meso: 'Crear mesociclo', session: 'Nueva sesión · protocolos segmentados' }[
-          kind
-        ]
+        { macro: 'Crear macro', meso: 'Crear bloque', session: 'Nueva sesión · protocolos segmentados' }[kind]
       }
       onClose={onClose}
     >
@@ -910,7 +883,7 @@ export function CreateDialog({
       >
         <div className="form-grid">
           <label>
-            {kind === 'session' ? 'Etiqueta de publicación' : 'Nombre'}
+            {kind === 'session' ? 'Nombre de la publicación' : 'Nombre'}
             <input required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <label>
@@ -953,40 +926,52 @@ export function CreateDialog({
               </select>
             </label>
           )}
-          {kind !== 'macro' && (
-            <>
+          {kind === 'meso' && (
+            <label>
+              Macro
+              <select value={macroId} onChange={(e) => setMacro(e.target.value)}>
+                <option value="">Sin macro asociado</option>
+                {macros.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {kind === 'session' &&
+            (blockChoices.length ? (
               <label>
-                Macro
-                <select value={macroId} onChange={(e) => setMacro(e.target.value)}>
-                  <option value="">Sin macro asociado</option>
-                  {macros.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
+                Bloque
+                <select
+                  required
+                  value={key}
+                  onChange={(e) => {
+                    setKey(e.target.value);
+                    setReview(null);
+                  }}
+                >
+                  <option value="">Elegí un bloque</option>
+                  {blockChoices.map((b) => (
+                    <option key={b.key} value={b.key}>
+                      {b.name}
                     </option>
                   ))}
                 </select>
               </label>
+            ) : (
               <label>
-                Identificador de meso
+                Nombre del bloque
                 <input
                   required
-                  list="mesos"
                   value={key}
                   onChange={(e) => {
                     setKey(e.target.value);
                     setReview(null);
                   }}
                 />
-                <datalist id="mesos">
-                  {mesos.map((m) => (
-                    <option key={m.blockKey} value={m.blockKey}>
-                      {m.name}
-                    </option>
-                  ))}
-                </datalist>
               </label>
-            </>
-          )}
+            ))}
           {kind === 'session' && (
             <>
               <label>
@@ -1035,15 +1020,13 @@ export function CreateDialog({
           )}
         </div>
         {kind === 'meso' && mesos.some((m) => m.blockKey === key) && (
-          <Message error>
-            Ese identificador ya existe. Elegí uno nuevo para evitar sobrescribir sus metadatos.
-          </Message>
+          <Message error>Ese bloque ya existe. Cerrá y volvé a abrir para crear uno nuevo.</Message>
         )}
         {kind === 'session' && (
           <>
             <p className="small muted">
-              Cada segmento genera sus propias series. Podés combinar aproximaciones, top sets y backoffs.
-              Descanso se guarda como instrucción; no existe campo estructurado en la API.
+              Cada segmento genera sus propias series. Podés combinar aproximaciones, top sets y backoffs. El
+              descanso se guarda dentro de las instrucciones.
             </p>
             <div className="row sheet-layout-switch">
               <button
@@ -1355,7 +1338,7 @@ export function CreateDialog({
                     setReview(null);
                   }}
                 >
-                  ＋ Agregar segmento / ejercicio
+                  Agregar segmento / ejercicio
                 </button>
                 <button
                   type="button"
@@ -1365,7 +1348,7 @@ export function CreateDialog({
                     setReview(null);
                   }}
                 >
-                  ⧉ Duplicar último segmento
+                  Duplicar último segmento
                 </button>
               </>
             )}
@@ -1388,8 +1371,9 @@ export function CreateDialog({
           <div className="preview">
             <h3>Revisar publicación</h3>
             <p>
-              Destino: {key} · semana {weekNo} · {start}. {review.length} series nuevas, {segments.length}{' '}
-              segmentos. Se agregan al plan vigente sin retirar otras series.
+              Destino: {blockChoices.find((b) => b.key === key)?.name ?? key} · semana {weekNo} ·{' '}
+              {dateLabel(start)}. {review.length} series nuevas, {segments.length} segmentos. Se agregan al
+              plan vigente sin retirar otras series.
             </p>
             <p className="small muted">
               Vista previa calculada por el motor. Publicar verifica que el plan no haya cambiado.
@@ -1416,6 +1400,7 @@ export function OperationDialog({
   id,
   type,
   sessions,
+  blockSessions,
   block,
   week,
   session,
@@ -1425,6 +1410,8 @@ export function OperationDialog({
   id: string;
   type: ProgramOpInput['op']['type'];
   sessions: SessionRow[];
+  /** Todas las sesiones del bloque (para proponer la semana destino). */
+  blockSessions: SessionRow[];
   block: string;
   week: number;
   session: string;
@@ -1433,8 +1420,15 @@ export function OperationDialog({
 }) {
   const [source, setSource] = useState(session);
   const [setIds, setSetIds] = useState<string[]>([]);
-  const [target, setTarget] = useState(String(type === 'change_protocol' ? week : week + 1));
-  const [date, setDate] = useState(shift(sessions.find((s) => s.sessionKey === source)?.date ?? today(), 7));
+  const next = nextWeekDefaults(blockSessions, week, today());
+  const [target, setTarget] = useState(
+    String(type === 'change_protocol' ? week : type === 'repeat_week' ? next.week : week + 1),
+  );
+  const [date, setDate] = useState(() =>
+    type === 'repeat_week'
+      ? next.date
+      : shift(sessions.find((s) => s.sessionKey === source)?.date ?? today(), 7),
+  );
   const [replace, setReplace] = useState(false);
   const [template, setTemplate] = useState('');
   const [reps, setReps] = useState('');
@@ -1465,6 +1459,14 @@ export function OperationDialog({
       ...knownSets(id).flatMap((s) => (s.exposureId ? [s.exposureId] : [])),
     ]),
   ];
+  const exposureName = (x: string) => {
+    const names = [
+      ...new Set(
+        blockSessions.flatMap((s) => s.sets.filter((v) => v.exposureId === x).map(() => s.exerciseName)),
+      ),
+    ];
+    return names.length ? `${names.join(', ')} (${x})` : x;
+  };
   const build = (): ProgramOpInput => {
     const base = { blockKey: block, replaceExisting: replace };
     const n = target.split(',').map((x) => Number(x.trim()));
@@ -1586,8 +1588,8 @@ export function OperationDialog({
         }}
       >
         <p className="small muted">
-          Origen: {block} · semana {week}. Solo programación: resultados, cuestionarios y completado
-          permanecen separados.
+          Origen: semana {week}. Solo programación: resultados, cuestionarios y completado permanecen
+          separados.
         </p>
         <div className="form-grid">
           {['duplicate_session', 'change_protocol', 'move_session'].includes(type) && (
@@ -1597,7 +1599,7 @@ export function OperationDialog({
                 <option value="">Todas las sesiones de las semanas destino</option>
                 {sessions.map((s) => (
                   <option key={s.sessionKey} value={s.sessionKey}>
-                    {s.date} · {s.exerciseName}
+                    {dateLabel(s.date)} · {s.exerciseName}
                   </option>
                 ))}
               </select>
@@ -1649,11 +1651,13 @@ export function OperationDialog({
           {type === 'change_protocol' && (
             <>
               <label>
-                Exposición (opcional)
+                Ejercicio (opcional)
                 <select value={exposure} onChange={(e) => setExposure(e.target.value)}>
-                  <option value="">Todas en la selección explícita</option>
+                  <option value="">Todos los de la selección</option>
                   {exposures.map((x) => (
-                    <option key={x}>{x}</option>
+                    <option key={x} value={x}>
+                      {exposureName(x)}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -1756,16 +1760,18 @@ export function OperationDialog({
           <summary>Consultar exposición anterior sin salir del editor</summary>
           <div className="row">
             <select
-              aria-label="Exposición anterior"
+              aria-label="Ejercicio a consultar"
               value={exposure}
               onChange={(e) => {
                 setExposure(e.target.value);
                 invalidate();
               }}
             >
-              <option value="">Elegí una exposición</option>
+              <option value="">Elegí un ejercicio</option>
               {exposures.map((x) => (
-                <option key={x}>{x}</option>
+                <option key={x} value={x}>
+                  {exposureName(x)}
+                </option>
               ))}
             </select>
             <button
@@ -1861,10 +1867,14 @@ export function OperationDialog({
 function PriorityFilterBar() {
   const [prio, setPrio] = usePrio();
   const [role, setRole] = useRole();
+  const active = prio !== 'ALL' || role !== 'ALL';
   return (
-    <>
-      <PriorityFilter value={prio} onChange={setPrio} />
-      <RoleFilter value={role} onChange={setRole} />
-    </>
+    <details className="prog-filters" open={active || undefined}>
+      <summary>Filtrar ejercicios{active ? ' (filtro activo)' : ''}</summary>
+      <div className="row">
+        <PriorityFilter value={prio} onChange={setPrio} />
+        <RoleFilter value={role} onChange={setRole} />
+      </div>
+    </details>
   );
 }

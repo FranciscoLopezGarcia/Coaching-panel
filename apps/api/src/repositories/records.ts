@@ -140,6 +140,15 @@ export class RecordsRepo {
       }[]
     ).map((r) => r.id);
   }
+  /** Días con sesiones del plan vigente, por bloque (liviano: para el semáforo del plantel). */
+  async listActivePlanDays(athleteId: string): Promise<{ blockKey: string; date: string }[]> {
+    return (
+      (await this.db.all(
+        'SELECT DISTINCT block_key, planned_date FROM planned_sets WHERE athlete_id = ? AND retired = 0',
+        athleteId,
+      )) as { block_key: string; planned_date: string }[]
+    ).map((r) => ({ blockKey: r.block_key, date: r.planned_date }));
+  }
   /** Plan vigente de un solo bloque (liviano: para guardar plantillas sin leer todo el plan). */
   async listActivePlannedByBlock(athleteId: string, blockKey: string): Promise<PlannedSet[]> {
     return (

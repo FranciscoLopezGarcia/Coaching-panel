@@ -1,3 +1,4 @@
+import { dateLabel } from '../../workspace/ui';
 import { useState } from 'react';
 import { api } from '../../api/client';
 import { Async } from '../../components/Async';
@@ -90,7 +91,7 @@ export function RecoveryTab({ id }: { id: string }) {
               <tbody>
                 {r.map((x) => (
                   <tr key={x.date}>
-                    <td>{x.date}</td>
+                    <td>{dateLabel(x.date)}</td>
                     {FIELDS.map(([k]) => (
                       <td key={k}>{fmt((x as unknown as Record<string, number | null>)[k], 0)}</td>
                     ))}

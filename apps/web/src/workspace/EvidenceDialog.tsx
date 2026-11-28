@@ -3,7 +3,7 @@ import { workspaceApi as w, type Evidence } from './api';
 import { useLoad } from '../hooks';
 import { Async } from '../components/Async';
 import { StatusBadge } from '../components/StatusBadge';
-import { Detail, Message, Modal, number } from './ui';
+import { Detail, Message, Modal, number, dateLabel } from './ui';
 import { RpeChip } from '../components/RpeChip';
 
 export function EvidenceDialog({ id, row, onClose }: { id: string; row: DecisionRow; onClose: () => void }) {
@@ -11,24 +11,38 @@ export function EvidenceDialog({ id, row, onClose }: { id: string; row: Decision
   return (
     <Modal title="Evidencia de la recomendación" onClose={onClose}>
       <StatusBadge status={row.status} />
-      <p className="summary">{row.summary}</p>
-      <Async state={data}>{(e) => <EvidenceBody data={e} />}</Async>
+      <Async state={data}>{(e) => <EvidenceBody data={e} summary={row.summary} />}</Async>
     </Modal>
   );
 }
-function EvidenceBody({ data }: { data: Evidence }) {
+const KIND: Record<string, string> = {
+  session: 'Sesión',
+  sesion: 'Sesión',
+  checkin: 'Check-in',
+  review: 'Revisión técnica',
+  exposure: 'Exposición',
+  period: 'Período',
+  plan_version: 'Versión del plan',
+  change_event: 'Cambio del plan',
+  set: 'Serie',
+};
+function EvidenceBody({ data, summary }: { data: Evidence; summary: string }) {
   const e = data.explanation;
   return (
     <>
+      <p className="summary">{e?.whatHappens || summary}</p>
       {e ? (
         <>
-          <p>{e.whatHappens}</p>
-          <h3>Por qué</h3>
-          <ul>
-            {e.why.map((x) => (
-              <li key={x}>{x}</li>
-            ))}
-          </ul>
+          {e.why.length > 0 && (
+            <>
+              <h3>Por qué</h3>
+              <ul>
+                {e.why.map((x) => (
+                  <li key={x}>{x}</li>
+                ))}
+              </ul>
+            </>
+          )}
           <h3>Propuesta para revisar</h3>
           <ul>
             {e.reviewOrTry.map((x) => (
@@ -44,14 +58,16 @@ function EvidenceBody({ data }: { data: Evidence }) {
             </ul>
           </details>
           <Message>
-            Próximo chequeo: {e.nextCheck.when}. {e.nextCheck.criterion}
+            Próximo chequeo: {e.nextCheck.when.replace(/\.+$/, '')}. {e.nextCheck.criterion}
           </Message>
-          <p className="small muted">
-            {e.ruleId} · {e.ruleVersion} · {e.paramsVersion} · corte {e.context.cutoff} ·{' '}
-            {e.context.period ? e.context.period.from + ' → ' + e.context.period.to : 'Sin período definido'}
-          </p>
           <details>
-            <summary>Evaluación de evidencia y parámetros</summary>
+            <summary>Detalle técnico: regla, evidencia y parámetros</summary>
+            <p className="small muted">
+              {e.ruleId} · {e.ruleVersion} · {e.paramsVersion} · corte {dateLabel(e.context.cutoff)} ·{' '}
+              {e.context.period
+                ? dateLabel(e.context.period.from) + ' a ' + dateLabel(e.context.period.to)
+                : 'Sin período definido'}
+            </p>
             <Detail
               value={{
                 assessment: e.assessment,
@@ -69,7 +85,7 @@ function EvidenceBody({ data }: { data: Evidence }) {
       {data.records.map((r, i) => (
         <details key={i}>
           <summary>
-            {r.ref.kind} · {r.ref.date ?? r.ref.id}
+            {KIND[r.ref.kind] ?? r.ref.kind} · {r.ref.date ? dateLabel(r.ref.date) : r.ref.id}
           </summary>
           {r.sets ? (
             <div className="table-wrap">

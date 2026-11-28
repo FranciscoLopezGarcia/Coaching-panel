@@ -1,10 +1,15 @@
+import { dateLabel, today } from '../../workspace/ui';
 import { useState } from 'react';
-import type { Lift } from '@coaching/contracts';
+import type { Lift, SessionRow } from '@coaching/contracts';
 import { api } from '../../api/client';
 import { Async } from '../../components/Async';
 import { useLoad } from '../../hooks';
 import { fmt, LIFT_NAMES } from '../../labels';
 import { RpeChip } from '../../components/RpeChip';
+
+/** La revisión técnica es sobre lo ya entrenado: no se listan las sesiones futuras sin registro. */
+const pastSessions = (list: SessionRow[]) =>
+  list.filter((s) => s.date <= today() || s.sets.some((x) => x.actual));
 
 /** Sesiones: previsto vs. real por serie. Sin bandeja de videos; la revisión técnica es un campo opcional del coach. */
 export function SessionsTab({ id, onChanged }: { id: string; onChanged: () => void }) {
@@ -73,10 +78,10 @@ export function SessionsTab({ id, onChanged }: { id: string; onChanged: () => vo
               {msg && <span className="small">{msg}</span>}
             </div>
           </details>
-          {list.map((s) => (
+          {pastSessions(list).map((s) => (
             <details key={s.sessionKey}>
               <summary>
-                <strong>{s.date}</strong> · {s.lift ? LIFT_NAMES[s.lift] : '—'} · {s.exerciseName}{' '}
+                <strong>{dateLabel(s.date)}</strong> · {s.lift ? LIFT_NAMES[s.lift] : '—'} · {s.exerciseName}{' '}
                 <span className="muted small">
                   ({s.blockKey} · sem {s.weekNo} · día {s.dayNo})
                 </span>

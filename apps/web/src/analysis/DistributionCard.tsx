@@ -129,6 +129,9 @@ export function DistributionCard({ data, source }: { data: AnalysisResult; sourc
                 plan: m.plan,
               }))}
             />
+            {patterns.some((m) => m.tonnage === null) && (
+              <p className="an-note">Tonelaje «—»: a alguna serie del patrón le falta la carga.</p>
+            )}
             <div className="an-tablewrap">
               <table className="an-table">
                 <thead>

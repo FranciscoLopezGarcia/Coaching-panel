@@ -61,6 +61,27 @@ beforeAll(async () => {
   await ctx.history.upsertFeedback(id, { sessionKey: 's-a', endFatigue: 6 });
 });
 
+describe('semáforo de planificación', () => {
+  it('informa qué hay esta semana, la siguiente y el bloque que termina', async () => {
+    const d = (await call('GET', '/api/dashboard')).json();
+    expect(d.planning).toEqual([
+      {
+        athleteId: id,
+        athleteName: 'Ana',
+        hasCurrent: true,
+        hasNext: false,
+        plannedUntil: '2026-11-09',
+        endingBlocks: [{ blockKey: 'b1', name: 'b1', endDate: '2026-11-09' }],
+        currentBlock: 'b1',
+        lastCheckIn: null,
+        checkInPending: true,
+      },
+    ]);
+    // El contador de arriba y el semáforo salen del mismo criterio.
+    expect(d.cards).toMatchObject({ blocksEnding: 1, pendingCheckins: 1 });
+  });
+});
+
 describe('eliminar una semana', () => {
   const left = async () => (await ctx.records.listPlanned(id)).map((s) => s.id).sort();
   it('sin registros se borra directo y las demás no se tocan', async () => {

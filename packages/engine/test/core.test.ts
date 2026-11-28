@@ -481,6 +481,14 @@ describe('Patrón de movimiento (otra dimensión: cada ejercicio en un solo patr
     ).toEqual(['empuje_horizontal', 'sentadilla', 'traccion_horizontal']);
     expect(c.weeks[0]!.patterns.rows.length).toBe(3);
   });
+  it('tonelaje por patrón: si a una serie le falta la carga no se informa una suma parcial', () => {
+    const o = sess(0, [
+      [100, 5, 8],
+      [null as unknown as number, 5, 8],
+    ]);
+    const c = computeCore({ obs: o, cutoff: day(10), from: day(0), to: day(10) });
+    expect(c.patterns.rows[0]).toMatchObject({ sets: 2, nl: 10, tonnage: null });
+  });
 });
 
 describe('accesorios y prioridad del plan', () => {

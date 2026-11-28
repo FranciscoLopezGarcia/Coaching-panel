@@ -3,7 +3,7 @@ import type { SessionRow } from '@coaching/contracts';
 import { useLoad } from '../hooks';
 import { Async } from '../components/Async';
 import { fetchCoreSessions } from './core';
-import { number, readSearch, today } from './ui';
+import { number, readSearch, today, dateLabel } from './ui';
 import { prescribedReps } from './prescription';
 import { RpeChip } from '../components/RpeChip';
 const positions: Record<string, string> = {
@@ -47,7 +47,7 @@ export function SessionResponse({ id, session }: { id: string; session: SessionR
                   return (
                     <section key={JSON.stringify([e.date, e.exerciseName, e.variantKey])}>
                       <h4>
-                        {e.exerciseName} · {e.date}
+                        {e.exerciseName} · {dateLabel(e.date)}
                       </h4>
                       {!f ? (
                         <p>Comparación no disponible en esta respuesta.</p>

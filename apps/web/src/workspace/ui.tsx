@@ -13,11 +13,15 @@ export const shift = (date: string, days: number) => {
 };
 export const number = (v: number | null | undefined, digits = 1) =>
   v == null ? '—' : new Intl.NumberFormat('es-AR', { maximumFractionDigits: digits }).format(v);
+/** Único formato de fecha de la vista del coach: «15 nov», con el año solo si no es el actual. */
 export const dateLabel = (d: string | null | undefined) =>
   d
-    ? new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: 'short', timeZone: 'UTC' }).format(
-        new Date(d + 'T12:00:00Z'),
-      )
+    ? new Intl.DateTimeFormat('es-AR', {
+        day: '2-digit',
+        month: 'short',
+        ...(d.slice(0, 4) === today().slice(0, 4) ? {} : { year: 'numeric' }),
+        timeZone: 'UTC',
+      }).format(new Date(d.slice(0, 10) + 'T12:00:00Z'))
     : 'Sin fecha';
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (

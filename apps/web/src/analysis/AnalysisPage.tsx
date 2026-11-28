@@ -40,6 +40,12 @@ export function AnalysisPage({
   const [date, setDate] = useState<string | null>(null);
   const [open, setOpen] = useState<PeriodRow | null>(null);
   const linked: Linked = { date, set: setDate };
+  // Abre solo la primera familia: el resto se despliega al pedirlo (o al elegirla en el índice).
+  const [shown, setShown] = useState<string[]>(() => [FAMILIES[0]!.id]);
+  const goTo = (e: React.MouseEvent, family: string) => {
+    setShown((v) => (v.includes(family) ? v : [...v, family]));
+    scrollTo(e, family);
+  };
 
   const data = useLoad(
     () =>
@@ -88,7 +94,7 @@ export function AnalysisPage({
                     onChange={() => state.toggle(f.metrics)}
                     aria-label={`Elegir toda la familia ${f.title}`}
                   />
-                  <a href={`#${f.id}`} onClick={(e) => scrollTo(e, f.id)}>
+                  <a href={`#${f.id}`} onClick={(e) => goTo(e, f.id)}>
                     {f.title}
                   </a>
                 </li>
@@ -130,6 +136,10 @@ export function AnalysisPage({
               <FamilyCard
                 key={f.id}
                 family={f}
+                open={shown.includes(f.id)}
+                onToggle={() =>
+                  setShown((v) => (v.includes(f.id) ? v.filter((x) => x !== f.id) : [...v, f.id]))
+                }
                 data={d}
                 periods={d.periods}
                 state={state}

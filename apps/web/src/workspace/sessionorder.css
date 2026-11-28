@@ -97,3 +97,19 @@
 .base-row label input {
   max-width: 140px;
 }
+
+/* Barra de Programar: dos acciones a la vista y el resto en «Más». */
+.prog-head {
+  margin-bottom: 8px;
+}
+.prog-actions {
+  margin-left: auto;
+}
+.prog-filters {
+  margin: 6px 0;
+}
+.prog-filters summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+}

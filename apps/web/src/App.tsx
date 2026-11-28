@@ -9,6 +9,7 @@ import { Dashboard } from './pages/Dashboard';
 import { AthleteApp } from './athlete/AthleteApp';
 import { CoachLogin } from './coach/CoachLogin';
 import { coachLogout, installCoachAuth, loadCoachSession, type CoachSession } from './coach/auth';
+import { LibraryPanel } from './workspace/LibraryPanel';
 import { ThemeToggle } from './components/ThemeToggle';
 
 installCoachAuth();
@@ -57,6 +58,7 @@ function Panel({ auth }: { auth: CoachSession | null }) {
   }, []);
   const hash = useHashRoute();
   if (hash.startsWith('#/atleta')) return <AthleteApp hash={hash} />;
+  const library = hash.startsWith('#/ejercicios');
   const match = /^#\/athlete\/([^?]+)/.exec(hash);
   let id: string | null = null;
   try {
@@ -80,13 +82,12 @@ function Panel({ auth }: { auth: CoachSession | null }) {
         <a href="#/" className="brand">
           <span className="brand-symbol">╋</span> BASE<span className="brand-sub">STRENGTH COACHING</span>
         </a>
-        <div className="nav-caption">ESPACIO DEL COACH</div>
         <nav aria-label="Navegación principal">
-          <a className={!id && !hash.includes('focus=plantel') ? 'active' : ''} href="#/">
-            <span>▦</span>Inicio del coach
+          <a className={!id && !library ? 'active' : ''} href="#/">
+            <span>▦</span>Inicio
           </a>
-          <a className={id || hash.includes('focus=plantel') ? 'active' : ''} href="#/?focus=plantel">
-            <span>♙</span>Atletas
+          <a className={library ? 'active' : ''} href="#/ejercicios">
+            <span>≡</span>Ejercicios
           </a>
         </nav>
         <div className="sidebar-foot">
@@ -112,7 +113,7 @@ function Panel({ auth }: { auth: CoachSession | null }) {
           </span>
           <span className="topbar-tools">
             <ThemeToggle />
-            <span className="local-label">LOCAL · COACH</span>
+            {!auth?.authRequired && <span className="local-label">Local</span>}
           </span>
         </header>
         <div className={laboratory ? 'instance-banner laboratory' : 'instance-banner'} role="status">
@@ -129,6 +130,8 @@ function Panel({ auth }: { auth: CoachSession | null }) {
             </div>
           ) : id ? (
             <AthletePage key={id} id={id} />
+          ) : library ? (
+            <LibraryPanel />
           ) : (
             <Dashboard />
           )}

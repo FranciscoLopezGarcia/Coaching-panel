@@ -143,6 +143,7 @@ export interface PatternVolumeRow {
   pattern: MovementPattern;
   sets: number;
   nl: number;
+  /** null = alguna serie del patrón no tiene carga interpretable (no se informa una suma parcial). */
   tonnage: number | null;
   /** SI doble (si-doble-v1) sumado sobre las series del patrón que tienen reps y RPE. null = ninguna serie con RPE. */
   si: { total: number; central: number; peripheral: number; sets: number } | null;
@@ -208,7 +209,8 @@ export function patternVolume(sets: ObservedSet[]): PatternVolume {
         pattern,
         sets: a.sets,
         nl: a.nl,
-        tonnage: a.tonN ? a.ton : null,
+        // Mismo criterio que el tonelaje semanal: si a una serie le falta la carga, no se muestra una suma parcial.
+        tonnage: a.tonN === a.sets ? a.ton : null,
         si: a.si.sets ? a.si : null,
         exercises: [...a.ex].sort(),
       }))

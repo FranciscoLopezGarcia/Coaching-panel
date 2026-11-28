@@ -1,7 +1,6 @@
 import type { SessionRow } from '@coaching/contracts';
 import { dateLabel, today } from './ui';
 import type { Meso } from './api';
-import { useState } from 'react';
 import { DeleteBlockDialog } from './AthleteAdmin';
 import { BlockExportDialog } from './BlockExportDialog';
 
@@ -31,23 +30,24 @@ const weeksOf = (ss: SessionRow[]) =>
 export function BlockNavigator({
   id,
   onDeleted,
+  dialog,
+  onCloseDialog,
   sessions,
   mesos,
   block,
-  week,
   onSelect,
 }: {
   id: string;
   onDeleted: () => void;
+  /** Exportar y eliminar se piden desde el menú «Más» de Programar. */
+  dialog: '' | 'export' | 'delete';
+  onCloseDialog: () => void;
   sessions: SessionRow[];
   mesos: Meso[];
   block: string;
-  week: number;
   onSelect: Sel;
 }) {
   const t = today();
-  const [removing, setRemoving] = useState(false);
-  const [exporting, setExporting] = useState(false);
   // Todos los bloques: los que tienen sesiones Y los mesos creados que todavía no tienen ninguna (antes se escondían).
   const keys = [...new Set([...sessions.map((s) => s.blockKey), ...mesos.map((m) => m.blockKey)])];
   const blocks = keys
@@ -68,41 +68,13 @@ export function BlockNavigator({
     })
     // los que no tienen ninguna fecha van al final, en vez de al principio
     .sort((a, b) => (a.from || '9999').localeCompare(b.from || '9999'));
-  const idx = blocks.findIndex((b) => b.key === block);
   const status = (b: (typeof blocks)[number]) =>
     !b.sessions ? 'future' : b.to < t ? (b.ok ? 'past' : 'pending-past') : b.from <= t ? 'current' : 'future';
   const go = (b: (typeof blocks)[number] | undefined) =>
     b && onSelect({ macro: b.macroId, block: b.key, week: null, session: null });
   return (
     <section className="block-nav" aria-label="Navegador de bloques">
-      <div className="block-nav-head">
-        <strong>Bloques</strong>
-        <div className="block-nav-actions">
-          <button type="button" disabled={idx <= 0} onClick={() => go(blocks[idx - 1])}>
-            ← Bloque anterior
-          </button>
-          <button
-            type="button"
-            disabled={idx < 0 || idx >= blocks.length - 1}
-            onClick={() => go(blocks[idx + 1])}
-          >
-            Bloque siguiente →
-          </button>
-          <button type="button" disabled={!sessions.length} onClick={() => setExporting(true)}>
-            Exportar
-          </button>
-          <button
-            type="button"
-            className="danger"
-            disabled={!block || idx < 0}
-            title={block ? 'Eliminar el bloque seleccionado' : 'Elegí un bloque para poder eliminarlo'}
-            onClick={() => setRemoving(true)}
-          >
-            Eliminar bloque
-          </button>
-        </div>
-      </div>
-      {exporting && (
+      {dialog === 'export' && (
         <BlockExportDialog
           id={id}
           blocks={blocks.map((b) => ({
@@ -114,16 +86,16 @@ export function BlockNavigator({
             weeks: weeksOf(sessions.filter((s) => s.blockKey === b.key)),
           }))}
           current={block}
-          onClose={() => setExporting(false)}
+          onClose={onCloseDialog}
         />
       )}
-      {removing && block && (
+      {dialog === 'delete' && block && (
         <DeleteBlockDialog
           id={id}
           blockKey={block}
-          onClose={() => setRemoving(false)}
+          onClose={onCloseDialog}
           onDeleted={() => {
-            setRemoving(false);
+            onCloseDialog();
             onDeleted();
           }}
         />
@@ -155,7 +127,6 @@ export function BlockNavigator({
           </button>
         ))}
       </div>
-      {week > 0 && <p className="small muted">Semana seleccionada: S{week}.</p>}
     </section>
   );
 }

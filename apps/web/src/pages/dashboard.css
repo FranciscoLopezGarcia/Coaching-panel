@@ -1,0 +1,122 @@
+/* Inicio: filtros con su número y una sola tabla del plantel. */
+.home-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.home-filters button[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.home-filters input {
+  margin-left: auto;
+  max-width: 220px;
+}
+.roster-table {
+  border-top: 1px solid var(--line);
+}
+.roster-row {
+  display: grid;
+  grid-template-columns: 1.1fr 1.5fr 1.2fr 0.9fr 1.5fr 1fr;
+  gap: 8px 16px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 13px;
+}
+.roster-row > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.roster-head {
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  padding-block: 8px;
+}
+.roster-name {
+  font-size: 15px;
+  font-weight: 650;
+}
+.roster-row small {
+  color: var(--muted);
+}
+.warn-text {
+  color: var(--warn);
+  font-weight: 700;
+}
+.plan-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+.plan-light {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  clip-path: var(--cut-xs);
+  font-weight: 700;
+}
+.plan-light.ok {
+  background: var(--ok);
+  color: var(--bg);
+}
+.plan-light.bad {
+  background: var(--bad);
+  color: var(--bg);
+}
+.plan-ending {
+  background: var(--warn-bg);
+  color: var(--warn);
+  clip-path: var(--cut-xs);
+  font-weight: 700;
+  font-size: 12px;
+  padding: 3px 10px;
+}
+.roster-row details p {
+  margin: 6px 0;
+}
+.roster-row summary {
+  cursor: pointer;
+  color: var(--accent-text);
+}
+.home-recent {
+  margin-top: 18px;
+}
+.home-recent summary {
+  cursor: pointer;
+}
+@media (max-width: 1100px) {
+  .roster-head {
+    display: none;
+  }
+  .roster-row {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+  .roster-row > div:first-child {
+    grid-column: 1 / -1;
+  }
+  .roster-row > div[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 12px;
+  }
+}
+@media (max-width: 640px) {
+  .home-filters input {
+    margin-left: 0;
+    max-width: none;
+    width: 100%;
+  }
+}

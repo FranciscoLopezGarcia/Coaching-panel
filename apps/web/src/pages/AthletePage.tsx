@@ -11,25 +11,25 @@ import { Async } from '../components/Async';
 import { StatusBadge } from '../components/StatusBadge';
 import { LIFT_NAMES } from '../labels';
 import { workspaceApi as w } from '../workspace/api';
-import { WeekOverview } from '../workspace/WeekOverview';
 import { Programming } from '../workspace/Programming';
 import { AnalysisPage } from '../analysis/AnalysisPage';
 import { Registration } from '../workspace/Registration';
 import { EvidenceDialog } from '../workspace/EvidenceDialog';
 import { Settings } from '../workspace/Settings';
-import { AthleteAccess } from '../workspace/AthleteAccess';
 import { DeleteAthleteDialog, EditAthleteDialog } from '../workspace/AthleteAdmin';
+import './athlete/athlete-header.css';
 import { RecoveryTab } from './athlete/RecoveryTab';
 import { BlockClosingPanel } from '../workspace/BlockClosingPanel';
 import { AgendaCard } from '../workspace/AgendaCard';
 import { CompetitionsPanel } from '../workspace/CompetitionsPanel';
-import { LibraryPanel } from '../workspace/LibraryPanel';
 import { ProfilePanel } from '../workspace/ProfilePanel';
 import { SessionsTab } from './athlete/SessionsTab';
 import { Empty, Message, readSearch, updateSearch, today, shift, number, dateLabel } from '../workspace/ui';
-/** Programar y Analizar viven arriba (tarjetas de acción); acá solo lo que no está duplicado. */
+/** Una sola barra de secciones del atleta. */
 const tabs = [
   ['resumen', 'Resumen'],
+  ['plan', 'Programar'],
+  ['analisis', 'Analizar'],
   ['perfil', 'Perfil'],
   ['competencias', 'Competencias'],
   ['config', 'Configuración'],
@@ -84,6 +84,7 @@ export function AthletePage({ id }: { id: string }) {
   const block = search.get('block') ?? '';
   const week = Number(search.get('week') ?? 0);
   const session = search.get('session') ?? '';
+  const evaluates = tab === 'resumen' || tab === 'analisis';
   const data = useLoad(() => api.athlete(id), [id]);
   const cutoff = search.get('cutoff') ?? (laboratory ? data.data?.evaluation?.cutoff : undefined) ?? today();
   const from = search.get('from') ?? shift(cutoff, -55);
@@ -158,12 +159,6 @@ export function AthletePage({ id }: { id: string }) {
       week: current ? String(current.weekNo) : null,
     });
   }, [context.data, cutoff]);
-  const activeName = context.data?.active?.id === macro ? context.data.active.name : undefined;
-  const meso = context.data?.mesos.find((m) => m.blockKey === block);
-  const effectiveMacro =
-    activeName ??
-    context.data?.macros.find((m) => m.id === macro)?.name ??
-    (macro ? 'Macro seleccionado' : 'Sin macro');
   return (
     <PlanMarksProvider id={id}>
       <Async state={data}>
@@ -176,6 +171,7 @@ export function AthletePage({ id }: { id: string }) {
                 competition={athlete.competitionExercises}
                 onClose={() => setDialog('')}
                 onSaved={refresh}
+                onDelete={() => setDialog('delete')}
               />
             )}
             {dialog === 'delete' && (
@@ -185,45 +181,50 @@ export function AthletePage({ id }: { id: string }) {
                 onClose={() => setDialog('')}
                 onDeleted={() => {
                   setDialog('');
-                  window.location.hash = '#/?focus=plantel';
+                  window.location.hash = '#/';
                 }}
               />
             )}
-            <div className="row between">
+            <header className="athlete-bar">
               <a className="back-link" href="#/">
-                ← Volver al plantel
+                Volver al plantel
               </a>
-              <button onClick={() => select({ tab: tab === 'registro' ? 'resumen' : 'registro' })}>
-                {tab === 'registro' ? 'Volver al coach' : 'Vista atleta · demo local ↗'}
-              </button>
-            </div>
-            <div className="row between athlete-heading">
-              <div className="row">
-                <span className="avatar">
-                  {athlete.name
-                    .split(' ')
-                    .map((x) => x[0])
-                    .slice(0, 2)
-                    .join('')}
-                </span>
-                <div>
-                  <h1>{athlete.name}</h1>
-                  <p className="small muted">
-                    {athlete.evaluation
-                      ? `Evaluado al ${athlete.evaluation.cutoff} · ${athlete.evaluation.rulesVersion}`
-                      : 'Sin evaluación disponible'}
-                  </p>
-                  <div className="row">
-                    <button type="button" onClick={() => setDialog('edit')}>
-                      Editar perfil
-                    </button>
-                    <button type="button" className="danger" onClick={() => setDialog('delete')}>
-                      Eliminar atleta
-                    </button>
-                  </div>
-                </div>
+              <span className="avatar" aria-hidden="true">
+                {athlete.name
+                  .split(' ')
+                  .map((x) => x[0])
+                  .slice(0, 2)
+                  .join('')}
+              </span>
+              <h1>{athlete.name}</h1>
+              <div className="athlete-bar-actions">
+                <button type="button" onClick={() => setDialog('edit')}>
+                  Editar atleta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => select({ tab: tab === 'registro' ? 'resumen' : 'registro' })}
+                >
+                  {tab === 'registro' ? 'Volver al resumen' : 'Registrar entrenamiento'}
+                </button>
               </div>
-              <div className="row">
+            </header>
+            {tab !== 'registro' && (
+              <nav className="athlete-tabs" aria-label="Secciones del atleta">
+                {tabs.map(([key, label]) => (
+                  <button
+                    key={key}
+                    className={tab === key ? 'on' : ''}
+                    aria-current={tab === key ? 'page' : undefined}
+                    onClick={() => select({ tab: key })}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+            )}
+            {evaluates && (
+              <div className="athlete-context">
                 <label>
                   Fecha de análisis
                   <input
@@ -239,6 +240,43 @@ export function AthletePage({ id }: { id: string }) {
                     }
                   />
                 </label>
+                {tab === 'analisis' && (
+                  <fieldset>
+                    <legend>Período</legend>
+                    <input
+                      type="date"
+                      aria-label="Período desde"
+                      value={from}
+                      max={to}
+                      onChange={(e) => e.target.value && select({ from: e.target.value })}
+                    />
+                    <span>a</span>
+                    <input
+                      type="date"
+                      aria-label="Período hasta"
+                      value={to}
+                      min={from}
+                      onChange={(e) => e.target.value && select({ to: e.target.value })}
+                    />
+                    <select
+                      aria-label="Atajos de período"
+                      value=""
+                      onChange={(e) => {
+                        const p = periodPresets(context.data?.mesos ?? [], cutoff).find(
+                          (x) => x.id === e.target.value,
+                        );
+                        if (p) select({ from: p.from, to: p.to });
+                      }}
+                    >
+                      <option value="">Atajos…</option>
+                      {periodPresets(context.data?.mesos ?? [], cutoff).map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </fieldset>
+                )}
                 <button
                   disabled={busy}
                   onClick={async () => {
@@ -256,86 +294,19 @@ export function AthletePage({ id }: { id: string }) {
                 >
                   {busy ? 'Evaluando…' : 'Actualizar evaluación'}
                 </button>
+                <p className="small muted" role="status">
+                  {athlete.evaluation
+                    ? `Evaluado al ${dateLabel(athlete.evaluation.cutoff)}${
+                        athlete.evaluation.cutoff !== cutoff ? ' · la fecha elegida aún no se evaluó' : ''
+                      }`
+                    : 'Sin evaluación'}
+                </p>
               </div>
-            </div>
-            <div className="athlete-actions" aria-label="Acciones del atleta">
-              {[
-                ['plan', 'PROGRAMAR', 'Distribución y protocolos'],
-                ['analisis', 'ANALIZAR', 'Evolución y evidencia'],
-              ].map(([key, label, hint]) => (
-                <button
-                  key={key}
-                  className={tab === key ? 'selected' : ''}
-                  onClick={() => select({ tab: key ?? 'resumen' })}
-                >
-                  <span>{label}</span>
-                  <small>{hint}</small>
-                  <b>↗</b>
-                </button>
-              ))}
-            </div>
-            <div className="context-strip">
-              <button
-                title="Historial de macros"
-                onClick={() => select({ tab: 'plan', block: null, week: null, session: null, context: '1' })}
-              >
-                <small>MACRO ↗</small>
-                <strong>{context.loading && !context.data ? 'Cargando…' : effectiveMacro}</strong>
-              </button>
-              <button onClick={() => select({ tab: 'plan', week: null, session: null, context: '1' })}>
-                <small>MESO ↗</small>
-                <strong>
-                  {context.loading && !context.data ? 'Cargando…' : (meso?.name ?? (block || 'Sin meso'))}
-                </strong>
-              </button>
-              <button onClick={() => select({ tab: 'plan', session: null })}>
-                <small>SEMANA ↗</small>
-                <strong>
-                  {context.loading && !context.data ? 'Cargando…' : week ? `S${week}` : 'Sin selección'}
-                </strong>
-              </button>
-              <div className="period-picker">
-                <small>PERÍODO DE ANÁLISIS</small>
-                <div className="row">
-                  <input
-                    type="date"
-                    aria-label="Período desde"
-                    value={from}
-                    max={to}
-                    onChange={(e) => e.target.value && select({ from: e.target.value })}
-                  />
-                  <span aria-hidden>→</span>
-                  <input
-                    type="date"
-                    aria-label="Período hasta"
-                    value={to}
-                    min={from}
-                    onChange={(e) => e.target.value && select({ to: e.target.value })}
-                  />
-                  <select
-                    aria-label="Atajos de período"
-                    value=""
-                    onChange={(e) => {
-                      const p = periodPresets(context.data?.mesos ?? [], cutoff).find(
-                        (x) => x.id === e.target.value,
-                      );
-                      if (p) select({ from: p.from, to: p.to });
-                    }}
-                  >
-                    <option value="">Atajos…</option>
-                    {periodPresets(context.data?.mesos ?? [], cutoff).map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
+            )}
             {!!context.data?.active?.otherActiveMacros?.length && (
               <Message>
                 Hay varios macros activos. La API seleccionó «{context.data.active.name}». Podés elegir otro
-                desde el macro (arriba).
+                desde Programar.
               </Message>
             )}
             {context.error && (
@@ -345,46 +316,24 @@ export function AthletePage({ id }: { id: string }) {
               </Message>
             )}
             {error && <Message error>{error}</Message>}
-            {(state.data?.freshness?.inputsChangedSinceEvaluation ?? !!pending) ? (
+            {evaluates && (state.data?.freshness?.inputsChangedSinceEvaluation ?? !!pending) && (
               <Message>
-                Datos guardados · evaluación pendiente de actualizar. Elegí la fecha y pulsá «Actualizar
-                evaluación». Las conclusiones anteriores pueden estar desactualizadas.
+                Hay datos nuevos sin evaluar. Las conclusiones anteriores pueden estar desactualizadas: pulsá
+                «Actualizar evaluación».
               </Message>
-            ) : (
-              athlete.evaluation && (
-                <p className="small muted" role="status">
-                  Evaluación guardada al {athlete.evaluation.cutoff}
-                  {athlete.evaluation.cutoff !== cutoff
-                    ? ' · La fecha seleccionada aún no fue evaluada.'
-                    : ''}
-                </p>
-              )
             )}
-            {pending && state.data?.freshness?.inputsChangedSinceEvaluation === false && (
+            {evaluates && pending && state.data?.freshness?.inputsChangedSinceEvaluation === false && (
               <p role="status" className="small muted">
-                Datos guardados. Las entradas de la evaluación al corte {state.data.freshness.evaluatedCutoff}{' '}
-                no cambiaron. Para analizar registros posteriores, elegí otra fecha y actualizá.
+                Datos guardados. Las entradas de la evaluación al corte{' '}
+                {dateLabel(state.data.freshness.evaluatedCutoff)} no cambiaron. Para analizar registros
+                posteriores, elegí otra fecha y actualizá.
               </p>
             )}
-            {state.data?.freshness?.inputsChangedSinceEvaluation === null && (
+            {evaluates && state.data?.freshness?.inputsChangedSinceEvaluation === null && (
               <p className="small muted">
                 La evaluación guardada no tiene huella de vigencia. Actualizala para verificar cambios entre
                 clientes.
               </p>
-            )}
-            {tab !== 'registro' && (
-              <nav className="athlete-tabs" aria-label="Secciones del atleta">
-                {tabs.map(([key, label]) => (
-                  <button
-                    key={key}
-                    className={tab === key ? 'on' : ''}
-                    aria-current={tab === key ? 'page' : undefined}
-                    onClick={() => select({ tab: key })}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </nav>
             )}
             {tab === 'resumen' && (
               <>
@@ -392,21 +341,10 @@ export function AthletePage({ id }: { id: string }) {
                 <AgendaCard
                   id={id}
                   onOpen={(sessionKey) => select({ tab: 'plan', session: sessionKey, context: '1' })}
+                  onPlanNext={() => select({ tab: 'plan', action: 'next' })}
                 />
-                <section className="summary-cta">
-                  <div>
-                    <h2>Resultado de los bloques</h2>
-                    <p className="small muted">
-                      NL, SI, tonelaje, e1RM, comparativas y detalle por semana están en un solo lugar:
-                      Analizar.
-                    </p>
-                  </div>
-                  <button className="primary" onClick={() => select({ tab: 'analisis' })}>
-                    Ir a Analizar →
-                  </button>
-                </section>
                 <details className="coach-context" open>
-                  <summary>Estado del atleta, recomendaciones y semana actual</summary>
+                  <summary>Estado del atleta y recomendaciones</summary>
                   <div className="section-heading row between">
                     <div>
                       <h2>Qué está pasando</h2>
@@ -427,6 +365,19 @@ export function AthletePage({ id }: { id: string }) {
                         athlete.decisions.find(
                           (d) => d.lift === l && d.isPrincipal && d.validity === 'vigente',
                         );
+                      // Sin ninguna sesión del movimiento: una tarjeta corta, no una vacía del mismo tamaño.
+                      if (performance.data && !performance.data[l]?.exposures.length)
+                        return (
+                          <article className="lift-card lift-empty" data-lift={l} key={l}>
+                            <h3>{LIFT_NAMES[l]}</h3>
+                            <p className="small muted">Sin sesiones registradas para analizar.</p>
+                            {row && (
+                              <button className="text-button" onClick={() => setEvidence(row)}>
+                                Ver evidencia
+                              </button>
+                            )}
+                          </article>
+                        );
                       return (
                         <article className="lift-card" data-lift={l} key={l}>
                           <div className="row between">
@@ -435,7 +386,7 @@ export function AthletePage({ id }: { id: string }) {
                           </div>
                           <h3>{LIFT_NAMES[l]}</h3>
                           <div className="lift-reading">
-                            <small>ÚLTIMO e1RM · CURVA RPE</small>
+                            <small>Último e1RM · curva RPE</small>
                             <strong className="lift-value">
                               {last ? number(last.e) + ' kg' : '—'}{' '}
                               <span>
@@ -458,18 +409,10 @@ export function AthletePage({ id }: { id: string }) {
                               row?.summary ??
                               'Completá los registros para analizar la evolución.'}
                           </p>
-                          <details className="conclusion-detail" open={row?.status === 'revision_coach'}>
-                            <summary>Qué pasa</summary>
-                            <p className="principal-conclusion">
-                              {lift?.principal?.headline ??
-                                row?.summary ??
-                                'Sin datos suficientes para una conclusión.'}
-                            </p>
-                            {row?.proposal && <p className="proposal">{row.proposal}</p>}
-                          </details>
+                          {row?.proposal && <p className="proposal">{row.proposal}</p>}
                           {row ? (
                             <button className="text-button" onClick={() => setEvidence(row)}>
-                              Por qué · abrir evidencia →
+                              Ver evidencia
                             </button>
                           ) : (
                             <p className="small muted">Evaluá o completá los registros.</p>
@@ -519,14 +462,6 @@ export function AthletePage({ id }: { id: string }) {
                       <button onClick={() => select({ tab: 'config' })}>Completar parámetros</button>
                     </details>
                   )}
-                  <WeekOverview
-                    sessions={
-                      context.data?.sessions.filter((s) => s.blockKey === block && s.weekNo === week) ?? []
-                    }
-                    week={week}
-                    loading={context.loading && !context.data}
-                    onSelect={select}
-                  />
                   <details className="recent-changes">
                     <summary>Cambios recientes del plan</summary>
                     <RecentChanges id={id} />
@@ -569,11 +504,6 @@ export function AthletePage({ id }: { id: string }) {
             {tab === 'config' && (
               <>
                 <Settings id={id} athlete={athlete} onChanged={refresh} />
-                <LibraryPanel />
-                <section className="card" id="acceso-atleta">
-                  <h2>Acceso del atleta</h2>
-                  <AthleteAccess id={id} />
-                </section>
               </>
             )}
             {tab === 'registro' && (
@@ -598,7 +528,7 @@ function RecentChanges({ id }: { id: string }) {
             .reverse()
             .map((x) => (
               <div className="timeline-entry" key={x.event.id}>
-                <time>{x.event.detectedOn}</time>
+                <time>{dateLabel(x.event.detectedOn)}</time>
                 <span>{x.event.changes.map((c) => c.summary).join(' · ') || 'Cambio de programación'}</span>
               </div>
             ))}

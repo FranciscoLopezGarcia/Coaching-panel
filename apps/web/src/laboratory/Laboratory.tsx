@@ -33,7 +33,7 @@ export function Laboratory({ onCreate }: { onCreate: () => void }) {
           <p className="small muted">Las ediciones se guardan. No hay reinicio automático.</p>
         </div>
         <button className="primary" onClick={onCreate}>
-          ＋ Crear atleta ficticio propio
+          Crear atleta ficticio propio
         </button>
       </div>
       <Async state={cases}>

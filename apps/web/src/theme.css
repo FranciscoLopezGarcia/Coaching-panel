@@ -227,8 +227,7 @@ label {
 .panel,
 .stat,
 .lift-card,
-.chart-panel,
-.week-overview {
+.chart-panel {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 0;
@@ -271,17 +270,7 @@ label {
   font-size: 12px;
   padding: 3px 10px;
 }
-.week-overview {
-  background: var(--accent-soft);
-  border: 1px solid transparent;
-}
-.week-session-list button {
-  background: var(--surface);
-  border-radius: 0;
-  clip-path: var(--cut-s);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--line);
-}
+
 .lift-card {
   border-left: 5px solid var(--move);
 }
@@ -307,8 +296,6 @@ th {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   border-bottom: 1px solid var(--line);
   padding: 12px 14px;
 }
@@ -627,177 +614,6 @@ main {
 .back-link:hover {
   color: var(--accent-text);
 }
-.athlete-heading {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 0;
-  clip-path: var(--cut-l);
-  box-shadow: var(--shadow);
-  padding: 22px 26px;
-  margin: 14px 0 16px;
-  position: relative;
-  overflow: hidden;
-}
-.athlete-heading::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 6px;
-  /* Tres tramos duros (sentadilla, banca, peso muerto), sin degradado. */
-  background: linear-gradient(90deg, var(--sq) 0 33.34%, var(--bp) 0 66.67%, var(--dl) 0);
-}
-.athlete-heading .avatar {
-  width: 72px;
-  height: 72px;
-  font-size: 26px;
-  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.55);
-}
-.athlete-heading h1 {
-  font-size: 32px;
-  margin: 2px 0;
-}
-.athlete-actions {
-  gap: 14px;
-  margin: 0 0 16px;
-}
-.athlete-actions button {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 0;
-  clip-path: var(--cut-m);
-  box-shadow: var(--shadow);
-  padding: 16px 20px 16px 74px;
-  position: relative;
-  min-height: 78px;
-}
-.athlete-actions button::before {
-  position: absolute;
-  left: 18px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 44px;
-  height: 44px;
-  border-radius: 0;
-  clip-path: var(--cut-m);
-  display: grid;
-  place-items: center;
-  font-size: 22px;
-  background: var(--accent-soft);
-}
-.athlete-actions button:nth-child(1)::before {
-  content: '🗓';
-}
-.athlete-actions button:nth-child(2)::before {
-  content: '📈';
-  background: var(--warn-bg);
-}
-.athlete-actions span {
-  letter-spacing: 0.08em;
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--text);
-}
-.athlete-actions small {
-  color: var(--muted);
-  font-size: 13px;
-}
-.athlete-actions b {
-  color: var(--muted);
-}
-.athlete-actions button.selected {
-  background: var(--accent);
-  border-color: transparent;
-}
-.athlete-actions button.selected span,
-.athlete-actions button.selected small,
-.athlete-actions button.selected b {
-  color: #fff;
-}
-.athlete-actions button.selected::before {
-  background: rgba(255, 255, 255, 0.2);
-}
-.context-strip {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 0;
-  clip-path: var(--cut-m);
-  box-shadow: var(--shadow-sm);
-  padding: 10px 6px;
-  gap: 2px;
-}
-.context-strip > * {
-  padding: 4px 16px;
-  border-radius: 0;
-  clip-path: var(--cut-s);
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  text-align: left;
-}
-.context-strip > * + * {
-  border-left: 1px solid var(--line);
-  border-radius: 0;
-}
-.context-strip button:hover {
-  background: var(--accent-soft);
-}
-.context-strip small {
-  color: var(--muted);
-  letter-spacing: 0.1em;
-  font-size: 11px;
-  display: block;
-}
-.context-strip strong {
-  font-size: 15px;
-}
-.context-strip .period-picker input[type='date'],
-.context-strip .period-picker select {
-  font-size: 13px;
-  padding: 3px 6px;
-  min-height: 0;
-}
-.context-strip .period-picker .row {
-  gap: 6px;
-  align-items: center;
-}
-.athlete-tabs {
-  display: flex;
-  gap: 4px;
-  background: var(--muted-bg);
-  border: 0;
-  border-radius: 0;
-  clip-path: var(--cut-m);
-  padding: 5px;
-  margin: 16px 0 18px;
-  width: fit-content;
-  max-width: 100%;
-  overflow-x: auto;
-}
-.athlete-tabs button {
-  border: 0;
-  box-shadow: none;
-  background: transparent;
-  color: var(--muted);
-  border-radius: 0;
-  clip-path: var(--cut-m);
-  padding: 8px 16px;
-  font-size: 14px;
-  min-height: 0;
-  white-space: nowrap;
-}
-.athlete-tabs button:hover {
-  background: var(--surface);
-  color: var(--text);
-}
-.athlete-tabs button.on,
-.athlete-tabs button[aria-current='page'] {
-  background: var(--surface);
-  color: var(--accent-text);
-  box-shadow: var(--shadow-sm);
-}
-.athlete-tabs .current-training {
-  color: var(--accent-text);
-}
 
 /* ---------- tablero de bloques ---------- */
 .bd {
@@ -949,12 +765,6 @@ dialog,
     padding: 0 16px;
   }
   .cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .athlete-actions {
-    grid-template-columns: 1fr;
-  }
-  .context-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1112,35 +922,11 @@ dialog,
 .local-label {
   display: none;
 }
-.context-strip > div:first-child {
-  display: none;
-}
-.context-strip {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(185px, 1.4fr);
-}
+
 .athlete-page > p.small.muted[role='status'] {
   display: none;
 }
-.summary-cta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--accent);
-  border-radius: 0;
-  clip-path: var(--cut-m);
-  padding: 14px 20px;
-  margin: 8px 0 14px;
-}
-.summary-cta h2 {
-  margin: 0 0 2px;
-}
-.summary-cta p {
-  margin: 0;
-}
+
 .bd-selected-block {
   display: flex;
   align-items: center;
@@ -1151,8 +937,6 @@ dialog,
 .bd-selected-block > span {
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--muted);
 }
 .bd-selected-block b {

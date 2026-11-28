@@ -4,7 +4,7 @@ import { api } from '../api/client';
 import { useLoad } from '../hooks';
 import { Async } from '../components/Async';
 import { get } from './api';
-import { number, Message } from './ui';
+import { number, Message, dateLabel } from './ui';
 export function PlanVersions({ id }: { id: string }) {
   const list = useLoad(() => api.versions(id), [id]);
   const [key, setKey] = useState('');
@@ -29,7 +29,7 @@ export function PlanVersions({ id }: { id: string }) {
               <option value="">Elegí una versión</option>
               {[...versions].reverse().map((v) => (
                 <option key={v.id} value={v.id}>
-                  #{v.seq} · {v.status} · {v.label} · {v.detectedOn}
+                  #{v.seq} · {v.status} · {v.label} · {dateLabel(v.detectedOn)}
                 </option>
               ))}
             </select>
@@ -63,7 +63,7 @@ export function PlanVersions({ id }: { id: string }) {
                     {v.sets.map((s) => (
                       <tr key={s.id}>
                         <td>
-                          {s.plannedDate} · S{s.weekNo}
+                          {dateLabel(s.plannedDate)} · S{s.weekNo}
                         </td>
                         <td>
                           {s.exerciseName} · {s.setNo}

@@ -151,7 +151,7 @@ export async function buildContext(config: Config, db?: Db, today?: () => string
       blockFeedback,
     ),
     historyService,
-    dashboard: new DashboardService(athletes, records, decisions, history),
+    dashboard: new DashboardService(athletes, records, decisions, history, programmingRepo),
     imports: new ImportService(observed, plans, config.timeZone, nowIso, exerciseMap),
     interventions: new InterventionService(interventionsRepo, decisions, loader, clock, nowIso),
     programming: new ProgrammingService(records, programmingRepo, plans, nowIso, history),

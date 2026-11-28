@@ -375,6 +375,20 @@ export interface DashboardData {
     daysLeft: number;
     phase: string;
   }[];
+  /** Semáforo del plantel: qué tiene cada atleta cargado esta semana y la siguiente. */
+  planning: {
+    athleteId: string;
+    athleteName: string;
+    hasCurrent: boolean;
+    hasNext: boolean;
+    plannedUntil: string | null;
+    endingBlocks: { blockKey: string; name: string; endDate: string }[];
+    /** Meso con sesiones esta semana (o el último cargado). */
+    currentBlock: string | null;
+    lastCheckIn: string | null;
+    /** Sin check-in en los últimos 7 días. */
+    checkInPending: boolean;
+  }[];
   recent: {
     date: string;
     athleteId: string;

@@ -17,14 +17,23 @@ const dayName = (iso: string) => WEEKDAY[new Date(`${iso}T12:00:00Z`).getUTCDay(
 export function AgendaCard({
   id,
   onOpen,
+  onPlanNext,
 }: {
   id: string;
   onOpen?: (sessionKey: string, date: string) => void;
+  onPlanNext?: () => void;
 }) {
   const a = useLoad(() => request<AgendaData>(`/api/athletes/${id}/agenda`), [id]);
   return (
     <section className="card agenda-card" aria-label="Hoy y semana">
-      <h2>Hoy y esta semana</h2>
+      <div className="row between">
+        <h2>Hoy y esta semana</h2>
+        {onPlanNext && (
+          <button type="button" onClick={onPlanNext}>
+            Programar próxima semana
+          </button>
+        )}
+      </div>
       <Async state={a}>{(d) => <AgendaBody d={d} onOpen={onOpen} />}</Async>
     </section>
   );
@@ -106,47 +115,5 @@ function SessionLine({
         </button>
       )}
     </li>
-  );
-}
-
-/** Tablero «hoy» de todo el plantel (Inicio): una fila por atleta con lo de hoy y el avance de la semana. */
-export function TodayBoard({ link }: { link: (athleteId: string) => string }) {
-  const t = useLoad(
-    () => request<(AgendaData & { athleteId: string; athleteName: string })[]>('/api/today'),
-    [],
-  );
-  return (
-    <Async state={t}>
-      {(rows) =>
-        rows.length ? (
-          <ul className="agenda-list">
-            {rows.map((r) => {
-              const hoy = r.sessions.filter((s) => s.date === r.today);
-              const done = r.sessions.filter((s) => s.status === 'hecha').length;
-              return (
-                <li key={r.athleteId} className="agenda-item">
-                  <a href={link(r.athleteId)}>{r.athleteName}</a>
-                  <span className="agenda-ex">
-                    {hoy.length
-                      ? hoy
-                          .map(
-                            (s) => `${s.exercises[0] ?? 'Sesión'} (${STATUS_LABEL[s.status].toLowerCase()})`,
-                          )
-                          .join(' · ')
-                      : 'Sin sesión hoy'}
-                  </span>
-                  <span className="muted small">
-                    semana {done}/{r.sessions.length} hechas · check-in {r.checkInToday ? 'sí' : 'no'}
-                    {r.painSets7d.count ? ` · molestias ${r.painSets7d.count}` : ''}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="muted">Sin atletas.</p>
-        )
-      }
-    </Async>
   );
 }

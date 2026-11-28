@@ -4,7 +4,7 @@ import type { ProgramOpFullInput, SessionRow } from '@coaching/contracts';
 import { DataSheet } from './DataSheet';
 import { validateCell, type SheetColumn, type CellChange } from './sheetModel';
 import { workspaceApi as w, type ProgramResult } from './api';
-import { Message, usePending, Detail } from './ui';
+import { Message, usePending, Detail, dateLabel } from './ui';
 import { matchesPrio, matchesRole, usePrio, useRole } from './PriorityFilter';
 
 type Change = Extract<ProgramOpFullInput['op'], { type: 'change_protocol' }>['change'];
@@ -102,7 +102,7 @@ export function ProgrammingSheet({
         .filter((x) => !x.retired)
         .map((x) => ({
           id: x.plannedSetId,
-          session: `${s.date} · ${s.exerciseName} · ${x.isWarmup ? 'A' : x.setNo}`,
+          session: `${dateLabel(s.date)} · ${s.exerciseName} · ${x.isWarmup ? 'A' : x.setNo}`,
           priority: x.priority == null ? '' : String(x.priority),
           prioN: x.priority == null ? '' : String(x.priority),
           exposureRole: x.exposureRole ?? '',

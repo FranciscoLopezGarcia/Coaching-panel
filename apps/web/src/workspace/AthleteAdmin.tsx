@@ -9,12 +9,14 @@ export function EditAthleteDialog({
   competition,
   onClose,
   onSaved,
+  onDelete,
 }: {
   id: string;
   name: string;
   competition: Partial<Record<'SQ' | 'BP' | 'DL', string>>;
   onClose: () => void;
   onSaved: () => void;
+  onDelete: () => void;
 }) {
   const [n, setN] = useState(name);
   const [c, setC] = useState({
@@ -25,7 +27,7 @@ export function EditAthleteDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   return (
-    <Modal title="Editar perfil del atleta" onClose={onClose}>
+    <Modal title="Editar atleta" onClose={onClose}>
       <form
         className="form-grid"
         onSubmit={async (e) => {
@@ -57,7 +59,7 @@ export function EditAthleteDialog({
           Nombre
           <input required maxLength={80} value={n} onChange={(e) => setN(e.target.value)} />
         </label>
-        <p className="small muted">
+        <p className="small muted form-wide">
           Ejercicios de competencia: el nombre exacto con el que están cargados en su plan (así el sistema
           reconoce cuál es la sentadilla, la banca y el peso muerto de competencia).
         </p>
@@ -68,6 +70,11 @@ export function EditAthleteDialog({
           </label>
         ))}
         {error && <Message error>{error}</Message>}
+        <p className="form-wide">
+          <button type="button" className="danger" onClick={onDelete}>
+            Eliminar atleta
+          </button>
+        </p>
         <div className="sticky-actions">
           <button type="button" onClick={onClose}>
             Cancelar

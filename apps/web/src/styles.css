@@ -159,8 +159,6 @@ td {
 }
 th {
   font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   color: var(--muted);
 }
 .badge {
@@ -826,10 +824,7 @@ td a {
   font-size: 12px;
   text-decoration: none;
 }
-.athlete-heading {
-  margin: 22px 0;
-  gap: 22px;
-}
+
 .avatar {
   width: 52px;
   height: 52px;
@@ -844,74 +839,7 @@ td a {
   font-weight: 600;
   margin-right: 7px;
 }
-.athlete-heading p {
-  margin: 0;
-}
-.context-strip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(100px, 1fr)) minmax(185px, 1.4fr);
-  background: var(--surface-2);
-  border: 1px solid var(--surface-2);
-  border-radius: 0;
-  clip-path: var(--cut-s);
-  margin: 20px 0 0;
-  padding: 12px 4px;
-  position: sticky;
-  top: 0;
-  z-index: 5;
-}
-.context-strip > div,
-.context-strip > button {
-  display: grid;
-  text-align: left;
-  gap: 5px;
-  padding: 0 14px;
-  border: 0;
-  border-right: 1px solid var(--surface-2);
-  border-radius: 0;
-  background: none;
-  min-width: 0;
-}
-.context-strip > :last-child {
-  border-right: 0;
-}
-.context-strip small {
-  font-size: 12px;
-  letter-spacing: 1px;
-  color: var(--muted);
-}
-.context-strip strong {
-  font-size: 12px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.athlete-tabs {
-  display: flex;
-  gap: 18px;
-  align-items: center;
-  border-bottom: 1px solid var(--line);
-  margin: 12px 0 24px;
-  overflow: auto;
-  white-space: nowrap;
-}
-.athlete-tabs button {
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  padding: 14px 3px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.athlete-tabs button.on {
-  color: var(--accent-text);
-  border-bottom-color: var(--accent);
-}
-.athlete-tabs .current-training {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--accent-text);
-}
+
 .section-heading {
   margin: 24px 0 16px;
 }
@@ -1113,27 +1041,7 @@ summary {
   font-size: 12px;
   color: var(--muted);
 }
-.meso-list {
-  display: grid;
-  gap: 10px;
-  margin: 18px 0;
-}
-.meso-row {
-  display: flex;
-  gap: 18px;
-  align-items: center;
-  justify-content: space-between;
-  text-align: left;
-  padding: 18px;
-}
-.meso-row div {
-  flex: 1;
-}
-.meso-row p {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--muted);
-}
+
 .monogram {
   width: 36px;
   height: 36px;
@@ -1537,15 +1445,7 @@ dialog > header h2 {
   .lift-card {
     padding: 14px;
   }
-  .context-strip {
-    grid-template-columns: repeat(4, minmax(75px, 1fr));
-  }
-  .context-strip > :last-child {
-    display: none;
-  }
-  .athlete-tabs {
-    gap: 12px;
-  }
+
   .cards {
     gap: 10px;
   }
@@ -1609,12 +1509,7 @@ dialog > header h2 {
   main {
     padding: 22px 20px 40px;
   }
-  .athlete-tabs .current-training {
-    display: none;
-  }
-  .context-strip {
-    position: static;
-  }
+
   .lift-grid {
     grid-template-columns: 1fr;
   }
@@ -1627,12 +1522,7 @@ dialog > header h2 {
   .panels {
     grid-template-columns: 1fr 1fr;
   }
-  .athlete-heading {
-    align-items: flex-start;
-  }
-  .athlete-heading > .row:last-child {
-    width: 100%;
-  }
+
   .cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1642,9 +1532,7 @@ dialog > header h2 {
   .period-controls {
     width: 100%;
   }
-  .athlete-tabs {
-    gap: 15px;
-  }
+
   .chart-panel {
     padding: 16px;
   }
@@ -1684,46 +1572,13 @@ dialog > header h2 {
   .stat-n {
     font-size: 29px;
   }
-  .context-strip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    row-gap: 14px;
-    padding: 12px 0;
-  }
-  .context-strip > div,
-  .context-strip > button {
-    padding: 0 12px;
-  }
-  .context-strip > :nth-child(2) {
-    border: 0;
-  }
-  .context-strip > :last-child {
-    display: grid;
-    grid-column: 1/-1;
-    padding-top: 10px;
-    border-top: 1px solid var(--surface-2);
-    margin: 0 12px;
-    padding-left: 0;
-  }
-  .context-strip small {
-    font-size: 12px;
-  }
-  .context-strip strong {
-    font-size: 12px;
-  }
-  .athlete-heading h1 {
-    font-size: 25px;
-  }
+
   .avatar {
     width: 42px;
     height: 42px;
     font-size: 15px;
   }
-  .athlete-tabs {
-    gap: 16px;
-  }
-  .athlete-tabs button {
-    font-size: 12px;
-  }
+
   .back-link {
     font-size: 12px;
   }
@@ -1841,33 +1696,6 @@ dialog > header h2 {
 }
 
 @media (max-width: 520px) {
-  .recording .athlete-heading {
-    margin: 14px 0 12px;
-  }
-  .recording .athlete-heading > .row:last-child,
-  .recording .athlete-heading .avatar,
-  .recording .athlete-heading .eyebrow,
-  .recording .athlete-heading p {
-    display: none;
-  }
-  .recording .athlete-heading h1 {
-    font-size: 20px;
-    letter-spacing: -0.5px;
-  }
-  .recording .context-strip {
-    margin: 10px 0 16px;
-    padding: 10px 0;
-    row-gap: 9px;
-  }
-  .recording .context-strip small {
-    font-size: 7px;
-  }
-  .recording .context-strip strong {
-    font-size: 12px;
-  }
-  .recording .context-strip > :last-child {
-    padding-top: 6px;
-  }
   .recording h2 {
     font-size: 18px;
   }

@@ -1,79 +1,55 @@
+import './dashboard.css';
 import { laboratory, athleteName } from '../laboratory/environment';
 import { Laboratory } from '../laboratory/Laboratory';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { AthleteSummary, DashboardData, Lift } from '@coaching/contracts';
-import { readSearch, updateSearch, Modal, Message } from '../workspace/ui';
-import { workspaceApi } from '../workspace/api';
+import { useCallback, useEffect, useState } from 'react';
+import type { AgendaData, AthleteSummary, DashboardData, Lift } from '@coaching/contracts';
+import { readSearch, updateSearch, Modal, Message, dateLabel, shift } from '../workspace/ui';
 import { api, request } from '../api/client';
 import { StatusBadge } from '../components/StatusBadge';
-import { LIFT_NAMES, STATUS } from '../labels';
-import { TodayBoard } from '../workspace/AgendaCard';
+import { LIFT_NAMES } from '../labels';
+import { STATUS_LABEL } from '../workspace/AgendaCard';
 
 const LIFTS: Lift[] = ['SQ', 'BP', 'DL'];
-const rosterSearch = () => {
-  const p = readSearch();
-  if (!p.size) {
-    try {
-      return new URLSearchParams(sessionStorage.getItem('base:roster-filters') ?? '');
-    } catch {
-      return p;
-    }
-  }
-  return p;
-};
+type Today = AgendaData & { athleteId: string };
+type Plan = DashboardData['planning'][number];
 const link = (id: string) => `#/athlete/${encodeURIComponent(id)}`;
+const KIND = { sesion: 'Sesión', cambio: 'Cambio de plan', evaluacion: 'Evaluación' };
+const saved = () => {
+  const p = readSearch();
+  if (p.size) return p;
+  try {
+    return new URLSearchParams(sessionStorage.getItem('base:roster-filters') ?? '');
+  } catch {
+    return p;
+  }
+};
+const missing = (r: Plan) =>
+  r.hasCurrent ? 'Falta la que viene' : r.plannedUntil ? 'Sin esta ni la que viene' : 'Sin plan cargado';
+/** Primero lo urgente: sin nada, después sin la semana que viene; entre los listos, los que terminan bloque. */
+const urgency = (r: Plan) => (r.hasNext ? (r.endingBlocks.length ? 2 : 3) : !r.hasCurrent ? 0 : 1);
 
+/** Inicio: una sola tabla del plantel. Los números de arriba son los filtros de esa misma tabla. */
 export function Dashboard() {
   const [dash, setDash] = useState<DashboardData | null>(null);
-  const [rows, setRows] = useState<AthleteSummary[] | null>(null);
+  const [rows, setRows] = useState<AthleteSummary[]>([]);
+  const [todays, setTodays] = useState<Today[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [q, setQ] = useState(rosterSearch().get('q') ?? '');
-  const [lift, setLift] = useState<'' | Lift>((rosterSearch().get('lift') ?? '') as '' | Lift);
-  const [state, setState] = useState(rosterSearch().get('state') ?? '');
-  const [focus, setFocus] = useState(rosterSearch().get('focus') ?? '');
-  const [list, setList] = useState<{
-    title: string;
-    items: { id: string; name: string; detail: string }[];
-  } | null>(null);
+  const [q, setQ] = useState(saved().get('q') ?? '');
+  const [focus, setFocus] = useState(saved().get('focus') ?? '');
   const [create, setCreate] = useState(false);
   const [name, setName] = useState('');
-  const [contexts, setContexts] = useState<Record<string, { stage: string; competition: string }>>({});
   useEffect(() => {
-    updateSearch({ q, lift, state, focus }, true);
+    updateSearch({ q, focus }, true);
     sessionStorage.setItem('base:roster-filters', readSearch().toString());
-  }, [q, lift, state, focus]);
-
-  useEffect(() => {
-    const sync = () => {
-      if (readSearch().get('focus') === 'plantel') {
-        setFocus('plantel');
-        requestAnimationFrame(() => document.getElementById('plantel')?.scrollIntoView({ block: 'start' }));
-      }
-    };
-    sync();
-    window.addEventListener('hashchange', sync);
-    return () => window.removeEventListener('hashchange', sync);
-  }, [rows]);
+  }, [q, focus]);
 
   const load = useCallback(async () => {
     try {
-      const [d, r] = await Promise.all([api.dashboard(), api.athletes()]);
+      const [d, r, t] = await Promise.all([api.dashboard(), api.athletes(), request<Today[]>('/api/today')]);
       setDash(d);
       setRows(r);
-      const results = await Promise.allSettled(
-        r.map(async (a) => {
-          const [active, mesos] = await Promise.all([workspaceApi.active(a.id), workspaceApi.mesos(a.id)]);
-          return [
-            a.id,
-            {
-              stage: active?.name ?? mesos[0]?.name ?? 'Sin programación',
-              competition: d.competitions.find((c) => c.athleteId === a.id)?.name ?? 'Sin competencia',
-            },
-          ] as const;
-        }),
-      );
-      setContexts(Object.fromEntries(results.flatMap((x) => (x.status === 'fulfilled' ? [x.value] : []))));
+      setTodays(t);
       setError('');
     } catch (e) {
       setError((e as Error).message);
@@ -86,7 +62,7 @@ export function Dashboard() {
   const evaluateAll = async () => {
     setBusy(true);
     try {
-      for (const a of rows ?? []) await api.evaluate(a.id);
+      for (const a of rows) await api.evaluate(a.id);
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -95,308 +71,200 @@ export function Dashboard() {
     }
   };
 
-  const filtered = useMemo(
-    () =>
-      (rows ?? []).filter((a) => {
-        if (focus === 'review' && !dash?.priorities.some((p) => p.athleteId === a.id)) return false;
-        if (focus === 'opportunities' && !dash?.opportunities.some((p) => p.athleteId === a.id)) return false;
-        if (q && !a.name.toLowerCase().includes(q.toLowerCase())) return false;
-        const lifts = lift ? [lift] : LIFTS;
-        if (state && !lifts.some((l) => a.lifts[l]?.status === state)) return false;
-        return true;
-      }),
-    [rows, q, lift, state, focus, dash],
-  );
-
-  if (error && !rows)
+  if (error && !dash)
     return (
       <div className="message error" role="alert">
-        No se pudo cargar: {error}. Comprobá la API local.{' '}
-        <button onClick={() => void load()}>Reintentar</button>
+        No se pudo cargar: {error}. Comprobá la API. <button onClick={() => void load()}>Reintentar</button>
       </div>
     );
-  if (!rows || !dash) return <p className="muted">Cargando…</p>;
-  const cards: [string, number, string][] = [
-    ['Atletas activos', dash.cards.active, 'Todos los del plantel'],
-    ['Requieren revisión', dash.cards.needReview, 'Revisión del coach o posible fin de respuesta'],
-    ['Bloques por terminar', dash.cards.blocksEnding, 'Terminan en ≤ 14 días'],
-    ['Check-ins pendientes', dash.cards.pendingCheckins, 'Sin check-in en los últimos 7 días'],
+  if (!dash) return <p className="muted">Cargando…</p>;
+
+  const alerts = (id: string) => dash.priorities.filter((p) => p.athleteId === id);
+  const chances = (id: string) => dash.opportunities.filter((p) => p.athleteId === id);
+  const filters: { key: string; label: string; test: (r: Plan) => boolean }[] = [
+    { key: '', label: 'Todos', test: () => true },
+    { key: 'unplanned', label: 'Sin planificar', test: (r) => !r.hasNext },
+    { key: 'ending', label: 'Terminan bloque', test: (r) => r.endingBlocks.length > 0 },
+    { key: 'review', label: 'Para revisar', test: (r) => alerts(r.athleteId).length > 0 },
+    { key: 'checkin', label: 'Sin check-in en 7 días', test: (r) => r.checkInPending },
+    { key: 'opportunities', label: 'Con oportunidades', test: (r) => chances(r.athleteId).length > 0 },
   ];
+  const active = filters.find((f) => f.key === focus) ?? filters[0]!;
+  const shown = dash.planning
+    .filter((r) => active.test(r) && r.athleteName.toLowerCase().includes(q.trim().toLowerCase()))
+    .sort((a, b) => urgency(a) - urgency(b) || a.athleteName.localeCompare(b.athleteName, 'es'));
+  const nextMonday = shift(dash.today, 7 - ((new Date(`${dash.today}T12:00:00Z`).getUTCDay() + 6) % 7));
+
   return (
-    <section>
+    <section className="home">
       <div className="row between">
         <div>
-          <h1>Inicio del coach</h1>
+          <h1>Inicio</h1>
           <p className="muted small">
             {new Intl.DateTimeFormat('es-AR', { dateStyle: 'full' }).format(
               new Date(dash.today + 'T12:00:00'),
-            )}{' '}
-            · Tu plantel, en foco.
+            )}
           </p>
         </div>
-        <button className="primary" onClick={() => setCreate(true)}>
-          ＋ Nuevo atleta
-        </button>
-        <button onClick={evaluateAll} disabled={busy || !rows.length}>
-          {busy ? 'Evaluando…' : 'Evaluar todos al día de hoy'}
-        </button>
+        <div className="row">
+          <button className="primary" onClick={() => setCreate(true)}>
+            Nuevo atleta
+          </button>
+          <button onClick={evaluateAll} disabled={busy || !rows.length}>
+            {busy ? 'Evaluando…' : 'Evaluar todos al día de hoy'}
+          </button>
+        </div>
       </div>
-      {error && <p className="error">{error}</p>}
+      {error && <Message error>{error}</Message>}
 
       {laboratory && <Laboratory onCreate={() => setCreate(true)} />}
-      <div className="cards">
-        {cards.map(([t, n, h]) => (
+      <div className="home-filters" role="group" aria-label="Filtrar el plantel">
+        {filters.map((f) => (
           <button
-            key={t}
-            className="stat"
-            title={h}
-            disabled={busy}
-            onClick={async () => {
-              if (t === 'Atletas activos') {
-                setFocus('');
-                document.getElementById('plantel')?.scrollIntoView();
-                return;
-              }
-              if (t === 'Requieren revisión') {
-                setFocus('review');
-                document.getElementById('plantel')?.scrollIntoView();
-                return;
-              }
-              setBusy(true);
-              try {
-                const items = await Promise.all(
-                  rows.map(async (a) => {
-                    if (t === 'Check-ins pendientes') {
-                      const c = await api.checkins(a.id);
-                      return !c.some(
-                        (x) =>
-                          x.date >=
-                            new Date(Date.parse(dash.today + 'T12:00:00Z') - 7 * 86400000)
-                              .toISOString()
-                              .slice(0, 10) && x.date <= dash.today,
-                      )
-                        ? { id: a.id, name: a.name, detail: 'Sin cuestionario vigente en los últimos 7 días' }
-                        : null;
-                    }
-                    const detail = await api.athlete(a.id);
-                    return (detail.evaluation?.blocks ?? [])
-                      .filter(
-                        (b) =>
-                          !b.closed &&
-                          b.endDate >= dash.today &&
-                          b.endDate <=
-                            new Date(Date.parse(dash.today + 'T12:00:00Z') + 14 * 86400000)
-                              .toISOString()
-                              .slice(0, 10),
-                      )
-                      .map((b) => ({
-                        id: a.id,
-                        name: a.name,
-                        detail: `${b.blockKey} · ${b.lift} · ${b.endDate}`,
-                      }));
-                  }),
-                );
-                setList({
-                  title: t,
-                  items: items
-                    .flat()
-                    .filter((x): x is { id: string; name: string; detail: string } => !!x && !!x.detail),
-                });
-              } catch (e) {
-                setError((e as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
+            key={f.key}
+            type="button"
+            aria-pressed={active.key === f.key}
+            onClick={() => setFocus(f.key)}
           >
-            <div className="stat-n">{n}</div>
-            <div className="small muted">
-              {t} <span>↗</span>
-            </div>
+            <b>{dash.planning.filter(f.test).length}</b> {f.label}
           </button>
         ))}
-      </div>
-
-      <div className="panels coach-panels">
-        <Panel title="Prioridades">
-          {dash.priorities.length ? (
-            dash.priorities.map((p) => (
-              <li key={p.athleteId + p.lift + p.status}>
-                <a href={link(p.athleteId)}>{p.athleteName}</a> · {LIFT_NAMES[p.lift]}{' '}
-                <StatusBadge status={p.status} />
-                <div className="row queue-actions">
-                  <a href={link(p.athleteId)}>Ver atleta</a>
-                  <a href={link(p.athleteId) + '?tab=plan'}>Abrir semana ↗</a>
-                </div>
-                <details>
-                  <summary>Hallazgo · datos al {p.since}</summary>
-                  <p>{p.summary}</p>
-                </details>
-              </li>
-            ))
-          ) : (
-            <li className="muted">Nada que revisar con prioridad.</li>
-          )}
-        </Panel>
-        <section className="panel wide-panel" aria-label="Hoy">
-          <h3>Hoy en el plantel</h3>
-          <TodayBoard link={link} />
-        </section>
-        <Panel title="Próximas competencias">
-          {dash.competitions.length ? (
-            dash.competitions.map((c) => (
-              <li key={c.id}>
-                <a href={link(c.athleteId)}>{c.athleteName}</a> · {c.name} · {c.date}{' '}
-                <strong>({c.daysLeft} d)</strong>
-                {c.phase ? ` · ${c.phase}` : ''}
-              </li>
-            ))
-          ) : (
-            <li className="muted">Sin competencias cargadas.</li>
-          )}
-        </Panel>
-        <Panel title="Oportunidades (pendientes de revisión)">
-          {dash.opportunities.length ? (
-            dash.opportunities.map((o) => (
-              <li key={o.athleteId + o.key}>
-                <a href={link(o.athleteId)}>{o.athleteName}</a> · {LIFT_NAMES[o.lift]}{' '}
-                <StatusBadge status={o.status} />
-                <details>
-                  <summary>Ver oportunidad</summary>
-                  <p>{o.summary}</p>
-                </details>
-              </li>
-            ))
-          ) : (
-            <li className="muted">Sin oportunidades pendientes.</li>
-          )}
-        </Panel>
-        <Panel title="Actividad reciente">
-          {dash.recent.length ? (
-            dash.recent.map((r, i) => (
-              <li key={i}>
-                <span className="muted small">{r.date}</span> <a href={link(r.athleteId)}>{r.athleteName}</a>{' '}
-                · {r.kind}
-                <div className="small muted">{r.text}</div>
-              </li>
-            ))
-          ) : (
-            <li className="muted">Sin actividad.</li>
-          )}
-        </Panel>
-      </div>
-
-      <h2 id="plantel" className="spaced">
-        Plantel <span className="chip">{filtered.length} atletas</span>
-      </h2>
-      <div className="row">
-        <button className={!focus ? 'on' : ''} onClick={() => setFocus('')}>
-          Todos
-        </button>
-        <button className={focus === 'review' ? 'on' : ''} onClick={() => setFocus('review')}>
-          Revisión
-        </button>
-        <button className={focus === 'opportunities' ? 'on' : ''} onClick={() => setFocus('opportunities')}>
-          Oportunidades
-        </button>
-      </div>
-      <div className="row">
         <input
+          type="search"
           placeholder="Buscar atleta"
+          aria-label="Buscar atleta"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          aria-label="Buscar atleta"
         />
-        <select value={lift} onChange={(e) => setLift(e.target.value as '' | Lift)} aria-label="Lift">
-          <option value="">Todos los lifts</option>
-          {LIFTS.map((l) => (
-            <option key={l} value={l}>
-              {LIFT_NAMES[l]}
-            </option>
-          ))}
-        </select>
-        <select value={state} onChange={(e) => setState(e.target.value)} aria-label="Estado">
-          <option value="">Todos los estados</option>
-          {Object.entries(STATUS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v.label}
-            </option>
-          ))}
-        </select>
       </div>
-      {!rows.length && (
-        <p className="muted">
-          Sin atletas. Cargá datos sintéticos con <code>npm run seed</code>.
-        </p>
-      )}
-      <div className="roster">
-        {filtered.map((a) => (
-          <article className="athlete-card" key={a.id}>
-            <div className="ac-head">
-              <span className="ac-avatar">
-                {a.name
-                  .split(' ')
-                  .map((x) => x[0])
-                  .slice(0, 2)
-                  .join('')}
-              </span>
-              <div>
-                <a className="ac-name" href={link(a.id)}>
-                  {a.name}
+
+      <div className="roster-table" role="table" aria-label="Plantel">
+        <div className="roster-row roster-head" role="row">
+          <span role="columnheader">Atleta</span>
+          <span role="columnheader">Semana del {dateLabel(nextMonday)}</span>
+          <span role="columnheader">Hoy</span>
+          <span role="columnheader">Check-in</span>
+          <span role="columnheader">Para revisar</span>
+          <span role="columnheader">Competencia</span>
+        </div>
+        {shown.map((r) => {
+          const a = rows.find((x) => x.id === r.athleteId);
+          const t = todays.find((x) => x.athleteId === r.athleteId);
+          const hoy = t?.sessions.filter((s) => s.date === t.today) ?? [];
+          const done = t?.sessions.filter((s) => s.status === 'hecha').length ?? 0;
+          const comp = dash.competitions.find((c) => c.athleteId === r.athleteId);
+          const review = alerts(r.athleteId);
+          const open = chances(r.athleteId);
+          return (
+            <div className="roster-row" role="row" key={r.athleteId}>
+              <div role="cell">
+                <a className="roster-name" href={link(r.athleteId)}>
+                  {r.athleteName}
                 </a>
-                <div className="ac-sub">
-                  {contexts[a.id]?.stage ?? 'Sin información'}
-                  {contexts[a.id]?.competition ? ` · ${contexts[a.id]?.competition}` : ''}
-                </div>
+                <small>{r.currentBlock ?? 'Sin programación'}</small>
               </div>
-              {a.pendingDecisions > 0 && <span className="ac-pending">{a.pendingDecisions} por revisar</span>}
-            </div>
-            <div className="ac-lifts">
-              {LIFTS.map((l) => {
-                const p = a.lifts[l];
-                return (
-                  <div className="ac-lift" data-lift={l} key={l} title={p?.summary ?? 'Sin evaluar'}>
-                    <b>{LIFT_NAMES[l]}</b>
-                    <StatusBadge status={p?.status} />
-                    {p && <small>datos hasta {p.dataUntil || '—'}</small>}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="ac-meta">
-              <div>
-                <span>Último registro</span>
-                <strong>{a.lastRecord ?? 'sin registros'}</strong>
+              <div role="cell" data-label={`Semana del ${dateLabel(nextMonday)}`}>
+                <a className="plan-cell" href={`${link(r.athleteId)}?tab=plan`}>
+                  <span className={`plan-light ${r.hasNext ? 'ok' : 'bad'}`} aria-hidden="true">
+                    {r.hasNext ? '✓' : '✕'}
+                  </span>
+                  {r.hasNext ? 'Planificada' : missing(r)}
+                </a>
+                {r.hasNext && !r.hasCurrent && <small>Esta semana sin sesiones</small>}
+                {!r.hasNext && !r.hasCurrent && r.plannedUntil && (
+                  <small>Último día cargado {dateLabel(r.plannedUntil)}</small>
+                )}
+                {r.endingBlocks.map((b) => (
+                  <span className="plan-ending" key={b.blockKey}>
+                    <span aria-hidden="true">!</span> Termina {b.name} · {dateLabel(b.endDate)}
+                  </span>
+                ))}
               </div>
-              <div>
-                <span>Evaluado al</span>
-                <strong>{a.evaluatedOn ?? 'sin evaluar'}</strong>
+              <div role="cell" data-label="Hoy">
+                {hoy.length
+                  ? hoy.map((s) => (
+                      <span key={s.sessionKey}>
+                        {s.exercises[0] ?? 'Sesión'}: {STATUS_LABEL[s.status].toLowerCase()}
+                      </span>
+                    ))
+                  : 'Sin sesión'}
+                {!!t?.sessions.length && (
+                  <small>
+                    Semana: {done} de {t.sessions.length} hechas
+                  </small>
+                )}
+              </div>
+              <div role="cell" data-label="Check-in">
+                <span className={r.checkInPending ? 'warn-text' : ''}>
+                  {r.checkInPending ? 'Pendiente' : 'Al día'}
+                </span>
+                <small>{r.lastCheckIn ? `Último ${dateLabel(r.lastCheckIn)}` : 'Nunca cargó'}</small>
+                {!!t?.painSets7d.count && <small>Series con molestia (7 d): {t.painSets7d.count}</small>}
+              </div>
+              <div role="cell" data-label="Para revisar">
+                {review.map((p) => (
+                  <span className="roster-alert" key={p.lift + p.status}>
+                    {LIFT_NAMES[p.lift]} <StatusBadge status={p.status} />
+                  </span>
+                ))}
+                {!review.length && <span className="muted">Sin alertas</span>}
+                <details>
+                  <summary>
+                    {open.length
+                      ? `${open.length} ${open.length === 1 ? 'oportunidad' : 'oportunidades'} · detalle`
+                      : 'Detalle'}
+                  </summary>
+                  {[...review, ...open].map((p) => (
+                    <p key={p.lift + p.status}>
+                      <b>{LIFT_NAMES[p.lift]}:</b> {p.summary}
+                    </p>
+                  ))}
+                  {LIFTS.map((l) => (
+                    <p className="roster-alert" key={l}>
+                      {LIFT_NAMES[l]} <StatusBadge status={a?.lifts[l]?.status} />
+                    </p>
+                  ))}
+                  <p className="muted">
+                    Decisiones pendientes: {a?.pendingDecisions ?? 0}. Último registro:{' '}
+                    {a?.lastRecord ? dateLabel(a.lastRecord) : 'sin registros'}. Evaluado:{' '}
+                    {a?.evaluatedOn ? dateLabel(a.evaluatedOn) : 'sin evaluar'}.
+                  </p>
+                </details>
+              </div>
+              <div role="cell" data-label="Competencia">
+                {comp ? (
+                  <>
+                    {comp.name}
+                    <small>
+                      {dateLabel(comp.date)} · en {comp.daysLeft} d
+                    </small>
+                  </>
+                ) : (
+                  <span className="muted">Sin fecha</span>
+                )}
               </div>
             </div>
-            <div className="ac-actions">
-              <a href={link(a.id)}>Perfil</a>
-              <a href={link(a.id) + '?tab=plan'}>Semana ↗</a>
-            </div>
-          </article>
-        ))}
+          );
+        })}
       </div>
-      {!filtered.length && !!rows.length && (
-        <Message>No hay atletas para estos filtros. Cambiá la búsqueda o elegí Todos.</Message>
+      {!dash.planning.length && <p className="muted">Todavía no hay atletas.</p>}
+      {!shown.length && !!dash.planning.length && (
+        <Message>No hay atletas para este filtro. Cambiá la búsqueda o elegí Todos.</Message>
       )}
-      {list && (
-        <Modal title={list.title} onClose={() => setList(null)}>
-          {list.items.length ? (
-            list.items.map((x) => (
-              <article className="card" key={x.id + x.detail}>
-                <a href={link(x.id)}>{x.name}</a>
-                <p>{x.detail}</p>
-              </article>
-            ))
-          ) : (
-            <p>No hay elementos que listar con los datos detallados disponibles.</p>
-          )}
-        </Modal>
-      )}
+
+      <details className="home-recent">
+        <summary>Actividad reciente</summary>
+        <ul>
+          {dash.recent.map((r, i) => (
+            <li key={i}>
+              <span className="muted">{dateLabel(r.date)}</span>{' '}
+              <a href={link(r.athleteId)}>{r.athleteName}</a> · {KIND[r.kind]}
+              <div className="small muted">{r.text}</div>
+            </li>
+          ))}
+          {!dash.recent.length && <li className="muted">Sin actividad.</li>}
+        </ul>
+      </details>
       {create && (
         <Modal title="Nuevo atleta" onClose={() => setCreate(false)}>
           <form
@@ -429,14 +297,5 @@ export function Dashboard() {
         </Modal>
       )}
     </section>
-  );
-}
-
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="panel">
-      <h3>{title}</h3>
-      <ul>{children}</ul>
-    </div>
   );
 }

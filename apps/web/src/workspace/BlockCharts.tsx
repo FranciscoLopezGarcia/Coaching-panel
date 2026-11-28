@@ -661,7 +661,7 @@ export function E1rmChart({
           const px = X(offsets[bi]! + Math.min(wk, Math.max(1, blocks[bi]!.weeks)) - 0.5);
           return [
             <g key={`mk${k}`}>
-              <title>{`${mk.label} · rige desde ${mk.date}`}</title>
+              <title>{`${mk.label} · rige desde ${dateLabel(mk.date)}`}</title>
               <line
                 x1={px}
                 x2={px}

@@ -1,3 +1,4 @@
+import { dateLabel } from '../workspace/ui';
 import { useState } from 'react';
 import type { DecisionRow } from '@coaching/contracts';
 import { RULE_NAMES } from '../labels';
@@ -38,8 +39,8 @@ export function DecisionCard({ row, onDecide, compact }: Props) {
         </p>
       )}
       <p className="muted small">
-        Datos hasta {row.dataUntil || '—'} · evaluado al corte {row.evaluatedOn} · {row.rulesVersion} ·
-        recuperación: {row.readiness}
+        Datos hasta {row.dataUntil ? dateLabel(row.dataUntil) : '—'} · evaluado al corte{' '}
+        {dateLabel(row.evaluatedOn)} · {row.rulesVersion} · recuperación: {row.readiness}
       </p>
       {!compact && (
         <>

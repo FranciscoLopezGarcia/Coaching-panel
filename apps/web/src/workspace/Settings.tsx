@@ -9,7 +9,7 @@ import { api } from '../api/client';
 import { useLoad } from '../hooks';
 import { Async } from '../components/Async';
 import { get, send, workspaceApi as w } from './api';
-import { Detail, Message, today, number } from './ui';
+import { Detail, Message, today, number, dateLabel } from './ui';
 interface ImportResponse {
   preview?: {
     token: string;
@@ -149,7 +149,7 @@ export function Settings({
                         <td>{r.exerciseName}</td>
                         <td>{number(r.kg)} kg</td>
                         <td>{r.source}</td>
-                        <td>{r.asOf}</td>
+                        <td>{dateLabel(r.asOf)}</td>
                         <td>{r.note}</td>
                       </tr>
                     ))}

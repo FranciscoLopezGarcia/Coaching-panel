@@ -7,7 +7,7 @@ import { api } from '../api/client';
 import { useLoad } from '../hooks';
 import { Async } from '../components/Async';
 import { send, get } from './api';
-import { Empty, Message, number, today, usePending, Detail } from './ui';
+import { Empty, Message, number, today, usePending, Detail, dateLabel } from './ui';
 import { RpeChip, rpeInputProps } from '../components/RpeChip';
 type Entry = {
   plannedSetId: string;
@@ -34,7 +34,6 @@ export function Registration({
   return (
     <section>
       <h2>Registro de entrenamiento</h2>
-      <Message>Demostración local · Sin cuentas de usuario.</Message>
       <Async state={sessions}>
         {(list) => (
           <>
@@ -44,7 +43,7 @@ export function Registration({
                 <option value="">Elegí una sesión</option>
                 {list.map((s) => (
                   <option key={s.sessionKey} value={s.sessionKey}>
-                    {s.date} · {s.exerciseName} · {s.blockKey} / S{s.weekNo}
+                    {dateLabel(s.date)} · {s.exerciseName} · {s.blockKey} / S{s.weekNo}
                   </option>
                 ))}
               </select>
@@ -64,7 +63,6 @@ export function Registration({
                 Los campos opcionales pueden quedar vacíos. El RPE real se carga por separado.
               </Empty>
             )}
-            <Checkin id={id} />
           </>
         )}
       </Async>
@@ -172,7 +170,7 @@ function SessionForm({ id, s, onChanged }: { id: string; s: SessionRow; onChange
       <div className="row between">
         <div>
           <span className="eyebrow">
-            {s.date} · {s.blockKey} · SEMANA {s.weekNo}
+            {dateLabel(s.date)} · {s.blockKey} · Semana {s.weekNo}
           </span>
           <h3>{s.exerciseName}</h3>
         </div>
@@ -405,90 +403,5 @@ function SessionForm({ id, s, onChanged }: { id: string; s: SessionRow; onChange
         {history !== null && <Detail value={history} />}
       </details>
     </article>
-  );
-}
-export function Checkin({ id }: { id: string }) {
-  const key = `base:checkin-draft:${id}`;
-  const [values, setValues] = useState<Record<string, string>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(key) ?? 'null') ?? {};
-    } catch {
-      return {};
-    }
-  });
-  const [date, setDate] = useState(values.date ?? today());
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-  const fields = [
-    ['sleep', 'Sueño'],
-    ['energy', 'Energía'],
-    ['motivation', 'Ganas de entrenar'],
-    ['stress', 'Estrés'],
-    ['pain', 'Molestia'],
-  ] as const;
-  return (
-    <details className="card" open>
-      <summary>
-        <strong>Cuestionario de recuperación</strong>
-        <span className="small muted"> · Todos los valores son opcionales</span>
-      </summary>
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (busy) return;
-          setBusy(true);
-          setError('');
-          try {
-            await api.addCheckin(id, {
-              date,
-              ...Object.fromEntries(fields.map(([k]) => [k, values[k] ? Number(values[k]) : null])),
-            });
-            localStorage.removeItem(key);
-            setMessage('Cuestionario guardado.');
-          } catch (e) {
-            setError((e as Error).message);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <div className="form-grid">
-          <label>
-            Fecha
-            <input
-              type="date"
-              required
-              value={date}
-              onChange={(e) => {
-                setDate(e.target.value);
-                localStorage.setItem(key, JSON.stringify({ ...values, date: e.target.value }));
-              }}
-            />
-          </label>
-          {fields.map(([k, l]) => (
-            <label key={k}>
-              {l} · 1–10
-              <input
-                type="number"
-                min={1}
-                max={10}
-                value={values[k] ?? ''}
-                onChange={(e) => {
-                  const next = { ...values, [k]: e.target.value, date };
-                  setValues(next);
-                  localStorage.setItem(key, JSON.stringify(next));
-                }}
-              />
-            </label>
-          ))}
-        </div>
-        <button disabled={busy} className="primary">
-          {busy ? 'Guardando…' : 'Guardar cuestionario'}
-        </button>
-        {message && <Message>{message}</Message>}
-        {error && <Message error>{error}</Message>}
-      </form>
-    </details>
   );
 }

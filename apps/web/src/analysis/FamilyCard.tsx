@@ -178,7 +178,11 @@ export function FamilyCard({
   onOpen,
   bands,
   blockExtra,
+  open,
+  onToggle,
 }: {
+  open: boolean;
+  onToggle: () => void;
   family: Family;
   data: AnalysisResult;
   periods: PeriodRow[];
@@ -267,7 +271,10 @@ export function FamilyCard({
           <h3 id={`h-${family.id}`}>{family.title}</h3>
           <p>{family.hint}</p>
         </div>
-        {family.blockView && (
+        <button type="button" className="an-fold" aria-expanded={open} onClick={onToggle}>
+          {open ? 'Ocultar' : 'Mostrar'}
+        </button>
+        {open && family.blockView && (
           <div className="an-seg" role="group" aria-label="Vista">
             <button
               type="button"
@@ -286,68 +293,72 @@ export function FamilyCard({
           </div>
         )}
       </header>
-      <MetricChips metrics={metrics} visible={visible} onVisible={setVisible} state={state} />
-      {mode === 'periodo' ? (
+      {open && (
         <>
-          {none ? (
-            <p className="an-empty">
-              Sin registros comparables en este período
-              {state.source === 'plan' ? '' : '. Probá con «Ambos» o ampliá el período'}.
-            </p>
-          ) : (
-            <div className="an-chart">
-              <OverviewChart
-                title={shown.map((m) => m.label).join(' · ')}
-                unit={shown[0]?.unit ?? ''}
-                traces={shown.flatMap((m, i) =>
-                  tracesFor(periods, m, state.source, SERIES_COLORS[i % SERIES_COLORS.length] as string),
-                )}
-                bands={bands}
-                thresholds={thresholds}
-                area={shown.length > 1}
-                zoom={!shown.some((m) => ['compliance_sets', 'fatigue_end'].includes(m.id))}
-                domain={
-                  shown.some((m) => m.id === 'fatigue_end')
-                    ? [0, 10]
-                    : shown.some((m) => m.id === 'compliance_sets')
-                      ? [0, 100]
-                      : undefined
-                }
-                height={250}
-                width={1040}
-                linkedDate={linked.date}
-                onHoverDate={linked.set}
+          <MetricChips metrics={metrics} visible={visible} onVisible={setVisible} state={state} />
+          {mode === 'periodo' ? (
+            <>
+              {none ? (
+                <p className="an-empty">
+                  Sin registros comparables en este período
+                  {state.source === 'plan' ? '' : '. Probá con «Ambos» o ampliá el período'}.
+                </p>
+              ) : (
+                <div className="an-chart">
+                  <OverviewChart
+                    title={shown.map((m) => m.label).join(' · ')}
+                    unit={shown[0]?.unit ?? ''}
+                    traces={shown.flatMap((m, i) =>
+                      tracesFor(periods, m, state.source, SERIES_COLORS[i % SERIES_COLORS.length] as string),
+                    )}
+                    bands={bands}
+                    thresholds={thresholds}
+                    area={shown.length > 1}
+                    zoom={!shown.some((m) => ['compliance_sets', 'fatigue_end'].includes(m.id))}
+                    domain={
+                      shown.some((m) => m.id === 'fatigue_end')
+                        ? [0, 10]
+                        : shown.some((m) => m.id === 'compliance_sets')
+                          ? [0, 100]
+                          : undefined
+                    }
+                    height={250}
+                    width={1040}
+                    linkedDate={linked.date}
+                    onHoverDate={linked.set}
+                  />
+                </div>
+              )}
+              <PeriodTable
+                periods={periods}
+                metrics={metrics}
+                state={state}
+                linked={linked}
+                onOpen={onOpen}
+                highlight={visible}
               />
-            </div>
-          )}
-          <PeriodTable
-            periods={periods}
-            metrics={metrics}
-            state={state}
-            linked={linked}
-            onOpen={onOpen}
-            highlight={visible}
-          />
-        </>
-      ) : blockRows.length && data.blocks ? (
-        <>
-          {focus && blockOf(focus) && (
-            <MetricChart row={blockOf(focus) as CRow} label={focus.label} blocks={cblocks} />
-          )}
-          <BlockTable rows={blockRows} blocks={cblocks} labels={labelByRow} />
-          {blockExtra}
-          {blockRows.length < metrics.length && (
-            <p className="an-note">
-              {metrics
-                .filter((m) => !m.blockRow)
-                .map((m) => m.label)
-                .join(', ')}
-              : sin vista por bloque; se ve por {state.scale === 'week' ? 'semana' : 'sesión'}.
-            </p>
+            </>
+          ) : blockRows.length && data.blocks ? (
+            <>
+              {focus && blockOf(focus) && (
+                <MetricChart row={blockOf(focus) as CRow} label={focus.label} blocks={cblocks} />
+              )}
+              <BlockTable rows={blockRows} blocks={cblocks} labels={labelByRow} />
+              {blockExtra}
+              {blockRows.length < metrics.length && (
+                <p className="an-note">
+                  {metrics
+                    .filter((m) => !m.blockRow)
+                    .map((m) => m.label)
+                    .join(', ')}
+                  : sin vista por bloque; se ve por {state.scale === 'week' ? 'semana' : 'sesión'}.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="an-empty">No hay bloques con datos para comparar en este período.</p>
           )}
         </>
-      ) : (
-        <p className="an-empty">No hay bloques con datos para comparar en este período.</p>
       )}
     </section>
   );

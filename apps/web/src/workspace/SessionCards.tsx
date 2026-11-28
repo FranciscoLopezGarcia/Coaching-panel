@@ -11,6 +11,16 @@ const WD = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 const weekday = (d: string) => WD[new Date(d + 'T12:00:00Z').getUTCDay()];
 const EX = 'application/x-coaching-exercise';
 const SES = 'application/x-coaching-session';
+/** ¿Lo cargado por el atleta difiere de lo previsto? Solo en ese caso se muestra «prev.»: si coincide, repetirlo es ruido. */
+function differsFromPlan(x: SetRow): boolean {
+  const a = x.actual;
+  if (!a || a.status !== 'done') return false;
+  return (
+    (x.planned.reps ?? null) !== (a.reps ?? null) ||
+    (x.planned.kg ?? null) !== (a.kg ?? null) ||
+    (x.planned.targetRpe ?? null) !== (a.rpe ?? null)
+  );
+}
 /** «3/3 series» o «2/3 series · 1 omitida»: cuánto de lo previsto se cargó de verdad. */
 function executedSummary(sets: SetRow[]): string {
   const done = sets.filter((x) => x.actual?.status === 'done').length;
@@ -264,11 +274,13 @@ export function SessionCards({
                                 {x.actual.pain != null && (
                                   <span className="sc-pain">dolor {x.actual.pain}/10</span>
                                 )}
-                                <span className="sc-vs">
-                                  prev. {x.planned.reps}
-                                  {x.planned.kg != null ? ` × ${number(x.planned.kg)} kg` : ''}
-                                  {x.planned.targetRpe != null ? ` @${number(x.planned.targetRpe)}` : ''}
-                                </span>
+                                {differsFromPlan(x) && (
+                                  <span className="sc-vs" title="Lo previsto en el plan">
+                                    prev. {x.planned.reps}
+                                    {x.planned.kg != null ? ` × ${number(x.planned.kg)} kg` : ''}
+                                    {x.planned.targetRpe != null ? ` @${number(x.planned.targetRpe)}` : ''}
+                                  </span>
+                                )}
                               </>
                             ) : (
                               <span className="sc-none">
